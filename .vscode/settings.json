@@ -1,0 +1,10 @@
+{
+  "eslint.options": {
+    "extensions": [
+      ".ts"
+    ]
+  },
+  "eslint.workingDirectories": [
+    "src"
+  ]
+}
