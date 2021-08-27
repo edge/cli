@@ -1,0 +1,17 @@
+{
+  "name": "@edge/cli",
+  "version": "1.0.0",
+  "description": "Edge CLI",
+  "scripts": {
+    "build": "tsc",
+    "cli": "node out/src/main.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Edge Network Technologies Ltd",
+  "license": "SEE LICENSE IN LICENSE.txt",
+  "devDependencies": {
+    "@types/node": "^16.7.2",
+    "commander": "^8.1.0",
+    "typescript": "^4.4.2"
+  }
+}
