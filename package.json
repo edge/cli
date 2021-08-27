@@ -14,10 +14,15 @@
     "build-executable": "pkg out/src/main.js --compress GZip --out-path bin",
     "dev": "node out/src/main.js",
     "devf": "npm run build-src && node out/src/main.js",
+    "lint": "eslint --ext .ts src || true",
+    "lint:fix": "eslint --fix --ext .ts src || true",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
     "@types/node": "^16.7.2",
+    "@typescript-eslint/eslint-plugin": "^4.29.3",
+    "@typescript-eslint/parser": "^4.29.3",
+    "eslint": "^7.32.0",
     "pkg": "^5.3.1",
     "typescript": "^4.4.2"
   },
