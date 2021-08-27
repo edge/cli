@@ -3,8 +3,11 @@
   "version": "1.0.0",
   "description": "Edge CLI",
   "scripts": {
-    "build": "tsc",
-    "cli": "node out/src/main.js",
+    "build": "npm run build-src && npm run build-executable",
+    "build-src": "tsc",
+    "build-executable": "pkg out/src/main.js --compress GZip --out-path bin",
+    "dev": "node out/src/main.js",
+    "devf": "npm run build-src && node out/src/main.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Edge Network Technologies Ltd",
@@ -12,6 +15,8 @@
   "devDependencies": {
     "@types/node": "^16.7.2",
     "commander": "^8.1.0",
+    "pkg": "^5.3.1",
     "typescript": "^4.4.2"
-  }
+  },
+  "dependencies": {}
 }
