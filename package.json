@@ -1,7 +1,13 @@
 {
   "name": "@edge/cli",
   "version": "1.0.0",
-  "description": "Edge CLI",
+  "description": "Command line interface for the Edge network",
+  "private": true,
+  "author": "Edge Network <core@edge.network>",
+  "contributors": [
+    "Aneurin \"Anny\" Barker Snook <aneurin@edge.network>"
+  ],
+  "license": "unlicensed",
   "scripts": {
     "build": "npm run build-src && npm run build-executable",
     "build-src": "tsc",
@@ -10,13 +16,12 @@
     "devf": "npm run build-src && node out/src/main.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Edge Network Technologies Ltd",
-  "license": "SEE LICENSE IN LICENSE.txt",
   "devDependencies": {
     "@types/node": "^16.7.2",
-    "commander": "^8.1.0",
     "pkg": "^5.3.1",
     "typescript": "^4.4.2"
   },
-  "dependencies": {}
+  "dependencies": {
+    "commander": "^8.1.0"
+  }
 }
