@@ -8,6 +8,19 @@
     "plugin:@typescript-eslint/recommended"
   ],
   "rules": {
+    "@typescript-eslint/member-delimiter-style": [
+      "error",
+      {
+        "multiline": {
+          "delimiter": "none",
+          "requireLast": true
+        },
+        "singleline": {
+          "delimiter": "comma",
+          "requireLast": false
+        }
+      }
+    ],
     "arrow-body-style": [
       "error",
       "as-needed"
@@ -48,6 +61,7 @@
       }
     ],
     "no-array-constructor": "error",
+    "no-eval": "error",
     "no-lonely-if": "error",
     "no-multi-assign": "error",
     "no-new-object": "error",
