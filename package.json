@@ -19,7 +19,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
-    "@edge/eslint-config-typescript": "github:edge/eslint-config-typescript#v1",
+    "@edge/eslint-config-typescript": "^0.1.0",
     "@types/node": "^16.7.2",
     "@typescript-eslint/eslint-plugin": "^4.29.3",
     "@typescript-eslint/parser": "^4.29.3",
