@@ -3,6 +3,7 @@ import * as stakeCLI from './stake/cli'
 import { Command } from 'commander'
 
 const cli = new Command('edge')
+  .enablePositionalOptions(true)
   .option('-v, --verbose', 'enable verbose logging', false)
 
 deviceCLI.withProgram(cli)
