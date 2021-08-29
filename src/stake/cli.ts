@@ -8,8 +8,8 @@ const listAction = (p: Command) => () => {
   console.debug('stake ls WIP', p.opts())
 }
 
-const releaseAction = (p: Command) => (id: string) => {
-  console.debug('stake release WIP', p.opts(), id)
+const releaseAction = (p: Command, rc: Command) => (id: string) => {
+  console.debug('stake release WIP', p.opts(), rc.opts(), id)
 }
 
 const unlockAction = (p: Command) => (id: string) => {
@@ -40,7 +40,13 @@ export const withProgram = (p: Command): void => {
   const release = new Command('release')
     .argument('<id>', 'stake ID')
     .description('release a stake')
-    .action(releaseAction(p))
+    .option('-e, --express', 'express release', false)
+    .addHelpText('after', [
+      '\n',
+      'The --express option instructs the blockchain to take a portion of your stake in return for an immediate ',
+      'release of funds, rather than waiting for the unlock period to conclude.'
+    ].join(''))
+  release.action(releaseAction(p, release))
 
   // edge stake unlock
   const unlock = new Command('unlock')
