@@ -16,6 +16,13 @@ const unlockAction = (p: Command) => (id: string) => {
   console.debug('stake unlock WIP', p.opts(), id)
 }
 
+/**
+ * Create a staking CLI.
+ *
+ * Includes subcommands to create, release, and unlock stakes.
+ *
+ * @param p Parent program
+ */
 export const withProgram = (p: Command): void => {
   const stakeCLI = new Command('stake')
 
