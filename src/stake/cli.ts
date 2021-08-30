@@ -1,40 +1,33 @@
 import { Command } from 'commander'
 
-const createAction = (p: Command) => () => {
-  console.debug('stake create WIP', p.opts())
+const createAction = (parent: Command) => () => {
+  console.debug('stake create WIP', parent.opts())
 }
 
-const listAction = (p: Command) => () => {
-  console.debug('stake ls WIP', p.opts())
+const listAction = (parent: Command) => () => {
+  console.debug('stake ls WIP', parent.opts())
 }
 
-const releaseAction = (p: Command, rc: Command) => (id: string) => {
-  console.debug('stake release WIP', p.opts(), rc.opts(), id)
+const releaseAction = (parent: Command, release: Command) => (id: string) => {
+  console.debug('stake release WIP', parent.opts(), release.opts(), id)
 }
 
-const unlockAction = (p: Command) => (id: string) => {
-  console.debug('stake unlock WIP', p.opts(), id)
+const unlockAction = (parent: Command) => (id: string) => {
+  console.debug('stake unlock WIP', parent.opts(), id)
 }
 
-/**
- * Create a staking CLI.
- *
- * Includes subcommands to create, release, and unlock stakes.
- *
- * @param p Parent program
- */
-export const withProgram = (p: Command): void => {
+export const withProgram = (parent: Command): void => {
   const stakeCLI = new Command('stake')
 
   // edge stake create
   const create = new Command('create')
     .description('assign a new stake to this device')
-    .action(createAction(p))
+    .action(createAction(parent))
 
   // edge stake ls
   const list = new Command('ls')
     .description('list all stakes')
-    .action(listAction(p))
+    .action(listAction(parent))
 
   // edge stake release
   const release = new Command('release')
@@ -46,13 +39,13 @@ export const withProgram = (p: Command): void => {
       'The --express option instructs the blockchain to take a portion of your stake in return for an immediate ',
       'release of funds, rather than waiting for the unlock period to conclude.'
     ].join(''))
-  release.action(releaseAction(p, release))
+  release.action(releaseAction(parent, release))
 
   // edge stake unlock
   const unlock = new Command('unlock')
     .argument('<id>', 'stake ID')
     .description('unlock a stake')
-    .action(unlockAction(p))
+    .action(unlockAction(parent))
 
   stakeCLI
     .addCommand(create)
@@ -60,5 +53,5 @@ export const withProgram = (p: Command): void => {
     .addCommand(release)
     .addCommand(unlock)
 
-  p.addCommand(stakeCLI)
+  parent.addCommand(stakeCLI)
 }
