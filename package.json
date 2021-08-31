@@ -16,7 +16,7 @@
     "dev:from-src": "node out/src/main.js",
     "lint": "eslint --ext .ts src || true",
     "lint:fix": "eslint --fix --ext .ts src",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\""
   },
   "devDependencies": {
     "@edge/eslint-config-typescript": "^0.1.0",

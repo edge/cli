@@ -1,7 +1,7 @@
-name: Development build
+name: Check PR to develop
 
 on:
-  push:
+  pull_request:
     branches:
       - develop
     paths:
@@ -59,50 +59,16 @@ jobs:
       - name: Run linting
         run: npx eslint --ext .ts src
 
-  # test:
-  #   name: Run tests
-  #   needs: install
-  #   runs-on: ubuntu-latest
-  #   container:
-  #     image: docker://node:14
-  #     volumes:
-  #       - ${{ github.workspace }}:/build
-  #     options:
-  #       workdir: /build
-  #   steps:
-  #     # checkout
-  #     - name: Checkout code
-  #       uses: actions/checkout@v2
-  #     # restore node cache
-  #     - name: Cache node_modules
-  #       uses: actions/cache@v2
-  #       with:
-  #         path: ${{ github.workspace }}/node_modules
-  #         key: ${{ runner.os }}-node_modules-${{ github.sha }}
-  #         restore-keys: ${{ runner.os }}-node_modules-
-  #     # test
-  #     - name: Run linting
-  #       run: npm run test
-
-  build:
-    name: Build binary
-    needs:
-      - lint
-      # - test
+  test:
+    name: Run tests
+    needs: install
     runs-on: ubuntu-latest
     container:
       image: docker://node:14
       volumes:
         - ${{ github.workspace }}:/build
-        - /.pkg-cache:/root/.pkg-cache
-      options: --workdir /build
-    strategy:
-      # see https://github.com/vercel/pkg#targets
-      matrix:
-        node: [node14]
-        os: [linux]
-        arch: [x64, arm64]
-      fail-fast: true
+      options:
+        workdir: /build
     steps:
       # checkout
       - name: Checkout code
@@ -114,21 +80,6 @@ jobs:
           path: ${{ github.workspace }}/node_modules
           key: ${{ runner.os }}-node_modules-${{ github.sha }}
           restore-keys: ${{ runner.os }}-node_modules-
-      # initialize pkg cache
-      - name: Cache pkg binaries
-        uses: actions/cache@v2
-        with:
-          path: /.pkg-cache
-          key: ${{ runner.os }}-${{ matrix.node }}-${{ matrix.os }}-${{ matrix.arch }}-pkg_cache-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-${{ matrix.node }}-${{ matrix.os }}-${{ matrix.arch }}-pkg_cache-
-      # build
-      - name: Build
-        run: |
-          npx tsc
-          npx pkg out/src/main.js --compress GZip -t ${{ matrix.node }}-${{ matrix.os }}-${{ matrix.arch }} --output bin/edge-${{ matrix.os }}-${{ matrix.arch }}
-      # upload binary artifact
-      - name: Upload artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: edge-${{ matrix.os }}-${{ matrix.arch }}
-          path: ${{ github.workspace }}/bin/edge-${{ matrix.os }}-${{ matrix.arch }}
+      # test
+      - name: Run linting
+        run: npm run test
