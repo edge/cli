@@ -10,9 +10,11 @@
     "moduleResolution": "node",
     "noImplicitAny": true,
     "outDir": "out",
+    "preserveConstEnums": true,
+    "removeComments": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "strict": true,
+    "strict": true
   },
   "include": [
     "src/**/*",
