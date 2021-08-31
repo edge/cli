@@ -18,6 +18,7 @@ const unlockAction = (parent: Command) => (id: string) => {
 
 export const withProgram = (parent: Command): void => {
   const stakeCLI = new Command('stake')
+    .description('manage stakes')
 
   // edge stake create
   const create = new Command('create')
