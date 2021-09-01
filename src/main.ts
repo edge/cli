@@ -1,5 +1,6 @@
 import * as deviceCLI from './device/cli'
 import * as stakeCLI from './stake/cli'
+import * as walletCLI from './wallet/cli'
 import { Command } from 'commander'
 
 const main = (argv: string[]): void => {
@@ -9,6 +10,7 @@ const main = (argv: string[]): void => {
 
   deviceCLI.withProgram(cli)
   stakeCLI.withProgram(cli)
+  walletCLI.withProgram(cli)
 
   cli.parse(argv)
 }
