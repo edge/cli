@@ -57,6 +57,6 @@ export const encryptWallet = (wallet: Wallet, secretKey: string): EncryptedWalle
   ...wallet,
   key: {
     public: encrypt(wallet.key.public, secretKey),
-    private: encrypt(wallet.key.public, secretKey)
+    private: encrypt(wallet.key.private, secretKey)
   }
 })
