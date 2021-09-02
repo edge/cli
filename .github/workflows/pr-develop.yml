@@ -67,8 +67,7 @@ jobs:
       image: docker://node:14
       volumes:
         - ${{ github.workspace }}:/build
-      options:
-        workdir: /build
+      options: --workdir /build
     steps:
       # checkout
       - name: Checkout code
