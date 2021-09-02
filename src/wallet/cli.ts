@@ -40,6 +40,21 @@ const createAction = (parent: Command) => async (password: string) => {
   }
 }
 
+const infoAction = (parent: Command) => async (password: string) => {
+  const opts = { ...getGlobalOptions(parent), ...getOptions(parent) }
+
+  const [read] = withFile(opts.walletFile)
+  try {
+    const wallet = await read(password)
+    console.log('address:     ', wallet.address)
+    console.log('public key:  ', wallet.key.public)
+    console.log('private key: ', wallet.key.private)
+  }
+  catch (err) {
+    console.error(err)
+  }
+}
+
 const restoreAction = (parent: Command) => async (privateKey: string, password: string) => {
   const opts = { ...getGlobalOptions(parent), ...getOptions(parent) }
 
@@ -77,6 +92,11 @@ export const withProgram = (parent: Command): void => {
     .description('create a new wallet')
     .action(createAction(parent))
 
+  const info = new Command('info')
+    .argument('<password>', 'decryption password')
+    .description('display wallet info')
+    .action(infoAction(parent))
+
   // edge wallet restore
   const restore = new Command('restore')
     .argument('<private-key>', 'private key')
@@ -86,6 +106,7 @@ export const withProgram = (parent: Command): void => {
 
   walletCLI
     .addCommand(create)
+    .addCommand(info)
     .addCommand(restore)
 
   parent
