@@ -29,6 +29,7 @@
     "typescript": "^4.4.2"
   },
   "dependencies": {
+    "@edge/wallet-utils": "file:../wallet-utils",
     "commander": "^8.1.0"
   }
 }
