@@ -80,5 +80,5 @@ jobs:
           key: ${{ runner.os }}-node_modules-${{ github.sha }}
           restore-keys: ${{ runner.os }}-node_modules-
       # test
-      - name: Run linting
+      - name: Run tests
         run: npm run test
