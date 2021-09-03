@@ -11,7 +11,7 @@
   "scripts": {
     "build": "npm run build:src && npm run build:executable",
     "build:src": "tsc",
-    "build:executable": "pkg out/src/main.js -t host --compress GZip --out-path bin",
+    "build:executable": "pkg out/src/main.js -t host --compress GZip --output bin/edge",
     "dev": "ts-node src/main.ts",
     "dev:from-src": "node out/src/main.js",
     "lint": "eslint --ext .ts src || true",
