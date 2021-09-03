@@ -26,7 +26,7 @@ const listAction = (parent: Command, listCmd: Command) => async () => {
   if (opts.verbose) console.debug(opts)
 
   const wallet = await readWallet(opts.walletFile)
-  const txs = await transactions(wallet.address, opts.page, opts.perPage)
+  const txs = await transactions(opts.network, wallet.address, opts.page, opts.perPage)
   console.log(txs)
 }
 

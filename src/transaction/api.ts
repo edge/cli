@@ -1,3 +1,4 @@
+import { Network } from '../config'
 import { get } from 'https'
 
 type Transaction = {
@@ -18,12 +19,10 @@ type Transaction = {
   confirmations: number
 }
 
-export const baseURL = (): string => 'https://index.test.networkinternal.com'
-
 export const transactions =
-  (address: string, page: number, limit: number): Promise<Transaction[]> =>
+  (network: Network, address: string, page: number, limit: number): Promise<Transaction[]> =>
     new Promise((resolve, reject) => {
-      const url = `${baseURL()}/transactions/${address}?page=${page}&limit=${limit}`
+      const url = `${network.index.baseURL}/transactions/${address}?page=${page}&limit=${limit}`
       get(url, res => {
         res
           .on('data', data => {
