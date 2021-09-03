@@ -5,7 +5,7 @@ on:
     branches:
       - develop
     paths:
-      - .github/workflows/develop-build.yml
+      - .github/workflows/pr-develop.yml
       - package-lock.json
       - package.json
       - src/**
@@ -29,8 +29,8 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ github.workspace }}/node_modules
-          key: ${{ runner.os }}-node_modules-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-node_modules-
+          key: ${{ runner.os }}-${{ secrets.BUILD_CACHE_ID }}-node_modules-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-${{ secrets.BUILD_CACHE_ID }}-node_modules-
       # npm install
       - name: Install dependencies
         run: npm i
@@ -53,8 +53,8 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ github.workspace }}/node_modules
-          key: ${{ runner.os }}-node_modules-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-node_modules-
+          key: ${{ runner.os }}-${{ secrets.BUILD_CACHE_ID }}-node_modules-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-${{ secrets.BUILD_CACHE_ID }}-node_modules-
       # lint
       - name: Run linting
         run: npx eslint --ext .ts src
@@ -77,8 +77,8 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ github.workspace }}/node_modules
-          key: ${{ runner.os }}-node_modules-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-node_modules-
+          key: ${{ runner.os }}-${{ secrets.BUILD_CACHE_ID }}-node_modules-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-${{ secrets.BUILD_CACHE_ID }}-node_modules-
       # test
       - name: Run tests
         run: npm run test
