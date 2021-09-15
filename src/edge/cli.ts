@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Command } from 'commander'
 import { Network, selectNetwork } from '../config'
 
@@ -19,6 +20,36 @@ export const create = (): Command => {
 
   return cli
 }
+
+export const errorHandler =
+  <T>(cli: Command, f: (...args: any[]) => Promise<T>) =>
+    async (...args: any[]): Promise<T|undefined> => {
+      try {
+        return await f(...args)
+      }
+      catch (err) {
+        const opts = getOptions(cli)
+        if (opts.verbose) console.error(err)
+        else console.error(`${err}`)
+        process.exitCode = 1
+      }
+      return undefined
+    }
+
+export const errorHandlerSync =
+  <T>(cli: Command, f: (...args: any[]) => T) =>
+    (...args: any[]): T|undefined => {
+      try {
+        return f(...args)
+      }
+      catch (err) {
+        const opts = getOptions(cli)
+        if (opts.verbose) console.error(err)
+        else console.error(`${err}`)
+        process.exitCode = 1
+      }
+      return undefined
+    }
 
 export const getOptions = (cli: Command): Options => {
   const opts = cli.opts<OptionsInput>()

@@ -1,6 +1,6 @@
-import { getOptions as getGlobalOptions } from '../edge/cli'
 import { Command, Option } from 'commander'
 import { defaultFile, withFile } from './storage'
+import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
 import {
   generateKeyPair,
   privateKeyToChecksumAddress,
@@ -31,16 +31,14 @@ const createAction = (parent: Command, createCmd: Command) => async () => {
     public: keypair.getPublic(true, 'hex').toString(),
     private: keypair.getPrivate('hex').toString()
   }
-  if (opts.verbose) {
-    console.debug('public key:  ', key.public)
-    console.debug('private key: ', key.private)
-  }
 
   const address = publicKeyToChecksumAddress(key.public)
   const [, write] = withFile(opts.wallet.file)
   try {
     await write({ address, key }, opts.wallet.secretKey)
-    console.log(`Your new wallet address is ${address}`)
+    console.log(`Wallet address: ${address}`)
+    console.log(`Private key:    ${key.private}`)
+    console.log('Ensure you copy your private key to a safe place!')
   }
   catch (err) {
     console.error(err)
@@ -81,7 +79,7 @@ const restoreAction = (parent: Command, restoreCmd: Command) => async (privateKe
   const [, write] = withFile(opts.wallet.file)
   try {
     await write({ address, key }, opts.wallet.secretKey)
-    console.log(`Your restored wallet address is ${address}`)
+    console.log(`Wallet address: ${address}`)
   }
   catch (err) {
     console.error(err)
@@ -115,19 +113,19 @@ export const withProgram = (parent: Command): void => {
   const create = new Command('create')
     .description('create a new wallet')
     .addOption(secretKeyOption())
-  create.action(createAction(parent, create))
+  create.action(errorHandler(parent, createAction(parent, create)))
 
   const info = new Command('info')
     .description('display wallet info')
     .addOption(secretKeyOption())
-  info.action(infoAction(parent, info))
+  info.action(errorHandler(parent, infoAction(parent, info)))
 
   // edge wallet restore
   const restore = new Command('restore')
     .argument('<private-key>', 'private key')
     .description('restore a wallet')
     .addOption(secretKeyOption())
-  restore.action(restoreAction(parent, restore))
+  restore.action(errorHandler(parent, restoreAction(parent, restore)))
 
   walletCLI
     .addCommand(create)
