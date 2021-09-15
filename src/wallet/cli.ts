@@ -1,5 +1,5 @@
-import { Command } from 'commander'
 import { getOptions as getGlobalOptions } from '../edge/cli'
+import { Command, Option } from 'commander'
 import { defaultFile, withFile } from './storage'
 import {
   generateKeyPair,
@@ -9,15 +9,22 @@ import {
 } from '@edge/wallet-utils'
 
 export type Options = {
-  walletFile: string
+  wallet: {
+    secretKey: string
+    file: string
+  }
 }
 
 type OptionsInput = {
+  secretKey?: string
   wallet: string
 }
 
-const createAction = (parent: Command) => async (password: string) => {
-  const opts = { ...getGlobalOptions(parent), ...getOptions(parent) }
+const createAction = (parent: Command, createCmd: Command) => async () => {
+  const opts = {
+    ...getGlobalOptions(parent),
+    ...getOptions(parent, createCmd, true)
+  }
 
   const keypair = generateKeyPair()
   const key = {
@@ -30,9 +37,9 @@ const createAction = (parent: Command) => async (password: string) => {
   }
 
   const address = publicKeyToChecksumAddress(key.public)
-  const [, write] = withFile(opts.walletFile)
+  const [, write] = withFile(opts.wallet.file)
   try {
-    await write({ address, key }, password)
+    await write({ address, key }, opts.wallet.secretKey)
     console.log(`Your new wallet address is ${address}`)
   }
   catch (err) {
@@ -40,12 +47,15 @@ const createAction = (parent: Command) => async (password: string) => {
   }
 }
 
-const infoAction = (parent: Command) => async (password: string) => {
-  const opts = { ...getGlobalOptions(parent), ...getOptions(parent) }
+const infoAction = (parent: Command, infoCmd: Command) => async () => {
+  const opts = {
+    ...getGlobalOptions(parent),
+    ...getOptions(parent, infoCmd, true)
+  }
 
-  const [read] = withFile(opts.walletFile)
+  const [read] = withFile(opts.wallet.file)
   try {
-    const wallet = await read(password)
+    const wallet = await read(opts.wallet.secretKey)
     console.log('address:     ', wallet.address)
     console.log('public key:  ', wallet.key.public)
     console.log('private key: ', wallet.key.private)
@@ -55,8 +65,11 @@ const infoAction = (parent: Command) => async (password: string) => {
   }
 }
 
-const restoreAction = (parent: Command) => async (privateKey: string, password: string) => {
-  const opts = { ...getGlobalOptions(parent), ...getOptions(parent) }
+const restoreAction = (parent: Command, restoreCmd: Command) => async (privateKey: string) => {
+  const opts = {
+    ...getGlobalOptions(parent),
+    ...getOptions(parent, restoreCmd, true)
+  }
 
   const key = {
     public: privateKeyToPublicKey(privateKey),
@@ -65,9 +78,9 @@ const restoreAction = (parent: Command) => async (privateKey: string, password: 
   if (opts.verbose) console.debug('public key: ', key.public)
 
   const address = privateKeyToChecksumAddress(privateKey)
-  const [, write] = withFile(opts.walletFile)
+  const [, write] = withFile(opts.wallet.file)
   try {
-    await write({ address, key }, password)
+    await write({ address, key }, opts.wallet.secretKey)
     console.log(`Your restored wallet address is ${address}`)
   }
   catch (err) {
@@ -75,10 +88,22 @@ const restoreAction = (parent: Command) => async (privateKey: string, password: 
   }
 }
 
-export const getOptions = (parent: Command): Options => {
-  const opts = parent.opts<OptionsInput>()
+export const secretKeyOption = (): Option => new Option(
+  '-k, --secret-key <string>',
+  'wallet secret key'
+)
+
+export const getOptions = (parent: Command, cmd: Command, requireSecret = false): Options => {
+  const opts = {
+    ...parent.opts<Pick<OptionsInput, 'wallet'>>(),
+    ...cmd.opts<Pick<OptionsInput, 'secretKey'>>()
+  }
+  if (requireSecret && opts.secretKey === undefined) throw new Error('secret key required')
   return {
-    walletFile: opts.wallet
+    wallet: {
+      secretKey: opts.secretKey || '',
+      file: opts.wallet
+    }
   }
 }
 
@@ -88,21 +113,21 @@ export const withProgram = (parent: Command): void => {
 
   // edge wallet create
   const create = new Command('create')
-    .argument('<password>', 'decryption password')
     .description('create a new wallet')
-    .action(createAction(parent))
+    .addOption(secretKeyOption())
+  create.action(createAction(parent, create))
 
   const info = new Command('info')
-    .argument('<password>', 'decryption password')
     .description('display wallet info')
-    .action(infoAction(parent))
+    .addOption(secretKeyOption())
+  info.action(infoAction(parent, info))
 
   // edge wallet restore
   const restore = new Command('restore')
     .argument('<private-key>', 'private key')
-    .argument('<password>', 'decryption password')
     .description('restore a wallet')
-    .action(restoreAction(parent))
+    .addOption(secretKeyOption())
+  restore.action(restoreAction(parent, restore))
 
   walletCLI
     .addCommand(create)

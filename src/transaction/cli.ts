@@ -20,12 +20,12 @@ const getListOptions = (listCmd: Command): ListOptions => {
 const listAction = (parent: Command, listCmd: Command) => async () => {
   const opts = {
     ...getGlobalOptions(parent),
-    ...getWalletOptions(parent),
+    ...getWalletOptions(parent, listCmd),
     ...getListOptions(listCmd)
   }
   if (opts.verbose) console.debug(opts)
 
-  const wallet = await readWallet(opts.walletFile)
+  const wallet = await readWallet(opts.wallet.file)
   const txs = await transactions(opts.network, wallet.address, opts.page, opts.perPage)
   console.log(txs)
 }
