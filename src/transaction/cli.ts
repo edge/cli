@@ -1,8 +1,8 @@
 import { Command } from 'commander'
-import { getOptions as getGlobalOptions } from '../edge/cli'
 import { getOptions as getWalletOptions } from '../wallet/cli'
 import { readWallet } from '../wallet/storage'
 import { transactions } from './api'
+import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
 
 type ListOptions<T = number> = {
   page: T
@@ -20,12 +20,12 @@ const getListOptions = (listCmd: Command): ListOptions => {
 const listAction = (parent: Command, listCmd: Command) => async () => {
   const opts = {
     ...getGlobalOptions(parent),
-    ...getWalletOptions(parent),
+    ...await getWalletOptions(parent, listCmd),
     ...getListOptions(listCmd)
   }
   if (opts.verbose) console.debug(opts)
 
-  const wallet = await readWallet(opts.walletFile)
+  const wallet = await readWallet(opts.wallet.file)
   const txs = await transactions(opts.network, wallet.address, opts.page, opts.perPage)
   console.log(txs)
 }
@@ -40,7 +40,7 @@ export const withProgram = (parent: Command): void => {
     .description('list transactions')
     .option('-p, --page <n>', 'page number', '1')
     .option('-l, --per-page <n>', 'transactions per page', '5')
-  list.action(listAction(parent, list))
+  list.action(errorHandler(parent, listAction(parent, list)))
 
   transactionCLI
     .addCommand(list)
