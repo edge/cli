@@ -1,3 +1,4 @@
+import { readFileSync } from 'fs'
 import readline from 'readline'
 import { Command, Option } from 'commander'
 import { defaultFile, withFile } from './storage'
@@ -8,7 +9,6 @@ import {
   privateKeyToPublicKey,
   publicKeyToChecksumAddress
 } from '@edge/wallet-utils'
-import { readFileSync } from 'fs'
 
 export type Options = {
   wallet: {
