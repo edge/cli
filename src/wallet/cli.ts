@@ -8,6 +8,7 @@ import {
   privateKeyToPublicKey,
   publicKeyToChecksumAddress
 } from '@edge/wallet-utils'
+import { readFileSync } from 'fs'
 
 export type Options = {
   wallet: {
@@ -18,6 +19,7 @@ export type Options = {
 
 type OptionsInput = {
   secretKey?: string
+  secretKeyFile?: string
   wallet: string
 }
 
@@ -72,17 +74,12 @@ const restoreAction = (parent: Command, restoreCmd: Command) => async (privateKe
   console.log(`Wallet address: ${address}`)
 }
 
-export const secretKeyOption = (): Option => new Option(
-  '-k, --secret-key <string>',
-  'wallet secret key'
-)
-
 export const getOptions =
   (parent: Command, cmd: Command, requireSecret = false): Promise<Options> =>
     new Promise((resolve, reject) => {
       const opts = {
         ...parent.opts<Pick<OptionsInput, 'wallet'>>(),
-        ...cmd.opts<Pick<OptionsInput, 'secretKey'>>()
+        ...cmd.opts<Pick<OptionsInput, 'secretKey' | 'secretKeyFile'>>()
       }
       const ropts = {
         wallet: {
@@ -92,8 +89,21 @@ export const getOptions =
       }
       if (!requireSecret || ropts.wallet.secretKey.length > 0) return resolve(ropts)
 
+      // if key file specified, attempt to read secret key from it
+      if (opts.secretKeyFile !== undefined) {
+        if (opts.secretKeyFile.length === 0) return reject(new Error('no path to secret key file'))
+        try {
+          const data = readFileSync(opts.secretKeyFile)
+          ropts.wallet.secretKey = data.toString()
+          return resolve(ropts)
+        }
+        catch (err) {
+          return reject(err)
+        }
+      }
+
       // secret key not provided as option, try interactive prompt
-      if (!process.stdout.isTTY) throw new Error('secret key required')
+      if (!process.stdout.isTTY) return reject(new Error('secret key required'))
       const rl = readline.createInterface(process.stdin, process.stdout)
       rl.on('close', () => {
         if (ropts.wallet.secretKey.length > 0) return resolve(ropts)
@@ -105,6 +115,16 @@ export const getOptions =
       })
     })
 
+export const secretKeyOption = (): Option => new Option(
+  '-k, --secret-key <string>',
+  'wallet secret key'
+)
+
+export const secretKeyFileOption = (): Option => new Option(
+  '-K, --secret-key-file <path>',
+  'file containing wallet secret key'
+)
+
 export const withProgram = (parent: Command): void => {
   const walletCLI = new Command('wallet')
     .description('manage wallet')
@@ -113,11 +133,13 @@ export const withProgram = (parent: Command): void => {
   const create = new Command('create')
     .description('create a new wallet')
     .addOption(secretKeyOption())
+    .addOption(secretKeyFileOption())
   create.action(errorHandler(parent, createAction(parent, create)))
 
   const info = new Command('info')
     .description('display wallet info')
     .addOption(secretKeyOption())
+    .addOption(secretKeyFileOption())
   info.action(errorHandler(parent, infoAction(parent, info)))
 
   // edge wallet restore
@@ -125,6 +147,7 @@ export const withProgram = (parent: Command): void => {
     .argument('<private-key>', 'private key')
     .description('restore a wallet')
     .addOption(secretKeyOption())
+    .addOption(secretKeyFileOption())
   restore.action(errorHandler(parent, restoreAction(parent, restore)))
 
   walletCLI
