@@ -20,7 +20,7 @@ const getListOptions = (listCmd: Command): ListOptions => {
 const listAction = (parent: Command, listCmd: Command) => async () => {
   const opts = {
     ...getGlobalOptions(parent),
-    ...getWalletOptions(parent, listCmd),
+    ...await getWalletOptions(parent, listCmd),
     ...getListOptions(listCmd)
   }
   if (opts.verbose) console.debug(opts)

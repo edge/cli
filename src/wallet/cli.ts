@@ -1,3 +1,4 @@
+import readline from 'readline'
 import { Command, Option } from 'commander'
 import { defaultFile, withFile } from './storage'
 import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
@@ -23,7 +24,7 @@ type OptionsInput = {
 const createAction = (parent: Command, createCmd: Command) => async () => {
   const opts = {
     ...getGlobalOptions(parent),
-    ...getOptions(parent, createCmd, true)
+    ...await getOptions(parent, createCmd, true)
   }
 
   const keypair = generateKeyPair()
@@ -48,7 +49,7 @@ const createAction = (parent: Command, createCmd: Command) => async () => {
 const infoAction = (parent: Command, infoCmd: Command) => async () => {
   const opts = {
     ...getGlobalOptions(parent),
-    ...getOptions(parent, infoCmd, true)
+    ...await getOptions(parent, infoCmd, true)
   }
 
   const [read] = withFile(opts.wallet.file)
@@ -66,7 +67,7 @@ const infoAction = (parent: Command, infoCmd: Command) => async () => {
 const restoreAction = (parent: Command, restoreCmd: Command) => async (privateKey: string) => {
   const opts = {
     ...getGlobalOptions(parent),
-    ...getOptions(parent, restoreCmd, true)
+    ...await getOptions(parent, restoreCmd, true)
   }
 
   const key = {
@@ -91,19 +92,33 @@ export const secretKeyOption = (): Option => new Option(
   'wallet secret key'
 )
 
-export const getOptions = (parent: Command, cmd: Command, requireSecret = false): Options => {
-  const opts = {
-    ...parent.opts<Pick<OptionsInput, 'wallet'>>(),
-    ...cmd.opts<Pick<OptionsInput, 'secretKey'>>()
-  }
-  if (requireSecret && opts.secretKey === undefined) throw new Error('secret key required')
-  return {
-    wallet: {
-      secretKey: opts.secretKey || '',
-      file: opts.wallet
-    }
-  }
-}
+export const getOptions =
+  (parent: Command, cmd: Command, requireSecret = false): Promise<Options> =>
+    new Promise((resolve, reject) => {
+      const opts = {
+        ...parent.opts<Pick<OptionsInput, 'wallet'>>(),
+        ...cmd.opts<Pick<OptionsInput, 'secretKey'>>()
+      }
+      const ropts = {
+        wallet: {
+          secretKey: opts.secretKey || '',
+          file: opts.wallet
+        }
+      }
+      if (!requireSecret || ropts.wallet.secretKey.length > 0) return resolve(ropts)
+
+      // secret key not provided as option, try interactive prompt
+      if (!process.stdout.isTTY) throw new Error('secret key required')
+      const rl = readline.createInterface(process.stdin, process.stdout)
+      rl.on('close', () => {
+        if (ropts.wallet.secretKey.length > 0) return resolve(ropts)
+        return reject(new Error('secret key required'))
+      })
+      rl.question('Secret key: ', answer => {
+        ropts.wallet.secretKey = answer
+        rl.close()
+      })
+    })
 
 export const withProgram = (parent: Command): void => {
   const walletCLI = new Command('wallet')
