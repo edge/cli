@@ -35,15 +35,10 @@ const createAction = (parent: Command, createCmd: Command) => async () => {
 
   const address = publicKeyToChecksumAddress(key.public)
   const [, write] = withFile(opts.wallet.file)
-  try {
-    await write({ address, key }, opts.wallet.secretKey)
-    console.log(`Wallet address: ${address}`)
-    console.log(`Private key:    ${key.private}`)
-    console.log('Ensure you copy your private key to a safe place!')
-  }
-  catch (err) {
-    console.error(err)
-  }
+  await write({ address, key }, opts.wallet.secretKey)
+  console.log(`Wallet address: ${address}`)
+  console.log(`Private key:    ${key.private}`)
+  console.log('Ensure you copy your private key to a safe place!')
 }
 
 const infoAction = (parent: Command, infoCmd: Command) => async () => {
@@ -53,15 +48,10 @@ const infoAction = (parent: Command, infoCmd: Command) => async () => {
   }
 
   const [read] = withFile(opts.wallet.file)
-  try {
-    const wallet = await read(opts.wallet.secretKey)
-    console.log('address:     ', wallet.address)
-    console.log('public key:  ', wallet.key.public)
-    console.log('private key: ', wallet.key.private)
-  }
-  catch (err) {
-    console.error(err)
-  }
+  const wallet = await read(opts.wallet.secretKey)
+  console.log('address:     ', wallet.address)
+  console.log('public key:  ', wallet.key.public)
+  console.log('private key: ', wallet.key.private)
 }
 
 const restoreAction = (parent: Command, restoreCmd: Command) => async (privateKey: string) => {
@@ -78,13 +68,8 @@ const restoreAction = (parent: Command, restoreCmd: Command) => async (privateKe
 
   const address = privateKeyToChecksumAddress(privateKey)
   const [, write] = withFile(opts.wallet.file)
-  try {
-    await write({ address, key }, opts.wallet.secretKey)
-    console.log(`Wallet address: ${address}`)
-  }
-  catch (err) {
-    console.error(err)
-  }
+  await write({ address, key }, opts.wallet.secretKey)
+  console.log(`Wallet address: ${address}`)
 }
 
 export const secretKeyOption = (): Option => new Option(
