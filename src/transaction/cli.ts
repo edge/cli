@@ -36,7 +36,8 @@ export const withProgram = (parent: Command): void => {
     .description('manage transactions')
 
   // edge transaction ls
-  const list = new Command('ls')
+  const list = new Command('list')
+    .alias('ls')
     .description('list transactions')
     .option('-p, --page <n>', 'page number', '1')
     .option('-l, --per-page <n>', 'transactions per page', '5')
