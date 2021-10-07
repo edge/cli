@@ -1,5 +1,5 @@
 import { Command } from 'commander'
-import { getOptions as getWalletOptions } from '../wallet/cli'
+import { getWalletOption } from '../wallet/cli'
 import { readWallet } from '../wallet/storage'
 import { transactions } from './api'
 import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
@@ -20,12 +20,12 @@ const getListOptions = (listCmd: Command): ListOptions => {
 const listAction = (parent: Command, listCmd: Command) => async () => {
   const opts = {
     ...getGlobalOptions(parent),
-    ...await getWalletOptions(parent, listCmd),
+    ...getWalletOption(parent),
     ...getListOptions(listCmd)
   }
   if (opts.verbose) console.debug(opts)
 
-  const wallet = await readWallet(opts.wallet.file)
+  const wallet = await readWallet(opts.wallet)
   const txs = await transactions(opts.network, wallet.address, opts.page, opts.perPage)
   console.log(txs)
 }

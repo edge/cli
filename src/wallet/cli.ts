@@ -1,7 +1,6 @@
-import { readFileSync } from 'fs'
-import readline from 'readline'
+import { writeFileSync } from 'fs'
 import { Command, Option } from 'commander'
-import { defaultFile, withFile } from './storage'
+import { defaultFile, readWallet, withFile } from './storage'
 import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
 import {
   generateKeyPair,
@@ -9,24 +8,25 @@ import {
   privateKeyToPublicKey,
   publicKeyToChecksumAddress
 } from '@edge/wallet-utils'
-
-export type Options = {
-  wallet: {
-    secretKey: string
-    file: string
-  }
-}
-
-type OptionsInput = {
-  secretKey?: string
-  secretKeyFile?: string
-  wallet: string
-}
+import { readSecureValue, readValue } from '../input'
 
 const createAction = (parent: Command, createCmd: Command) => async () => {
   const opts = {
     ...getGlobalOptions(parent),
-    ...await getOptions(parent, createCmd, true)
+    ...getWalletOption(parent),
+    ...await getSecretKeyOption(createCmd),
+    ...await (async () => {
+      let { privateKeyFile } = createCmd.opts<{ privateKeyFile: string | undefined }>()
+      if (privateKeyFile === undefined) {
+        console.log('Specify a private key file, or leave blank to display your private key.')
+        privateKeyFile = await readValue(
+          'Enter private key file: ',
+          'private key file',
+          false
+        )
+      }
+      return { privateKeyFile }
+    })()
   }
 
   const keypair = generateKeyPair()
@@ -34,96 +34,95 @@ const createAction = (parent: Command, createCmd: Command) => async () => {
     public: keypair.getPublic(true, 'hex').toString(),
     private: keypair.getPrivate('hex').toString()
   }
-
   const address = publicKeyToChecksumAddress(key.public)
-  const [, write] = withFile(opts.wallet.file)
-  await write({ address, key }, opts.wallet.secretKey)
-  console.log(`Wallet address: ${address}`)
-  console.log(`Private key:    ${key.private}`)
-  console.log('Ensure you copy your private key to a safe place!')
+
+  const [, write] = withFile(opts.wallet)
+  await write({ address, key }, opts.secretKey)
+
+  console.log('wallet address:', address)
+  console.log('wallet file:', opts.wallet)
+
+  if (opts.privateKeyFile.length) {
+    try {
+      writeFileSync(opts.privateKeyFile, key.private)
+      console.log('private key file:', opts.privateKeyFile)
+    }
+    catch (err) {
+      console.log('private key:', key.private)
+      console.log('failed to write to private key file, displayed private key instead')
+      console.error(err)
+    }
+  }
+  else console.log('private key:', key.private)
 }
 
-const infoAction = (parent: Command, infoCmd: Command) => async () => {
+const infoAction = (parent: Command) => async () => {
   const opts = {
     ...getGlobalOptions(parent),
-    ...await getOptions(parent, infoCmd, true)
+    ...getWalletOption(parent)
   }
 
-  const [read] = withFile(opts.wallet.file)
-  const wallet = await read(opts.wallet.secretKey)
-  console.log('address:     ', wallet.address)
-  console.log('public key:  ', wallet.key.public)
-  console.log('private key: ', wallet.key.private)
+  const wallet = await readWallet(opts.wallet)
+
+  console.log('wallet address:', wallet.address)
+  console.log('wallet file:', opts.wallet)
 }
 
-const restoreAction = (parent: Command, restoreCmd: Command) => async (privateKey: string) => {
+const restoreAction = (parent: Command, restoreCmd: Command) => async () => {
   const opts = {
     ...getGlobalOptions(parent),
-    ...await getOptions(parent, restoreCmd, true)
+    ...getWalletOption(parent),
+    ...await getPrivateKeyOption(restoreCmd),
+    ...await getSecretKeyOption(restoreCmd)
   }
 
   const key = {
-    public: privateKeyToPublicKey(privateKey),
-    private: privateKey
+    public: privateKeyToPublicKey(opts.privateKey),
+    private: opts.privateKey
   }
   if (opts.verbose) console.debug('public key: ', key.public)
 
-  const address = privateKeyToChecksumAddress(privateKey)
-  const [, write] = withFile(opts.wallet.file)
-  await write({ address, key }, opts.wallet.secretKey)
-  console.log(`Wallet address: ${address}`)
+  const address = privateKeyToChecksumAddress(opts.privateKey)
+  const [, write] = withFile(opts.wallet)
+  await write({ address, key }, opts.secretKey)
+
+  console.log('wallet address:', address)
+  console.log('wallet file:', opts.wallet)
 }
 
-export const getOptions =
-  (parent: Command, cmd: Command, requireSecret = false): Promise<Options> =>
-    new Promise((resolve, reject) => {
-      const opts = {
-        ...parent.opts<Pick<OptionsInput, 'wallet'>>(),
-        ...cmd.opts<Pick<OptionsInput, 'secretKey' | 'secretKeyFile'>>()
-      }
-      const ropts = {
-        wallet: {
-          secretKey: opts.secretKey || '',
-          file: opts.wallet
-        }
-      }
-      if (!requireSecret || ropts.wallet.secretKey.length > 0) return resolve(ropts)
+export const addPrivateKeyOption = (cmd: Command): void =>
+  [privateKeyOption(), privateKeyFileOption()].forEach(opt => cmd.addOption(opt))
 
-      // if key file specified, attempt to read secret key from it
-      if (opts.secretKeyFile !== undefined) {
-        if (opts.secretKeyFile.length === 0) return reject(new Error('no path to secret key file'))
-        try {
-          const data = readFileSync(opts.secretKeyFile)
-          ropts.wallet.secretKey = data.toString()
-          return resolve(ropts)
-        }
-        catch (err) {
-          return reject(err)
-        }
-      }
+export const addSecretKeyOption = (cmd: Command): void =>
+  [secretKeyOption(), secretKeyFileOption()].forEach(opt => cmd.addOption(opt))
 
-      // secret key not provided as option, try interactive prompt
-      if (!process.stdout.isTTY) return reject(new Error('secret key required'))
-      const rl = readline.createInterface(process.stdin, process.stdout)
-      rl.on('close', () => {
-        if (ropts.wallet.secretKey.length > 0) return resolve(ropts)
-        return reject(new Error('secret key required'))
-      })
-      rl.question('Secret key: ', answer => {
-        ropts.wallet.secretKey = answer
-        rl.close()
-      })
-    })
+export const getPrivateKeyOption = async (cmd: Command): Promise<{ privateKey: string }> => {
+  const { privateKey, privateKeyFile } = cmd.opts<Record<'privateKey' | 'privateKeyFile', string|undefined>>()
+  if (privateKey && privateKey.length > 0) return { privateKey }
+  const input = await readPrivateKeyValue(privateKeyFile)
+  return { privateKey: input }
+}
 
-export const secretKeyOption = (): Option => new Option(
-  '-k, --secret-key <string>',
-  'wallet secret key'
-)
+export const getSecretKeyOption = async (cmd: Command): Promise<{ secretKey: string }> => {
+  const { secretKey, secretKeyFile } = cmd.opts<Record<'secretKey' | 'secretKeyFile', string|undefined>>()
+  if (secretKey && secretKey.length > 0) return { secretKey }
+  const input = await readSecretKeyValue(secretKeyFile)
+  return { secretKey: input }
+}
 
-export const secretKeyFileOption = (): Option => new Option(
-  '-K, --secret-key-file <path>',
-  'file containing wallet secret key'
-)
+export const getWalletOption = (parent: Command): { wallet: string } => {
+  const { wallet } = parent.opts<{ wallet: string }>()
+  return { wallet }
+}
+
+const privateKeyOption = () => new Option('-p, --private-key <string>', 'wallet private key')
+const privateKeyFileOption = () => new Option('-P, --private-key-file <path>', 'file containing wallet private key')
+
+const readPrivateKeyValue = readSecureValue('Enter private key: ', 'private key')
+const readSecretKeyValue = readSecureValue('Enter secret key: ', 'secret key')
+
+const secretKeyOption = () => new Option('-k, --secret-key <string>', 'wallet secret key')
+const secretKeyFileOption = () => new Option('-K, --secret-key-file <path>', 'file containing wallet secret key')
 
 export const withProgram = (parent: Command): void => {
   const walletCLI = new Command('wallet')
@@ -132,22 +131,18 @@ export const withProgram = (parent: Command): void => {
   // edge wallet create
   const create = new Command('create')
     .description('create a new wallet')
-    .addOption(secretKeyOption())
-    .addOption(secretKeyFileOption())
+    .addOption(privateKeyFileOption())
+  addSecretKeyOption(create)
   create.action(errorHandler(parent, createAction(parent, create)))
 
-  const info = new Command('info')
-    .description('display wallet info')
-    .addOption(secretKeyOption())
-    .addOption(secretKeyFileOption())
-  info.action(errorHandler(parent, infoAction(parent, info)))
+  const info = new Command('info').description('display wallet info')
+  addSecretKeyOption(info)
+  info.action(errorHandler(parent, infoAction(parent)))
 
   // edge wallet restore
-  const restore = new Command('restore')
-    .argument('<private-key>', 'private key')
-    .description('restore a wallet')
-    .addOption(secretKeyOption())
-    .addOption(secretKeyFileOption())
+  const restore = new Command('restore').description('restore a wallet')
+  addPrivateKeyOption(restore)
+  addSecretKeyOption(restore)
   restore.action(errorHandler(parent, restoreAction(parent, restore)))
 
   walletCLI
