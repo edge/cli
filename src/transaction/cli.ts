@@ -1,5 +1,5 @@
 import { Command } from 'commander'
-import { getWalletOption } from '../wallet/cli'
+import { addSecretKeyOption, getSecretKeyOption, getWalletOption } from '../wallet/cli'
 import { readWallet } from '../wallet/storage'
 import { transactions } from './api'
 import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
@@ -30,6 +30,16 @@ const listAction = (parent: Command, listCmd: Command) => async () => {
   console.log(txs)
 }
 
+const sendAction = (parent: Command, sendCmd: Command) => async () => {
+  const opts = {
+    ...getGlobalOptions(parent),
+    ...getWalletOption(parent),
+    ...await getSecretKeyOption(sendCmd)
+  }
+
+  console.log('WIP', opts)
+}
+
 export const withProgram = (parent: Command): void => {
   const transactionCLI = new Command('transaction')
     .alias('tx')
@@ -43,8 +53,17 @@ export const withProgram = (parent: Command): void => {
     .option('-l, --per-page <n>', 'transactions per page', '5')
   list.action(errorHandler(parent, listAction(parent, list)))
 
+  const send = new Command('send')
+    .argument('<amount>', 'amount in XE')
+    .argument('<wallet>', 'recipient wallet address')
+    .description('send XE to another wallet')
+    .option('-m, --memo <text>', 'attach a memo to the transaction')
+  addSecretKeyOption(send)
+  send.action(errorHandler(parent, sendAction(parent, send)))
+
   transactionCLI
     .addCommand(list)
+    .addCommand(send)
 
   parent.addCommand(transactionCLI)
 }
