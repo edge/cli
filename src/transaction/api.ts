@@ -1,14 +1,16 @@
 import { Network } from '../config'
 import { get } from 'https'
 
+type TransactionData = {
+  memo?: string
+}
+
 type Transaction = {
   timestamp: number
   sender: string
   recipient: string
   amount: number
-  data: {
-    memo: string
-  }
+  data: TransactionData
   nonce: number
   signature: string
   hash: string
@@ -26,6 +28,8 @@ export const transactions =
       get(url, res => {
         res
           .on('data', data => {
+            // eslint-disable-next-line max-len
+            if (res.statusCode !== 200) return reject(new Error(`failed to query transactions (${res.statusCode}): ${data}`))
             const txs = JSON.parse(data) as { results: Transaction[] }
             return resolve(txs.results)
           })

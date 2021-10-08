@@ -6,18 +6,14 @@ export type EncryptedPair = {
 }
 
 export type EncryptedWallet = Pick<Wallet, 'address'> & {
-  key: {
-    public: EncryptedPair
-    private: EncryptedPair
-  }
+  privateKey: EncryptedPair
+  publicKey: EncryptedPair
 }
 
 export type Wallet = {
   address: string
-  key: {
-    public: string
-    private: string
-  }
+  privateKey: string
+  publicKey: string
 }
 
 const decrypt = (encPair: EncryptedPair, secretKey: string): string => {
@@ -47,16 +43,12 @@ const resizeKey = (secretKey: string): string => {
 
 export const decryptWallet = (encWallet: EncryptedWallet, secretKey: string): Wallet => ({
   ...encWallet,
-  key: {
-    public: decrypt(encWallet.key.public, secretKey),
-    private: decrypt(encWallet.key.private, secretKey)
-  }
+  privateKey: decrypt(encWallet.privateKey, secretKey),
+  publicKey: decrypt(encWallet.publicKey, secretKey)
 })
 
 export const encryptWallet = (wallet: Wallet, secretKey: string): EncryptedWallet => ({
   ...wallet,
-  key: {
-    public: encrypt(wallet.key.public, secretKey),
-    private: encrypt(wallet.key.private, secretKey)
-  }
+  privateKey: encrypt(wallet.privateKey, secretKey),
+  publicKey: encrypt(wallet.publicKey, secretKey)
 })
