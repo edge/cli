@@ -1,7 +1,8 @@
+
 import * as xe from '@edge/xe-utils'
 import { Command } from 'commander'
-import { transactions } from './api'
-import { withNetwork } from './xe'
+import { withNetwork as indexWithNetwork } from './index'
+import { withNetwork as xeWithNetwork } from './xe'
 import { addSecretKeyOption, getSecretKeyOption, getWalletOption } from '../wallet/cli'
 import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
 import { readWallet, withFile } from '../wallet/storage'
@@ -35,7 +36,10 @@ const listAction = (parent: Command, listCmd: Command) => async () => {
   if (opts.verbose) console.debug(opts)
 
   const wallet = await readWallet(opts.wallet)
-  const txs = await transactions(opts.network, wallet.address, opts.page, opts.perPage)
+  const txs = await indexWithNetwork(opts.network).transactions(wallet.address, {
+    page: opts.page,
+    limit: opts.perPage
+  })
   console.log(txs)
 }
 
@@ -47,7 +51,7 @@ const listPendingAction = (parent: Command) => async () => {
   if (opts.verbose) console.debug(opts)
 
   const wallet = await readWallet(opts.wallet)
-  const txs = await withNetwork(opts.network).pendingTransactions(wallet.address)
+  const txs = await xeWithNetwork(opts.network).pendingTransactions(wallet.address)
   console.log(txs)
 }
 
@@ -63,7 +67,7 @@ const sendAction = (parent: Command, sendCmd: Command) => async (amountInput: st
 
   const [read] = withFile(opts.wallet)
   const localWallet = await read(opts.secretKey)
-  const api = withNetwork(opts.network)
+  const api = xeWithNetwork(opts.network)
   const wallet = await api.walletWithNextNonce(localWallet.address)
 
   const data: xe.tx.TxData = {}
