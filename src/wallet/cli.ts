@@ -1,13 +1,8 @@
+import * as xe from '@edge/xe-utils'
 import { writeFileSync } from 'fs'
 import { Command, Option } from 'commander'
 import { defaultFile, readWallet, withFile } from './storage'
 import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
-import {
-  generateKeyPair,
-  privateKeyToChecksumAddress,
-  privateKeyToPublicKey,
-  publicKeyToChecksumAddress
-} from '@edge/wallet-utils'
 import { readSecureValue, readValue } from '../input'
 
 const createAction = (parent: Command, createCmd: Command) => async () => {
@@ -29,31 +24,26 @@ const createAction = (parent: Command, createCmd: Command) => async () => {
     })()
   }
 
-  const keypair = generateKeyPair()
-  const key = {
-    public: keypair.getPublic(true, 'hex').toString(),
-    private: keypair.getPrivate('hex').toString()
-  }
-  const address = publicKeyToChecksumAddress(key.public)
-
   const [, write] = withFile(opts.wallet)
-  await write({ address, key }, opts.secretKey)
 
-  console.log('wallet address:', address)
+  const wallet = xe.wallet.create()
+  await write(wallet, opts.secretKey)
+
+  console.log('wallet address:', wallet.address)
   console.log('wallet file:', opts.wallet)
 
   if (opts.privateKeyFile.length) {
     try {
-      writeFileSync(opts.privateKeyFile, key.private)
+      writeFileSync(opts.privateKeyFile, wallet.privateKey)
       console.log('private key file:', opts.privateKeyFile)
     }
     catch (err) {
-      console.log('private key:', key.private)
+      console.log('private key:', wallet.privateKey)
       console.log('failed to write to private key file, displayed private key instead')
       console.error(err)
     }
   }
-  else console.log('private key:', key.private)
+  else console.log('private key:', wallet.privateKey)
 }
 
 const infoAction = (parent: Command) => async () => {
@@ -76,17 +66,12 @@ const restoreAction = (parent: Command, restoreCmd: Command) => async () => {
     ...await getSecretKeyOption(restoreCmd)
   }
 
-  const key = {
-    public: privateKeyToPublicKey(opts.privateKey),
-    private: opts.privateKey
-  }
-  if (opts.verbose) console.debug('public key: ', key.public)
-
-  const address = privateKeyToChecksumAddress(opts.privateKey)
   const [, write] = withFile(opts.wallet)
-  await write({ address, key }, opts.secretKey)
 
-  console.log('wallet address:', address)
+  const wallet = xe.wallet.recover(opts.privateKey)
+  await write(wallet, opts.secretKey)
+
+  console.log('wallet address:', wallet.address)
   console.log('wallet file:', opts.wallet)
 }
 

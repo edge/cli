@@ -29,7 +29,8 @@
     "typescript": "^4.4.2"
   },
   "dependencies": {
-    "@edge/wallet-utils": "^0.14.0",
+    "@edge/index-utils": "^0.1.0",
+    "@edge/xe-utils": "^0.1.0",
     "commander": "^8.1.0"
   }
 }
