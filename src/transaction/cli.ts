@@ -39,6 +39,18 @@ const listAction = (parent: Command, listCmd: Command) => async () => {
   console.log(txs)
 }
 
+const listPendingAction = (parent: Command) => async () => {
+  const opts = {
+    ...getGlobalOptions(parent),
+    ...getWalletOption(parent)
+  }
+  if (opts.verbose) console.debug(opts)
+
+  const wallet = await readWallet(opts.wallet)
+  const txs = await withNetwork(opts.network).pendingTransactions(wallet.address)
+  console.log(txs)
+}
+
 const sendAction = (parent: Command, sendCmd: Command) => async (amountInput: string, recipient: string) => {
   const opts = {
     ...getGlobalOptions(parent),
@@ -96,7 +108,7 @@ export const withProgram = (parent: Command): void => {
     .alias('tx')
     .description('manage transactions')
 
-  // edge transaction ls
+  // edge transaction list
   const list = new Command('list')
     .alias('ls')
     .description('list transactions')
@@ -104,6 +116,13 @@ export const withProgram = (parent: Command): void => {
     .option('-l, --per-page <n>', 'transactions per page', '5')
   list.action(errorHandler(parent, listAction(parent, list)))
 
+  // edge transaction list-pending
+  const listPending = new Command('list-pending')
+    .alias('lsp')
+    .description('list pending transactions')
+  listPending.action(errorHandler(parent, listPendingAction(parent)))
+
+  // edge transaction send
   const send = new Command('send')
     .argument('<amount>', 'amount in XE')
     .argument('<wallet>', 'recipient wallet address')
@@ -114,6 +133,7 @@ export const withProgram = (parent: Command): void => {
 
   transactionCLI
     .addCommand(list)
+    .addCommand(listPending)
     .addCommand(send)
 
   parent.addCommand(transactionCLI)
