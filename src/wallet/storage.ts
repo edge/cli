@@ -55,11 +55,6 @@ export const readWallet = (file: string): Promise<FileWallet> => new Promise((re
     .catch(err => reject(`failed to read wallet from ${file}: ${err}`))
 })
 
-export const withFile = (file: string): [SimpleReadFn, SimpleWriteFn] => [
-  async (secretKey) => decryptFileWallet(await readWallet(file), secretKey),
-  async (wallet, secretKey) => writeWallet(file, createFileWallet(wallet, secretKey))
-]
-
 export const writeWallet = (file: string, wallet: FileWallet): Promise<void> => new Promise((resolve, reject) => {
   prepareDirectory(file)
     .then(() => {
@@ -70,4 +65,11 @@ export const writeWallet = (file: string, wallet: FileWallet): Promise<void> => 
       })
     })
     .catch(err => reject(`failed to write wallet to ${file}: ${err}`))
+})
+
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+export const withFile = (file: string) => ({
+  check: () => checkFile(file),
+  read: async (secretKey: string) => decryptFileWallet(await readWallet(file), secretKey),
+  write: async (wallet: Wallet, secretKey: string) => writeWallet(file, createFileWallet(wallet, secretKey))
 })

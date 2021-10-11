@@ -3,7 +3,7 @@ import { Command, Option } from 'commander'
 import { ask, askSecure } from '../input'
 import { defaultFile, readWallet, withFile } from './storage'
 import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
-import { readFileSync, stat, writeFileSync } from 'fs'
+import { readFileSync, writeFileSync } from 'fs'
 
 const createAction = (parent: Command, createCmd: Command) => async () => {
   const opts = {
@@ -22,12 +22,9 @@ const createAction = (parent: Command, createCmd: Command) => async () => {
     ...await getSecretKeyOption(createCmd)
   }
 
-  const walletExists = await new Promise<boolean>((resolve, reject) => stat(opts.wallet, (err, stat) => {
-    if (err !== null) return reject(err)
-    if (stat.isDirectory()) return reject(new Error('wallet path is a directory'))
-    return resolve(stat.isFile())
-  }))
-  if (walletExists) {
+  const { check, write } = withFile(opts.wallet)
+
+  if (await check()) {
     let confirm = opts.overwrite ? 'y' : ''
     if (confirm.length === 0) {
       const ynRegexp = /^[yn]$/
@@ -53,7 +50,6 @@ const createAction = (parent: Command, createCmd: Command) => async () => {
     console.log()
   }
 
-  const [, write] = withFile(opts.wallet)
   const wallet = xe.wallet.create()
   await write(wallet, opts.secretKey)
   console.log(`Wallet ${wallet.address} created.`)
@@ -128,7 +124,7 @@ const restoreAction = (parent: Command, restoreCmd: Command) => async () => {
     ...await getSecretKeyOption(restoreCmd)
   }
 
-  const [, write] = withFile(opts.wallet)
+  const { write } = withFile(opts.wallet)
 
   const wallet = xe.wallet.recover(opts.privateKey || '')
   await write(wallet, opts.secretKey || '')

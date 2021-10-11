@@ -65,7 +65,7 @@ const sendAction = (parent: Command, sendCmd: Command) => async (amountInput: st
 
   if (!xe.wallet.validateAddress(recipient)) throw new Error('invalid recipient')
 
-  const [read] = withFile(opts.wallet)
+  const { read } = withFile(opts.wallet)
   const localWallet = await read(opts.secretKey || '')
   const api = xeWithNetwork(opts.network)
   const wallet = await api.walletWithNextNonce(localWallet.address)
