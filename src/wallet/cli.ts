@@ -3,7 +3,7 @@ import { Command, Option } from 'commander'
 import { ask, askSecure } from '../input'
 import { decryptFileWallet, defaultFile, readWallet, withFile } from './storage'
 import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
-import { readFileSync, writeFileSync } from 'fs'
+import { readFileSync, unlink, writeFileSync } from 'fs'
 
 const createAction = (parent: Command, createCmd: Command) => async () => {
   const opts = {
@@ -88,7 +88,6 @@ const createAction = (parent: Command, createCmd: Command) => async () => {
     console.log('Failed to write to private key file. Displaying it instead...')
     console.log()
     console.log(`Private key: ${wallet.privateKey}`)
-    console.log()
     throw err
   }
 }
@@ -111,6 +110,7 @@ const infoAction = (parent: Command, infoCmd: Command) => async () => {
 
   const wallet = await readWallet(opts.wallet)
   console.log(`Wallet address: ${wallet.address}`)
+
   if (opts.passphrase) {
     try {
       const decrypted = decryptFileWallet(wallet, opts.passphrase)
@@ -126,6 +126,49 @@ const infoHelp = [
   '\n',
   'This command displays information about your wallet.\n\n',
   'If a passphrase is provided, this command will also decrypt and display your private key.'
+].join('')
+
+const forgetAction = (parent: Command, forgetCmd: Command) => async () => {
+  const opts = {
+    ...getGlobalOptions(parent),
+    ...getWalletOption(parent),
+    ...(() => {
+      const { yes } = forgetCmd.opts<{ yes: boolean }>()
+      return { yes }
+    })()
+  }
+
+  const { check } = withFile(opts.wallet)
+  if (!await check()) {
+    console.log('No wallet found.')
+    return
+  }
+
+  const wallet = await readWallet(opts.wallet)
+  console.log(`Wallet address: ${wallet.address}`)
+
+  if (!opts.yes) {
+    console.log()
+    let confirm = ''
+    const ynRegexp = /^[yn]$/
+    while (confirm.length === 0) {
+      const input = await ask('Are you sure you want to forget this wallet? [yn] ')
+      if (ynRegexp.test(input)) confirm = input
+      else console.log('Please enter y or n.')
+    }
+    if (confirm === 'n') return
+    console.log()
+  }
+
+  unlink(opts.wallet, err => {
+    if (err !== null) throw err
+    console.log('Your wallet is forgotten.')
+  })
+}
+
+const forgetHelp = [
+  '\n',
+  'This command deletes your wallet from disk.'
 ].join('')
 
 const restoreAction = (parent: Command, restoreCmd: Command) => async () => {
@@ -240,8 +283,16 @@ export const withProgram = (parent: Command): void => {
   addPassphraseOption(create)
   create.action(errorHandler(parent, createAction(parent, create)))
 
+  // edge wallet forget
+  const forget = new Command('forget')
+    .description('forget saved wallet')
+    .addHelpText('after', forgetHelp)
+    .option('-y, --yes', 'do not ask to confirm forgetting wallet')
+  forget.action(errorHandler(parent, forgetAction(parent, forget)))
+
+  // edge wallet info
   const info = new Command('info')
-    .description('display wallet info')
+    .description('display saved wallet info')
     .addHelpText('after', infoHelp)
   addPassphraseOption(info)
   info.action(errorHandler(parent, infoAction(parent, info)))
@@ -257,6 +308,7 @@ export const withProgram = (parent: Command): void => {
 
   walletCLI
     .addCommand(create)
+    .addCommand(forget)
     .addCommand(info)
     .addCommand(restore)
 
