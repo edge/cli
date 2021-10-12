@@ -19,7 +19,7 @@ const createAction = (parent: Command, createCmd: Command) => async () => {
       }>()
       return { privateKeyFile, overwrite }
     })(),
-    ...await getSecretKeyOption(createCmd)
+    ...await getPassphraseOption(createCmd)
   }
 
   const { check, write } = withFile(opts.wallet)
@@ -38,20 +38,20 @@ const createAction = (parent: Command, createCmd: Command) => async () => {
     }
   }
 
-  if (!opts.secretKey) {
-    console.log('To ensure your wallet is secure it will be encrypted locally using a secret key.')
+  if (!opts.passphrase) {
+    console.log('To ensure your wallet is secure it will be encrypted locally using a passphrase.')
     console.log('For more information, see https://wiki.edge.network/TODO')
     console.log()
-    const secretKey = await askSecure('Please enter a secret key: ')
-    if (secretKey.length === 0) throw new Error('secret key required')
-    const confirmKey = await askSecure('Please confirm secret key: ')
-    if (confirmKey !== secretKey) throw new Error('secret keys do not match')
-    opts.secretKey = secretKey
+    const passphrase = await askSecure('Please enter a passphrase: ')
+    if (passphrase.length === 0) throw new Error('passphrase required')
+    const confirmKey = await askSecure('Please confirm passphrase: ')
+    if (confirmKey !== passphrase) throw new Error('passphrases do not match')
+    opts.passphrase = passphrase
     console.log()
   }
 
   const wallet = xe.wallet.create()
-  await write(wallet, opts.secretKey)
+  await write(wallet, opts.passphrase)
   console.log(`Wallet ${wallet.address} created.`)
   console.log()
 
@@ -98,8 +98,8 @@ const createAction = (parent: Command, createCmd: Command) => async () => {
 const createHelp = [
   '\n',
   'This command will create a new wallet.\n\n',
-  'You will be asked to provide a secret key to encrypt the wallet locally. ',
-  'The secret key is also required later to decrypt the wallet for certain actions, such as signing transactions.\n\n',
+  'You will be asked to provide a passphrase to encrypt the wallet locally. ',
+  'The passphrase is also required later to decrypt the wallet for certain actions, such as signing transactions.\n\n',
   'You will also be given the option to view or export the private key for the new wallet. ',
   'This should be copied to a secure location and kept secret.'
 ].join('')
@@ -121,13 +121,13 @@ const restoreAction = (parent: Command, restoreCmd: Command) => async () => {
     ...getGlobalOptions(parent),
     ...getWalletOption(parent),
     ...await getPrivateKeyOption(restoreCmd),
-    ...await getSecretKeyOption(restoreCmd)
+    ...await getPassphraseOption(restoreCmd)
   }
 
   const { write } = withFile(opts.wallet)
 
   const wallet = xe.wallet.recover(opts.privateKey || '')
-  await write(wallet, opts.secretKey || '')
+  await write(wallet, opts.passphrase || '')
 
   console.log('wallet address:', wallet.address)
   console.log('wallet file:', opts.wallet)
@@ -136,29 +136,29 @@ const restoreAction = (parent: Command, restoreCmd: Command) => async () => {
 export const addPrivateKeyOption = (cmd: Command): void =>
   [privateKeyOption(), privateKeyFileOption()].forEach(opt => cmd.addOption(opt))
 
-export const addSecretKeyOption = (cmd: Command): void =>
-  [secretKeyOption(), secretKeyFileOption()].forEach(opt => cmd.addOption(opt))
+export const addPassphraseOption = (cmd: Command): void =>
+  [passphraseOption(), passphraseFileOption()].forEach(opt => cmd.addOption(opt))
 
 export const getPrivateKeyOption = async (cmd: Command): Promise<{ privateKey?: string }> => {
   const { privateKey, privateKeyFile: file } = cmd.opts<Record<'privateKey' | 'privateKeyFile', string|undefined>>()
   if (privateKey && privateKey.length) return { privateKey }
   // read secure value from file if set
   if (file !== undefined) {
-    if (file.length === 0) throw new Error('no path to secret key file')
+    if (file.length === 0) throw new Error('no path to passphrase file')
     const data = readFileSync(file)
     return { privateKey: data.toString() }
   }
   return {}
 }
 
-export const getSecretKeyOption = async (cmd: Command): Promise<{ secretKey?: string }> => {
-  const { secretKey, secretKeyFile: file } = cmd.opts<Record<'secretKey' | 'secretKeyFile', string|undefined>>()
-  if (secretKey && secretKey.length) return { secretKey }
+export const getPassphraseOption = async (cmd: Command): Promise<{ passphrase?: string }> => {
+  const { passphrase, passphraseFile: file } = cmd.opts<Record<'passphrase' | 'passphraseFile', string|undefined>>()
+  if (passphrase && passphrase.length) return { passphrase }
   // read secure value from file if set
   if (file !== undefined) {
-    if (file.length === 0) throw new Error('no path to secret key file')
+    if (file.length === 0) throw new Error('no path to passphrase file')
     const data = readFileSync(file)
-    return { secretKey: data.toString() }
+    return { passphrase: data.toString() }
   }
   return {}
 }
@@ -169,11 +169,11 @@ export const getWalletOption = (parent: Command): { wallet: string } => {
   return { wallet: defaultFile() }
 }
 
-const privateKeyOption = () => new Option('-p, --private-key <string>', 'wallet private key')
-const privateKeyFileOption = () => new Option('-P, --private-key-file <path>', 'file containing wallet private key')
+const privateKeyOption = () => new Option('-k, --private-key <string>', 'wallet private key')
+const privateKeyFileOption = () => new Option('-K, --private-key-file <path>', 'file containing wallet private key')
 
-const secretKeyOption = () => new Option('-k, --secret-key <string>', 'wallet secret key')
-const secretKeyFileOption = () => new Option('-K, --secret-key-file <path>', 'file containing wallet secret key')
+const passphraseOption = () => new Option('-p, --passphrase <string>', 'wallet passphrase')
+const passphraseFileOption = () => new Option('-P, --passphrase-file <path>', 'file containing wallet passphrase')
 
 export const withProgram = (parent: Command): void => {
   const walletCLI = new Command('wallet')
@@ -185,17 +185,17 @@ export const withProgram = (parent: Command): void => {
     .addHelpText('after', createHelp)
     .option('-f, --overwrite', 'overwrite existing wallet if one exists')
     .addOption(privateKeyFileOption())
-  addSecretKeyOption(create)
+  addPassphraseOption(create)
   create.action(errorHandler(parent, createAction(parent, create)))
 
   const info = new Command('info').description('display wallet info')
-  addSecretKeyOption(info)
+  addPassphraseOption(info)
   info.action(errorHandler(parent, infoAction(parent)))
 
   // edge wallet restore
   const restore = new Command('restore').description('restore a wallet')
   addPrivateKeyOption(restore)
-  addSecretKeyOption(restore)
+  addPassphraseOption(restore)
   restore.action(errorHandler(parent, restoreAction(parent, restore)))
 
   walletCLI

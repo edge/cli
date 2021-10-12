@@ -3,7 +3,7 @@ import * as xe from '@edge/xe-utils'
 import { Command } from 'commander'
 import { withNetwork as indexWithNetwork } from './index'
 import { withNetwork as xeWithNetwork } from './xe'
-import { addSecretKeyOption, getSecretKeyOption, getWalletOption } from '../wallet/cli'
+import { addPassphraseOption, getPassphraseOption, getWalletOption } from '../wallet/cli'
 import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
 import { readWallet, withFile } from '../wallet/storage'
 
@@ -60,13 +60,13 @@ const sendAction = (parent: Command, sendCmd: Command) => async (amountInput: st
     ...getGlobalOptions(parent),
     ...getSendOptions(sendCmd),
     ...getWalletOption(parent),
-    ...await getSecretKeyOption(sendCmd)
+    ...await getPassphraseOption(sendCmd)
   }
 
   if (!xe.wallet.validateAddress(recipient)) throw new Error('invalid recipient')
 
   const { read } = withFile(opts.wallet)
-  const localWallet = await read(opts.secretKey || '')
+  const localWallet = await read(opts.passphrase || '')
   const api = xeWithNetwork(opts.network)
   const wallet = await api.walletWithNextNonce(localWallet.address)
 
@@ -132,7 +132,7 @@ export const withProgram = (parent: Command): void => {
     .argument('<wallet>', 'recipient wallet address')
     .description('send XE to another wallet')
     .option('-m, --memo <text>', 'attach a memo to the transaction')
-  addSecretKeyOption(send)
+  addPassphraseOption(send)
   send.action(errorHandler(parent, sendAction(parent, send)))
 
   transactionCLI

@@ -8,8 +8,8 @@ export type FileWallet = EncryptedWallet & {
   secret: HashPair
 }
 
-export type SimpleReadFn = (secretKey: string) => Promise<Wallet>
-export type SimpleWriteFn = (wallet: Wallet, secretKey: string) => Promise<void>
+export type SimpleReadFn = (passphrase: string) => Promise<Wallet>
+export type SimpleWriteFn = (wallet: Wallet, passphrase: string) => Promise<void>
 
 const checkFile = (file: string) => new Promise<boolean>((resolve, reject) => {
   stat(file, (err, info) => {
@@ -30,16 +30,16 @@ const prepareDirectory = (file: string) => new Promise<void>((resolve, reject) =
   })
 })
 
-export const createFileWallet = (wallet: Wallet, secretKey: string): FileWallet => ({
-  ...encryptWallet(wallet, secretKey),
-  secret: hash(secretKey, createSalt())
+export const createFileWallet = (wallet: Wallet, passphrase: string): FileWallet => ({
+  ...encryptWallet(wallet, passphrase),
+  secret: hash(passphrase, createSalt())
 })
 
 export const defaultFile = (): string => `${os.homedir}${sep}.xe-wallet.json`
 
-export const decryptFileWallet = (wallet: FileWallet, secretKey: string): Wallet => {
-  if (!compare(secretKey, wallet.secret)) throw new Error('invalid secret key')
-  return decryptWallet(wallet, secretKey)
+export const decryptFileWallet = (wallet: FileWallet, passphrase: string): Wallet => {
+  if (!compare(passphrase, wallet.secret)) throw new Error('invalid passphrase')
+  return decryptWallet(wallet, passphrase)
 }
 
 export const readWallet = (file: string): Promise<FileWallet> => new Promise((resolve, reject) => {
@@ -70,6 +70,6 @@ export const writeWallet = (file: string, wallet: FileWallet): Promise<void> => 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export const withFile = (file: string) => ({
   check: () => checkFile(file),
-  read: async (secretKey: string) => decryptFileWallet(await readWallet(file), secretKey),
-  write: async (wallet: Wallet, secretKey: string) => writeWallet(file, createFileWallet(wallet, secretKey))
+  read: async (passphrase: string) => decryptFileWallet(await readWallet(file), passphrase),
+  write: async (wallet: Wallet, passphrase: string) => writeWallet(file, createFileWallet(wallet, passphrase))
 })
