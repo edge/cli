@@ -39,30 +39,42 @@ export const decryptFileWallet = (wallet: FileWallet, passphrase: string): Walle
   return decryptWallet(wallet, passphrase)
 }
 
-export const readWallet = (file: string): Promise<FileWallet> => new Promise((resolve, reject) => {
-  checkFile(file)
-    .then(fileExists => {
-      if (!fileExists) return reject(`not found in ${file}`)
-      readFile(file, (err, data) => {
-        if (err !== null) return reject(err)
-        const wallet = JSON.parse(data.toString())
-        return resolve(wallet)
-      })
-    })
-    .catch(err => reject(`failed to read wallet from ${file}: ${err}`))
-})
+const notFoundError = (msg: string) => {
+  const err = new Error(msg)
+  err.name = 'NotFoundError'
+  return err
+}
 
-export const writeWallet = (file: string, wallet: FileWallet): Promise<void> => new Promise((resolve, reject) => {
-  prepareDirectory(file)
-    .then(() => {
-      const data = JSON.stringify(wallet)
-      writeFile(file, data, err => {
-        if (err !== null) return reject(err)
-        return resolve()
-      })
-    })
-    .catch(err => reject(`failed to write wallet to ${file}: ${err}`))
-})
+export const readWallet = async (file: string): Promise<FileWallet> => {
+  try {
+    const exists = await checkFile(file)
+    if (!exists) throw notFoundError('wallet not found')
+    const wallet = await new Promise<FileWallet>((resolve, reject) => readFile(file, (err, data) => {
+      if (err !== null) return reject(err)
+      const wallet = JSON.parse(data.toString())
+      return resolve(wallet)
+    }))
+    return wallet
+  }
+  catch(err) {
+    if ((err as Error).name === 'NotFoundError') throw err
+    throw new Error(`failed to read wallet: ${(err as Error).message}`)
+  }
+}
+
+export const writeWallet = async (file: string, wallet: FileWallet): Promise<void> => {
+  try {
+    prepareDirectory(file)
+    const data = JSON.stringify(wallet)
+    await new Promise<void>((resolve, reject) => writeFile(file, data, err => {
+      if (err !== null) return reject(err)
+      return resolve()
+    }))
+  }
+  catch(err) {
+    throw new Error(`failed to write wallet: ${(err as Error).message}`)
+  }
+}
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export const withFile = (file: string) => ({
