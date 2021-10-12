@@ -300,7 +300,7 @@ export const withProgram = (parent: Command): void => {
   const forget = new Command('forget')
     .description('forget saved wallet')
     .addHelpText('after', forgetHelp)
-    .option('-y, --yes', 'do not ask to confirm forgetting wallet')
+    .option('-y, --yes', 'do not ask for confirmation')
   forget.action(errorHandler(parent, forgetAction(parent, forget)))
 
   // edge wallet info

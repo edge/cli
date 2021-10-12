@@ -1,7 +1,7 @@
 import * as xe from '@edge/xe-utils'
 import { Network } from '../config'
 
-const xeAmountRegexp = /^(?<amount>\d+) ?(?<unit>m?xe)$/i
+const xeAmountRegexp = /^(?<amount>\d+) ?(?<unit>m?xe)?$/i
 
 export const formatXE = (mxeAmount: number): string => `${mxeAmount / 1e6} XE`
 
@@ -11,8 +11,8 @@ export const parseAmount = (input: string): number => {
   if (match.groups === undefined) throw new Error(`failed to set match groups from amount "${input}"`)
 
   const { amount, unit } = match.groups
-  if (unit.toLowerCase() === 'xe') return parseFloat(amount) * 1e6
-  else return parseFloat(amount)
+  if (unit && unit.toLowerCase() === 'mxe') return parseFloat(amount)
+  else return parseFloat(amount) * 1e6
 }
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types

@@ -3,9 +3,10 @@ import * as walletCLI from '../wallet/cli'
 import * as xe from '@edge/xe-utils'
 import { withNetwork as indexWithNetwork } from './index'
 import { Command, Option } from 'commander'
+import { ask, askSecure } from '../input'
+import { decryptFileWallet, readWallet } from '../wallet/storage'
 import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
 import { formatXE, parseAmount, withNetwork as xeWithNetwork } from './xe'
-import { readWallet, withFile } from '../wallet/storage'
 
 const formatIndexTx = (address: string, tx: index.Tx): string => {
   const lines: string[] = [
@@ -142,33 +143,91 @@ const sendAction = (parent: Command, sendCmd: Command) => async (amountInput: st
     ...walletCLI.getWalletOption(parent),
     ...walletCLI.getPassphraseOption(sendCmd),
     ...(() => {
-      const opts = sendCmd.opts<{ memo?: string }>()
-      return { memo: opts.memo }
+      const { memo, yes } = sendCmd.opts<{ memo?: string, yes: boolean }>()
+      return { memo, yes }
     })()
   }
 
+  const amount = parseAmount(amountInput)
   if (!xe.wallet.validateAddress(recipient)) throw new Error('invalid recipient')
 
-  const { read } = withFile(opts.wallet)
-  const localWallet = await read(opts.passphrase || '')
+  const encWallet = await readWallet(opts.wallet)
+
   const api = xeWithNetwork(opts.network)
-  const wallet = await api.walletWithNextNonce(localWallet.address)
+  const onChainWallet = await api.walletWithNextNonce(encWallet.address)
+  const resultBalance = onChainWallet.balance - amount
+  // eslint-disable-next-line max-len
+  if (resultBalance < 0) throw new Error(`insufficient balance: your wallet only contains ${formatXE(onChainWallet.balance)}`)
+
+  if (!opts.yes) {
+    // eslint-disable-next-line max-len
+    console.log(`You are sending ${formatXE(amount)} to ${recipient}${opts.memo ? ` with the memo, "${opts.memo}"` : ''}.`)
+    console.log(
+      `${formatXE(amount)} will be deducted from your wallet.`,
+      `You will have ${formatXE(resultBalance)} remaining.`
+    )
+    console.log()
+    let confirm = ''
+    const ynRegexp = /^[yn]$/
+    while (confirm.length === 0) {
+      const input = await ask('Proceed with transaction? [yn] ')
+      if (ynRegexp.test(input)) confirm = input
+      else console.log('Please enter y or n.')
+    }
+    if (confirm === 'n') {
+      console.log('Transaction cancelled. Nothing has been submitted to the blockchain.')
+      return
+    }
+    console.log()
+  }
+
+  if (!opts.passphrase) {
+    console.log('This transaction must be signed with your private key.')
+    console.log(
+      'Please enter your passphrase to decrypt your private key, sign your transaction,',
+      'and submit it to the blockchain.'
+    )
+    console.log('For more information, see https://wiki.edge.network/TODO')
+    console.log()
+    const passphrase = await askSecure('Passphrase: ')
+    if (passphrase.length === 0) throw new Error('passphrase required')
+    opts.passphrase = passphrase
+    console.log()
+  }
+
+  const wallet = decryptFileWallet(encWallet, opts.passphrase)
 
   const data: xe.tx.TxData = {}
   if (opts.memo) data.memo = opts.memo
-  const amount = parseAmount(amountInput)
   const tx = xe.tx.sign({
     timestamp: Date.now(),
     sender: wallet.address,
     recipient,
     amount,
     data,
-    nonce: wallet.nonce
-  }, localWallet.privateKey)
+    nonce: onChainWallet.nonce
+  }, wallet.privateKey)
 
   const result = await api.createTransaction(tx)
-  console.log(result)
+  if (result.metadata.accepted !== 1) {
+    console.log('There was a problem creating your transaction. The response from the blockchain is shown below:')
+    console.log()
+    console.log(JSON.stringify(result, undefined, 2))
+    process.exitCode = 1
+  }
+
+  console.log('Your transaction has been submitted to the blockchain.')
 }
+
+const sendHelp = [
+  '\n',
+  'This command sends an XE transaction to any address you choose. ',
+  // eslint-disable-next-line max-len
+  '<amount> may be specified as XE in the format "...xe" or as microXE in the format "...mxe" (both case-insensitive). ',
+  'If no unit is provided, XE is assumed.\n\n',
+  'Your private key will be used to sign the transaction. ',
+  'You must provide a passphrase to decrypt your private key.'
+].join('')
 
 const getJsonOption = (cmd: Command) => {
   type JsonOption = { json: boolean }
@@ -203,12 +262,14 @@ export const withProgram = (parent: Command): void => {
 
   // edge transaction send
   const send = new Command('send')
-    .argument('<amount>', 'amount in XE')
+    .argument('<amount>', 'amount in XE or mXE')
     .argument('<wallet>', 'recipient wallet address')
     .description('send XE to another wallet')
+    .addHelpText('after', sendHelp)
     .option('-m, --memo <text>', 'attach a memo to the transaction')
     .addOption(walletCLI.passphraseOption())
     .addOption(walletCLI.passphraseFileOption())
+    .option('-y, --yes', 'do not ask for confirmation')
   send.action(errorHandler(parent, sendAction(parent, send)))
 
   transactionCLI
