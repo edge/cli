@@ -3,6 +3,8 @@ import { Network } from '../config'
 
 const xeAmountRegexp = /^(?<amount>\d+) ?(?<unit>m?xe)$/i
 
+export const formatXE = (mxeAmount: number): string => `${mxeAmount / 1e6} XE`
+
 export const parseAmount = (input: string): number => {
   const match = input.match(xeAmountRegexp)
   if (match === null) throw new Error(`invalid amount "${input}"`)
