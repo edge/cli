@@ -8,9 +8,6 @@ export type FileWallet = EncryptedWallet & {
   secret: HashPair
 }
 
-export type SimpleReadFn = (passphrase: string) => Promise<Wallet>
-export type SimpleWriteFn = (wallet: Wallet, passphrase: string) => Promise<void>
-
 const checkFile = (file: string) => new Promise<boolean>((resolve, reject) => {
   stat(file, (err, info) => {
     if (err !== null) {

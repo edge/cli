@@ -33,12 +33,7 @@ const encrypt = (value: string, passphrase: string): EncryptedPair => {
 }
 
 // right-pad passphrase input to ensure compatibility with cipher
-const resizePassphrase = (passphrase: string): string => {
-  if (passphrase.length >= 32) return passphrase
-  let resized = passphrase
-  for (let i = passphrase.length; i < 32; i++) resized += '0'
-  return resized
-}
+const resizePassphrase = (passphrase: string): string => passphrase.padEnd(32, '0')
 
 export const decryptWallet = (encWallet: EncryptedWallet, passphrase: string): Wallet => ({
   ...encWallet,

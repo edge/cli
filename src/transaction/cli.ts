@@ -2,9 +2,9 @@
 import * as xe from '@edge/xe-utils'
 import { Command } from 'commander'
 import { withNetwork as indexWithNetwork } from './index'
-import { withNetwork as xeWithNetwork } from './xe'
 import { addPassphraseOption, getPassphraseOption, getWalletOption } from '../wallet/cli'
 import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
+import { parseAmount, withNetwork as xeWithNetwork } from './xe'
 import { readWallet, withFile } from '../wallet/storage'
 
 type ListOptions<T = number> = {
@@ -15,9 +15,6 @@ type ListOptions<T = number> = {
 type SendOptions = {
   memo?: string
 }
-
-const mxeAmountRegexp = /^(\d+) ?mxe$/i
-const xeAmountRegexp = /^(\d+)( ?xe)?$/i
 
 const getListOptions = (listCmd: Command): ListOptions => {
   const opts = listCmd.opts<ListOptions<string>>()
@@ -84,20 +81,6 @@ const sendAction = (parent: Command, sendCmd: Command) => async (amountInput: st
 
   const result = await api.createTransaction(tx)
   console.log(result)
-}
-
-const parseAmount = (amount: string): number => {
-  if (mxeAmountRegexp.test(amount)) {
-    const m = amount.match(mxeAmountRegexp)
-    if (m === null) throw new Error(`failed to parse mXE amount from "${amount}"`)
-    return parseInt(m[1])
-  }
-  if (xeAmountRegexp.test(amount)) {
-    const m = amount.match(xeAmountRegexp)
-    if (m === null) throw new Error(`failed to parse XE amount from "${amount}"`)
-    return parseInt(m[1]) * 1e6
-  }
-  throw new Error(`invalid amount "${amount}"`)
 }
 
 export const getSendOptions = (sendCmd: Command): SendOptions => {
