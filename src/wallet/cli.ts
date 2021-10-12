@@ -209,6 +209,7 @@ const restoreAction = (parent: Command, restoreCmd: Command) => async () => {
   if (!opts.privateKey) {
     const privateKey = await askSecure('Please enter a private key: ')
     if (privateKey.length === 0) throw new Error('private key required')
+    if (!xe.wallet.validatePrivateKey(privateKey)) throw new Error('invalid private key')
     opts.privateKey = privateKey
     console.log()
   }
