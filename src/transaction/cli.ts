@@ -10,7 +10,8 @@ import { formatXE, parseAmount, withNetwork as xeWithNetwork } from './xe'
 
 const formatIndexTx = (address: string, tx: index.Tx): string => {
   const lines: string[] = [
-    `Tx: ${tx.nonce} Block: ${tx.block.height} At: ` + formatTimestamp(new Date(tx.timestamp))
+    `Tx: ${tx.hash}`,
+    `Nonce: ${tx.nonce} Block: ${tx.block.height} At: ` + formatTimestamp(new Date(tx.timestamp))
   ]
   if (tx.sender === address) lines.push(`To: ${tx.recipient}`)
   else lines.push(`From: ${tx.sender}`)
@@ -38,7 +39,8 @@ const formatTimestamp = (d: Date): string => {
 
 const formatTx = (address: string, tx: xe.tx.Tx): string => {
   const lines: string[] = [
-    `Tx: ${tx.nonce} At: ` + formatTimestamp(new Date(tx.timestamp))
+    `Tx: ${tx.hash}`,
+    `Nonce: ${tx.nonce} At: ` + formatTimestamp(new Date(tx.timestamp))
   ]
   if (tx.sender === address) lines.push(`To: ${tx.recipient}`)
   else lines.push(`From: ${tx.sender}`)
