@@ -7,11 +7,6 @@ export type Options = {
   verbose: boolean
 }
 
-export type OptionsInput = {
-  network: string
-  verbose: boolean
-}
-
 export const create = (): Command => {
   const cli = new Command('edge')
     .enablePositionalOptions(true)
@@ -52,9 +47,9 @@ export const errorHandlerSync =
     }
 
 export const getOptions = (cli: Command): Options => {
-  const opts = cli.opts<OptionsInput>()
+  const { network, verbose } = cli.opts<{ network: string, verbose: boolean }>()
   return {
-    network: selectNetwork(opts.network),
-    verbose: opts.verbose
+    network: selectNetwork(network),
+    verbose: verbose
   }
 }

@@ -16,15 +16,15 @@ export type Wallet = {
   publicKey: string
 }
 
-const decrypt = (encPair: EncryptedPair, secretKey: string): string => {
-  const decipher = createDecipheriv('aes-256-ctr', resizeKey(secretKey), Buffer.from(encPair.iv, 'hex'))
+const decrypt = (encPair: EncryptedPair, passphrase: string): string => {
+  const decipher = createDecipheriv('aes-256-ctr', resizePassphrase(passphrase), Buffer.from(encPair.iv, 'hex'))
   const value = Buffer.concat([decipher.update(Buffer.from(encPair.content, 'hex')), decipher.final()])
   return value.toString()
 }
 
-const encrypt = (value: string, secretKey: string): EncryptedPair => {
+const encrypt = (value: string, passphrase: string): EncryptedPair => {
   const iv = randomBytes(16)
-  const cipher = createCipheriv('aes-256-ctr', resizeKey(secretKey), iv)
+  const cipher = createCipheriv('aes-256-ctr', resizePassphrase(passphrase), iv)
   const encValue = Buffer.concat([cipher.update(value), cipher.final()])
   return {
     iv: iv.toString('hex'),
@@ -32,23 +32,17 @@ const encrypt = (value: string, secretKey: string): EncryptedPair => {
   }
 }
 
-// right-pad secret key input to ensure compatibility with cipher
-// TODO discuss, improve approach
-const resizeKey = (secretKey: string): string => {
-  if (secretKey.length >= 32) return secretKey
-  let resized = secretKey
-  for (let i = secretKey.length; i < 32; i++) resized += '0'
-  return resized
-}
+// right-pad passphrase input to ensure compatibility with cipher
+const resizePassphrase = (passphrase: string): string => passphrase.padEnd(32, '0')
 
-export const decryptWallet = (encWallet: EncryptedWallet, secretKey: string): Wallet => ({
+export const decryptWallet = (encWallet: EncryptedWallet, passphrase: string): Wallet => ({
   ...encWallet,
-  privateKey: decrypt(encWallet.privateKey, secretKey),
-  publicKey: decrypt(encWallet.publicKey, secretKey)
+  privateKey: decrypt(encWallet.privateKey, passphrase),
+  publicKey: decrypt(encWallet.publicKey, passphrase)
 })
 
-export const encryptWallet = (wallet: Wallet, secretKey: string): EncryptedWallet => ({
+export const encryptWallet = (wallet: Wallet, passphrase: string): EncryptedWallet => ({
   ...wallet,
-  privateKey: encrypt(wallet.privateKey, secretKey),
-  publicKey: encrypt(wallet.publicKey, secretKey)
+  privateKey: encrypt(wallet.privateKey, passphrase),
+  publicKey: encrypt(wallet.publicKey, passphrase)
 })
