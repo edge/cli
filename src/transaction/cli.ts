@@ -1,8 +1,8 @@
 import * as index from '@edge/index-utils'
+import * as walletCLI from '../wallet/cli'
 import * as xe from '@edge/xe-utils'
 import { withNetwork as indexWithNetwork } from './index'
 import { Command, Option } from 'commander'
-import { addPassphraseOption, getPassphraseOption, getWalletOption } from '../wallet/cli'
 import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
 import { formatXE, parseAmount, withNetwork as xeWithNetwork } from './xe'
 import { readWallet, withFile } from '../wallet/storage'
@@ -65,7 +65,7 @@ const getListOptions = (listCmd: Command) => {
 const listAction = (parent: Command, listCmd: Command) => async () => {
   const opts = {
     ...getGlobalOptions(parent),
-    ...getWalletOption(parent),
+    ...walletCLI.getWalletOption(parent),
     ...getJsonOption(listCmd),
     ...getListOptions(listCmd)
   }
@@ -106,7 +106,7 @@ const listHelp = [
 const listPendingAction = (parent: Command, listPendingCmd: Command) => async () => {
   const opts = {
     ...getGlobalOptions(parent),
-    ...getWalletOption(parent),
+    ...walletCLI.getWalletOption(parent),
     ...getJsonOption(listPendingCmd)
   }
   if (opts.verbose) console.debug(opts)
@@ -139,9 +139,12 @@ const listPendingHelp = [
 const sendAction = (parent: Command, sendCmd: Command) => async (amountInput: string, recipient: string) => {
   const opts = {
     ...getGlobalOptions(parent),
-    ...getSendOptions(sendCmd),
-    ...getWalletOption(parent),
-    ...getPassphraseOption(sendCmd)
+    ...walletCLI.getWalletOption(parent),
+    ...walletCLI.getPassphraseOption(sendCmd),
+    ...(() => {
+      const opts = sendCmd.opts<{ memo?: string }>()
+      return { memo: opts.memo }
+    })()
   }
 
   if (!xe.wallet.validateAddress(recipient)) throw new Error('invalid recipient')
@@ -165,12 +168,6 @@ const sendAction = (parent: Command, sendCmd: Command) => async (amountInput: st
 
   const result = await api.createTransaction(tx)
   console.log(result)
-}
-
-const getSendOptions = (sendCmd: Command) => {
-  type SendOptions = { memo?: string }
-  const opts = sendCmd.opts<SendOptions>()
-  return <SendOptions>{ memo: opts.memo }
 }
 
 const getJsonOption = (cmd: Command) => {
@@ -210,7 +207,8 @@ export const withProgram = (parent: Command): void => {
     .argument('<wallet>', 'recipient wallet address')
     .description('send XE to another wallet')
     .option('-m, --memo <text>', 'attach a memo to the transaction')
-  addPassphraseOption(send)
+    .addOption(walletCLI.passphraseOption())
+    .addOption(walletCLI.passphraseFileOption())
   send.action(errorHandler(parent, sendAction(parent, send)))
 
   transactionCLI

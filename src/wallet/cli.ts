@@ -5,21 +5,30 @@ import { decryptFileWallet, defaultFile, readWallet, withFile } from './storage'
 import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
 import { readFileSync, unlink, writeFileSync } from 'fs'
 
+export type PassphraseOption = {
+  passphrase?: string
+}
+
+export type PrivateKeyOption = {
+  privateKey?: string
+}
+
+export type WalletOption = {
+  wallet: string
+}
+
 const createAction = (parent: Command, createCmd: Command) => async () => {
   const opts = {
     ...getGlobalOptions(parent),
     ...getWalletOption(parent),
+    ...getPassphraseOption(createCmd),
     ...(() => {
-      const {
-        privateKeyFile,
-        overwrite
-      } = createCmd.opts<{
+      const { privateKeyFile, overwrite } = createCmd.opts<{
         privateKeyFile: string | undefined
         overwrite: boolean
       }>()
       return { privateKeyFile, overwrite }
-    })(),
-    ...getPassphraseOption(createCmd)
+    })()
   }
 
   const { check, write } = withFile(opts.wallet)
@@ -228,14 +237,9 @@ const restoreHelp = [
   'The passphrase is also required later to decrypt the wallet for certain actions, such as signing transactions.\n\n'
 ].join('')
 
-export const addPassphraseOption = (cmd: Command): void =>
-  [passphraseOption(), passphraseFileOption()].forEach(opt => cmd.addOption(opt))
-
-export const addPrivateKeyOption = (cmd: Command): void =>
-  [privateKeyOption(), privateKeyFileOption()].forEach(opt => cmd.addOption(opt))
-
-export const getPassphraseOption = (cmd: Command): { passphrase?: string } => {
-  const { passphrase, passphraseFile: file } = cmd.opts<Record<'passphrase' | 'passphraseFile', string|undefined>>()
+export const getPassphraseOption = (cmd: Command): PassphraseOption => {
+  type Input = Record<'passphrase' | 'passphraseFile', string|undefined>
+  const { passphrase, passphraseFile: file } = cmd.opts<Input>()
   if (passphrase && passphrase.length) return { passphrase }
   // read secure value from file if set
   if (file !== undefined) {
@@ -246,29 +250,36 @@ export const getPassphraseOption = (cmd: Command): { passphrase?: string } => {
   return {}
 }
 
-export const getPrivateKeyOption = (cmd: Command): { privateKey?: string } => {
-  const { privateKey, privateKeyFile: file } = cmd.opts<Record<'privateKey' | 'privateKeyFile', string|undefined>>()
+export const getPrivateKeyOption = (cmd: Command): PrivateKeyOption => {
+  type Input = Record<'privateKey' | 'privateKeyFile', string|undefined>
+  const { privateKey, privateKeyFile: file } = cmd.opts<Input>()
   if (privateKey && privateKey.length) return { privateKey }
   // read secure value from file if set
   if (file !== undefined) {
-    if (file.length === 0) throw new Error('no path to passphrase file')
+    if (file.length === 0) throw new Error('no path to private key file')
     const data = readFileSync(file)
     return { privateKey: data.toString() }
   }
   return {}
 }
 
-export const getWalletOption = (parent: Command): { wallet: string } => {
-  const { wallet } = parent.opts<{ wallet: string }>()
+export const getWalletOption = (parent: Command): WalletOption => {
+  const { wallet } = parent.opts<Partial<WalletOption>>()
   if (wallet && wallet.length) return { wallet }
   return { wallet: defaultFile() }
 }
 
-const privateKeyOption = () => new Option('-k, --private-key <string>', 'wallet private key')
-const privateKeyFileOption = () => new Option('-K, --private-key-file <path>', 'file containing wallet private key')
+export const privateKeyOption = (): Option => new Option('-k, --private-key <string>', 'wallet private key')
+export const privateKeyFileOption = (): Option => new Option(
+  '-K, --private-key-file <path>',
+  'file containing wallet private key'
+)
 
-const passphraseOption = () => new Option('-p, --passphrase <string>', 'wallet passphrase')
-const passphraseFileOption = () => new Option('-P, --passphrase-file <path>', 'file containing wallet passphrase')
+export const passphraseOption = (): Option => new Option('-p, --passphrase <string>', 'wallet passphrase')
+export const passphraseFileOption = (): Option => new Option(
+  '-P, --passphrase-file <path>',
+  'file containing wallet passphrase'
+)
 
 export const withProgram = (parent: Command): void => {
   const walletCLI = new Command('wallet')
@@ -279,8 +290,9 @@ export const withProgram = (parent: Command): void => {
     .description('create a new wallet')
     .addHelpText('after', createHelp)
     .option('-f, --overwrite', 'overwrite existing wallet if one exists')
+    .addOption(passphraseOption())
+    .addOption(passphraseFileOption())
     .addOption(privateKeyFileOption())
-  addPassphraseOption(create)
   create.action(errorHandler(parent, createAction(parent, create)))
 
   // edge wallet forget
@@ -294,7 +306,8 @@ export const withProgram = (parent: Command): void => {
   const info = new Command('info')
     .description('display saved wallet info')
     .addHelpText('after', infoHelp)
-  addPassphraseOption(info)
+    .addOption(passphraseOption())
+    .addOption(passphraseFileOption())
   info.action(errorHandler(parent, infoAction(parent, info)))
 
   // edge wallet restore
@@ -302,8 +315,10 @@ export const withProgram = (parent: Command): void => {
     .description('restore a wallet')
     .addHelpText('after', restoreHelp)
     .option('-f, --overwrite', 'overwrite existing wallet if one exists')
-  addPrivateKeyOption(restore)
-  addPassphraseOption(restore)
+    .addOption(privateKeyOption())
+    .addOption(privateKeyFileOption())
+    .addOption(passphraseOption())
+    .addOption(passphraseFileOption())
   restore.action(errorHandler(parent, restoreAction(parent, restore)))
 
   walletCLI
