@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@edge/eslint-config-typescript": "^0.1.0",
+    "@types/dockerode": "^3.3.0",
     "@types/node": "^16.7.2",
     "@typescript-eslint/eslint-plugin": "^4.29.3",
     "@typescript-eslint/parser": "^4.29.3",
@@ -31,6 +32,7 @@
   "dependencies": {
     "@edge/index-utils": "^0.1.0",
     "@edge/xe-utils": "^0.1.2",
-    "commander": "^8.1.0"
+    "commander": "^8.1.0",
+    "dockerode": "^3.3.1"
   }
 }

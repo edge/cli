@@ -2,8 +2,17 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+import { homedir } from 'os'
+import { sep } from 'path'
+
 export type Config = {
+  docker: Docker
   network: Network[]
+  wallet: Wallet
+}
+
+type Docker = {
+  socketPath: string
 }
 
 export type Network = {
@@ -16,7 +25,14 @@ export type Network = {
   }
 }
 
+type Wallet = {
+  file: string
+}
+
 const config: Config = {
+  docker: {
+    socketPath: process.env.DOCKER_SOCKET_PATH || '/var/run/docker.sock'
+  },
   network: [
     {
       name: 'main',
@@ -36,7 +52,10 @@ const config: Config = {
         baseURL: 'https://index.test.networkinternal.com'
       }
     }
-  ]
+  ],
+  wallet: {
+    file: `${homedir}${sep}.xe-wallet.json`
+  }
 }
 
 export default config

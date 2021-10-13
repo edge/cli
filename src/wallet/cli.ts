@@ -3,9 +3,10 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as xe from '@edge/xe-utils'
+import config from '../config'
 import { Command, Option } from 'commander'
 import { ask, askSecure } from '../input'
-import { decryptFileWallet, defaultFile, readWallet, withFile } from './storage'
+import { decryptFileWallet, readWallet, withFile } from './storage'
 import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
 import { readFileSync, unlink, writeFileSync } from 'fs'
 
@@ -270,8 +271,7 @@ export const getPrivateKeyOption = (cmd: Command): PrivateKeyOption => {
 
 export const getWalletOption = (parent: Command): WalletOption => {
   const { wallet } = parent.opts<Partial<WalletOption>>()
-  if (wallet && wallet.length) return { wallet }
-  return { wallet: defaultFile() }
+  return { wallet: wallet || config.wallet.file }
 }
 
 export const privateKeyOption = (): Option => new Option('-k, --private-key <string>', 'wallet private key')
