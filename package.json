@@ -7,7 +7,7 @@
   "contributors": [
     "Aneurin \"Anny\" Barker Snook <aneurin@edge.network>"
   ],
-  "license": "unlicensed",
+  "license": "SEE LICENSE IN LICENSE.md",
   "scripts": {
     "build": "npm run build:src && npm run build:executable",
     "build:src": "tsc",
