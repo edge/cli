@@ -2,27 +2,134 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-import { Command } from 'commander'
+import config from '../config'
+import { Command, Option } from 'commander'
+import Docker, { ContainerInfo, DockerOptions } from 'dockerode'
+import { errorHandler, getVerboseOption } from '../edge/cli'
+
+// dummy value for testing docker interactions - replace with staking integration later
+const imageName = 'registry.edge.network/library/nginx'
 
 const registerAction = (parent: Command) => () => {
   console.debug('device register WIP', parent.opts())
 }
 
-const restartAction = (parent: Command) => () => {
-  console.debug('device restart WIP', parent.opts())
+const restartAction = (parent: Command, restartCmd: Command) => async () => {
+  const opts = {
+    ...getVerboseOption(parent)
+  }
+
+  const docker = new Docker(getDockerOptions(restartCmd))
+  const info = await getServiceInfo(docker)
+  if (info === undefined) {
+    console.log('Service is not running. Use `device start` instead')
+    return
+  }
+
+  const container = docker.getContainer(info.Id)
+  await new Promise<unknown>((resolve, reject) => container.restart((err, result) => {
+    if (err !== null) return reject(err)
+    return resolve(result)
+  }))
+
+  console.log('Service restarted')
+  if (opts.verbose) console.log(info.Id)
 }
 
-const startAction = (parent: Command) => () => {
-  console.debug('device start WIP', parent.opts())
+const startAction = (parent: Command, startCmd: Command) => async () => {
+  const opts = {
+    ...getVerboseOption(parent)
+  }
+
+  const docker = new Docker(getDockerOptions(startCmd))
+  let info = await getServiceInfo(docker)
+  if (info !== undefined) {
+    console.log('Service is already running')
+    if (opts.verbose) console.log(info.Id)
+    return
+  }
+
+  const container = await docker.createContainer({
+    Image: imageName,
+    AttachStdin: false,
+    AttachStdout: false,
+    AttachStderr: false,
+    Tty: false,
+    OpenStdin: false,
+    StdinOnce: false
+  })
+
+  await new Promise<unknown>((resolve, reject) => container.start((err, result) => {
+    if (err !== null) return reject(err)
+    return resolve(result)
+  }))
+
+  info = await getServiceInfo(docker)
+  if (info === undefined) throw new Error('Service failed to start')
+  console.log('Service started')
+  if (opts.verbose) console.log(info.Id)
 }
 
-const statusAction = (parent: Command) => () => {
-  console.debug('device status WIP', parent.opts())
+const statusAction = (parent: Command, statusCmd: Command) => async () => {
+  const opts = {
+    ...getVerboseOption(parent)
+  }
+
+  const docker = new Docker(getDockerOptions(statusCmd))
+  const info = await getServiceInfo(docker)
+  if (info === undefined) console.log('Service is not running')
+  else {
+    console.log('Service is running')
+    if (opts.verbose) console.log(info.Id)
+  }
 }
 
-const stopAction = (parent: Command) => () => {
-  console.debug('device stop WIP', parent.opts())
+const stopAction = (parent: Command, stopCmd: Command) => async () => {
+  const opts = {
+    ...getVerboseOption(parent)
+  }
+
+  const docker = new Docker(getDockerOptions(stopCmd))
+  const info = await getServiceInfo(docker)
+  if (info === undefined) {
+    console.log('Service is not running')
+    return
+  }
+
+  const container = docker.getContainer(info.Id)
+  await new Promise<unknown>((resolve, reject) => container.stop((err, result) => {
+    if (err !== null) return reject(err)
+    return resolve(result)
+  }))
+  await new Promise<unknown>((resolve, reject) => container.remove((err, result) => {
+    if (err !== null) return reject(err)
+    return resolve(result)
+  }))
+
+  console.log('Service stopped')
+  if (opts.verbose) console.log(info.Id)
 }
+
+const getDockerOptions = (cmd: Command): DockerOptions => {
+  type Input = {
+    dockerSocketPath?: string
+  }
+  const opts = cmd.opts<Input>()
+
+  return {
+    socketPath: opts.dockerSocketPath || config.docker.socketPath
+  }
+}
+
+const getServiceInfo = async (docker: Docker): Promise<ContainerInfo|undefined> => {
+  const containers = await new Promise<ContainerInfo[]>((resolve, reject) => docker.listContainers((err, result) => {
+    if (err !== null) return reject(err)
+    resolve(result || [])
+  }))
+  return containers.find(c => c.Image === imageName)
+}
+
+const socketPathOption = () => new Option('--docker-socket-path', 'Docker socket path')
 
 export const withProgram = (parent: Command): void => {
   const deviceCLI = new Command('device')
@@ -36,22 +143,25 @@ export const withProgram = (parent: Command): void => {
   // edge device restart
   const restart = new Command('restart')
     .description('restart services')
-    .action(restartAction(parent))
+  restart.action(errorHandler(parent, restartAction(parent, restart)))
 
   // edge device start
   const start = new Command('start')
     .description('start services')
-    .action(startAction(parent))
+    .addOption(socketPathOption())
+  start.action(errorHandler(parent, startAction(parent, start)))
 
   // edge device status
   const status = new Command('status')
     .description('display services status')
-    .action(statusAction(parent))
+    .addOption(socketPathOption())
+  status.action(errorHandler(parent, statusAction(parent, status)))
 
   // edge device stop
   const stop = new Command('stop')
     .description('stop services')
-    .action(stopAction(parent))
+    .addOption(socketPathOption())
+  stop.action(errorHandler(parent, stopAction(parent, stop)))
 
   deviceCLI
     .addCommand(register)
