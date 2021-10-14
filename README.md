@@ -4,6 +4,26 @@
 
 Command line interface for the Edge network
 
+## Development
+
+The simplest way to test this application on your development machine is to execute `npm run dev -- [your input]` which uses [ts-node](https://www.npmjs.com/package/ts-node) to automatically transpile code without writing output.
+
+If you want to build and run source, for example if there is a problem with ts-node or you just want to compare results, you can execute `npm run build:src && npm run dev:from-src`
+
+## Build
+
+We use [pkg](https://www.npmjs.com/package/pkg) to build distributable binaries.
+
+The recommended approach to build a CLI binary is using the Docker workflow. Start Docker, then execute `npm run build` and wait. When the process has completed, you should see a `bin/edge` file that you can execute directly on your host.
+
+If you are unable to use the Docker build workflow, you can try building on host. You will need to install the `optionalDependencies` from package.json. Then, execute `npm run build:src && npm run build:executable` and wait; you should soon see a `bin/edge` file created that you can execute directly.
+
+<!--
+### CI Build
+
+This section is TODO
+-->
+
 ## License
 
 Edge is the infrastructure of Web3. A peer-to-peer network and blockchain providing high performance decentralised web services, powered by the spare capacity all around us.

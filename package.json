@@ -9,7 +9,8 @@
   ],
   "license": "SEE LICENSE IN LICENSE.md",
   "scripts": {
-    "build": "npm run build:src && npm run build:executable",
+    "build": "ROOT=${PWD} BUILD_TARGET=$(.build/auto_target.sh) .build/build.sh",
+    "build:on-host": "npm run build:src && npm run build:executable",
     "build:src": "tsc",
     "build:executable": "pkg out/src/main.js -t host --output bin/edge",
     "dev": "ts-node src/main.ts",
@@ -25,7 +26,6 @@
     "@typescript-eslint/eslint-plugin": "^4.29.3",
     "@typescript-eslint/parser": "^4.29.3",
     "eslint": "^7.32.0",
-    "pkg": "^5.3.1",
     "ts-node": "^10.2.1",
     "typescript": "^4.4.2"
   },
@@ -34,5 +34,8 @@
     "@edge/xe-utils": "^0.1.2",
     "commander": "^8.1.0",
     "dockerode": "^3.3.1"
+  },
+  "optionalDependencies": {
+    "pkg": "^5.3.3"
   }
 }
