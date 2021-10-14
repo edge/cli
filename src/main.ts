@@ -2,7 +2,7 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-// import * as deviceCLI from './device/cli'
+import * as deviceCLI from './device/cli'
 import * as stakeCLI from './stake/cli'
 import * as transactionCLI from './transaction/cli'
 import * as updateCLI from './update/cli'
@@ -32,7 +32,7 @@ export type Network = {
 
 const main = (argv: string[], network: Network): void => {
   const cli = createCLI(network)
-  // deviceCLI.withProgram(cli)
+  deviceCLI.withProgram(cli)
   stakeCLI.withProgram(cli, network)
   transactionCLI.withProgram(cli, network)
   updateCLI.withProgram(cli, network, argv)

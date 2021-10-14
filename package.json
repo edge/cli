@@ -10,9 +10,11 @@
   ],
   "license": "SEE LICENSE IN LICENSE.md",
   "scripts": {
+    "mainnet:build:in-docker": "ROOT=${PWD} BUILD_TARGET=$(.build/auto_target.sh) NETWORK=mainnet .build/build.sh",
     "mainnet:build": "npm run mainnet:build:src && npm run mainnet:build:executable",
     "mainnet:build:src": "tsc",
     "mainnet:build:executable": "pkg out/src/main-mainnet.js -t host --output bin/edge",
+    "testnet:build:in-docker": "ROOT=${PWD} BUILD_TARGET=$(.build/auto_target.sh) NETWORK=testnet .build/build.sh",
     "testnet:build": "npm run testnet:build:src && npm run testnet:build:executable",
     "testnet:build:src": "tsc",
     "testnet:build:executable": "pkg out/src/main-testnet.js -t host --output bin/edgetest",
@@ -31,7 +33,6 @@
     "@typescript-eslint/eslint-plugin": "^4.29.3",
     "@typescript-eslint/parser": "^4.29.3",
     "eslint": "^7.32.0",
-    "pkg": "^5.3.1",
     "ts-node": "^10.2.1",
     "typescript": "^4.4.2"
   },
@@ -44,5 +45,8 @@
     "dockerode": "^3.3.1",
     "semver": "^7.3.5",
     "superagent": "^6.1.0"
+  },
+  "optionalDependencies": {
+    "pkg": "^5.3.3"
   }
 }
