@@ -164,8 +164,6 @@ const infoAction = (parent: Command, infoCmd: Command) => async () => {
   console.log(`  Host:     ${hostAmt}`)
   console.log(`  Gateway:  ${gatewayAmt}`)
   console.log(`  Stargate: ${stargateAmt}`)
-  console.log()
-  console.log(`Express release fee: ${vars.stake_express_release_fee} XE`)
 }
 
 const listAction = (parent: Command, listCmd: Command) => async () => {
