@@ -36,9 +36,12 @@ const formatStake = (stake: xe.stake.Stake): string => {
   if (stake.type === 'gateway') lines.push('Type: Gateway')
   else if (stake.type === 'host') lines.push('Type: Host')
   else if (stake.type === 'stargate') lines.push('Type: Stargate')
-  const unlockAt = stake.created + stake.unlockPeriod
-  if (unlockAt > Date.now()) lines.push(`Status: unlocks at ${formatTime(unlockAt)}`)
-  else lines.push('Status: unlocked')
+  if (stake.unlockRequested !== undefined) {
+    const unlockAt = stake.unlockRequested + stake.unlockPeriod
+    if (unlockAt > Date.now()) lines.push(`Status: unlocks at ${formatTime(unlockAt)}`)
+    else lines.push('Status: unlocked')
+  }
+  else lines.push('Status: locked')
   return lines.join('\n')
 }
 
@@ -95,9 +98,9 @@ const createAction = (parent: Command, createCmd: Command) => async (stakeType: 
   }
 
   if (!opts.passphrase) {
-    console.log('This staking transaction must be signed with your private key.')
+    console.log('This transaction must be signed with your private key.')
     console.log(
-      'Please enter your passphrase to decrypt your private key, sign your staking transaction,',
+      'Please enter your passphrase to decrypt your private key, sign your transaction,',
       'and submit it to the blockchain.'
     )
     console.log('For more information, see https://wiki.edge.network/TODO')
@@ -130,7 +133,7 @@ const createAction = (parent: Command, createCmd: Command) => async (stakeType: 
 
   const result = await api.createTransaction(tx)
   if (result.metadata.accepted !== 1) {
-    console.log('There was a problem with staking. The response from the blockchain is shown below:')
+    console.log('There was a problem creating your transaction. The response from the blockchain is shown below:')
     console.log()
     console.log(JSON.stringify(result, undefined, 2))
     process.exitCode = 1
@@ -192,8 +195,96 @@ const releaseAction = (parent: Command, release: Command) => (id: string) => {
   console.debug('stake release WIP', parent.opts(), release.opts(), id)
 }
 
-const unlockAction = (parent: Command) => (id: string) => {
-  console.debug('stake unlock WIP', parent.opts(), id)
+const unlockAction = (parent: Command, unlockCmd: Command) => async (id: string) => {
+  const opts = {
+    ...getGlobalOptions(parent),
+    ...walletCLI.getWalletOption(parent),
+    ...walletCLI.getPassphraseOption(unlockCmd),
+    ...(() => {
+      const { yes } = unlockCmd.opts<{ yes: boolean }>()
+      return { yes }
+    })()
+  }
+
+  const encWallet = await readWallet(opts.wallet)
+  const stakes = await xe.stake.stakes(opts.network.blockchain.baseURL, encWallet.address)
+
+  // find stake by hash, or by id as fallback
+  const stake =
+    Object.values(stakes).find(stake => stake.hash === id)
+    || Object.values(stakes).find(stake => stake.id === id)
+  if (!stake) throw new Error(`unrecognized stake "${id}"`)
+
+  if (stake.unlockRequested !== undefined) {
+    if (stake.unlockRequested + stake.unlockPeriod > Date.now()) {
+      console.log('Unlock has already been requested.')
+      console.log(`This stake will unlock at ${formatTime(stake.unlockRequested)}`)
+    }
+    else console.log('This stake is already unlocked.')
+    return
+  }
+
+  if (!opts.yes) {
+    // eslint-disable-next-line max-len
+    console.log(`You are requesting to unlock a ${stake.type} stake.`)
+    console.log([
+      `After the unlock wait period of ${Math.ceil(stake.unlockPeriod / (1000*60*60*24))} days, `,
+      `${formatXE(stake.amount)} will be returned to your available balance.`
+    ].join(''))
+    console.log()
+    let confirm = ''
+    const ynRegexp = /^[yn]$/
+    while (confirm.length === 0) {
+      const input = await ask('Proceed with unlock? [yn] ')
+      if (ynRegexp.test(input)) confirm = input
+      else console.log('Please enter y or n.')
+    }
+    if (confirm === 'n') {
+      console.log('Unlock cancelled. Nothing has been submitted to the blockchain.')
+      return
+    }
+    console.log()
+  }
+
+  if (!opts.passphrase) {
+    console.log('This transaction must be signed with your private key.')
+    console.log(
+      'Please enter your passphrase to decrypt your private key, sign your transaction,',
+      'and submit it to the blockchain.'
+    )
+    console.log('For more information, see https://wiki.edge.network/TODO')
+    console.log()
+    const passphrase = await askSecure('Passphrase: ')
+    if (passphrase.length === 0) throw new Error('passphrase required')
+    opts.passphrase = passphrase
+    console.log()
+  }
+
+  const wallet = decryptFileWallet(encWallet, opts.passphrase)
+  const api = xeWithNetwork(opts.network)
+  const onChainWallet = await api.walletWithNextNonce(wallet.address)
+
+  const tx = xe.tx.sign({
+    timestamp: Date.now(),
+    sender: wallet.address,
+    recipient: wallet.address,
+    amount: 0,
+    data: {
+      action: 'unlock_stake',
+      memo: 'Unlock stake',
+      stake: stake.hash
+    },
+    nonce: onChainWallet.nonce
+  }, wallet.privateKey)
+
+  const result = await api.createTransaction(tx)
+  if (result.metadata.accepted !== 1) {
+    console.log('There was a problem creating your transaction. The response from the blockchain is shown below:')
+    console.log()
+    console.log(JSON.stringify(result, undefined, 2))
+    process.exitCode = 1
+  }
+  else console.log('Your unlock request has been submitted to the blockchain.')
 }
 
 const getJsonOption = (cmd: Command) => {
@@ -242,9 +333,12 @@ export const withProgram = (parent: Command): void => {
 
   // edge stake unlock
   const unlock = new Command('unlock')
-    .argument('<id>', 'stake ID')
+    .argument('<id>', 'stake ID or hash')
     .description('unlock a stake')
-    .action(unlockAction(parent))
+    .addOption(walletCLI.passphraseOption())
+    .addOption(walletCLI.passphraseFileOption())
+    .option('-y, --yes', 'do not ask for confirmation')
+  unlock.action(errorHandler(parent, unlockAction(parent, unlock)))
 
   stakeCLI
     .addCommand(create)
