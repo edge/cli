@@ -5,6 +5,7 @@
 import * as walletCLI from '../wallet/cli'
 import * as xe from '@edge/xe-utils'
 import { Command } from 'commander'
+import { askToSignTx } from '../transaction'
 import { ask, askSecure } from '../input'
 import { decryptFileWallet, readWallet } from '../wallet/storage'
 import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
@@ -97,21 +98,8 @@ const createAction = (parent: Command, createCmd: Command) => async (stakeType: 
     console.log()
   }
 
-  if (!opts.passphrase) {
-    console.log('This transaction must be signed with your private key.')
-    console.log(
-      'Please enter your passphrase to decrypt your private key, sign your transaction,',
-      'and submit it to the blockchain.'
-    )
-    console.log('For more information, see https://wiki.edge.network/TODO')
-    console.log()
-    const passphrase = await askSecure('Passphrase: ')
-    if (passphrase.length === 0) throw new Error('passphrase required')
-    opts.passphrase = passphrase
-    console.log()
-  }
-
-  const wallet = decryptFileWallet(encWallet, opts.passphrase)
+  await askToSignTx(opts)
+  const wallet = decryptFileWallet(encWallet, opts.passphrase as string)
 
   const data: xe.tx.TxData = {
     action: 'create_stake',
@@ -189,9 +177,112 @@ const listAction = (parent: Command, listCmd: Command) => async () => {
     })
 }
 
-const releaseAction = (parent: Command, release: Command) => (id: string) => {
-  console.debug('stake release WIP', parent.opts(), release.opts(), id)
+const releaseAction = (parent: Command, releaseCmd: Command) => async (id: string) => {
+  const opts = {
+    ...getGlobalOptions(parent),
+    ...walletCLI.getWalletOption(parent),
+    ...walletCLI.getPassphraseOption(releaseCmd),
+    ...(() => {
+      const { express, yes } = releaseCmd.opts<{ express: boolean, yes: boolean }>()
+      return { express, yes }
+    })()
+  }
+
+  const encWallet = await readWallet(opts.wallet)
+  const stakes = await xe.stake.stakes(opts.network.blockchain.baseURL, encWallet.address)
+
+  // find stake by hash, or by id as fallback
+  const stake =
+    Object.values(stakes).find(stake => stake.hash === id)
+    || Object.values(stakes).find(stake => stake.id === id)
+  if (!stake) throw new Error(`unrecognized stake "${id}"`)
+
+  if (stake.released !== undefined) {
+    console.log('This stake has already been released.')
+    return
+  }
+
+  if (stake.unlockRequested === undefined) {
+    console.log('This stake must be unlocked before it can be released.')
+    return
+  }
+
+  const unlockAt = stake.unlockRequested + stake.unlockPeriod
+  const needUnlock = unlockAt > Date.now()
+  if (needUnlock && !opts.express) {
+    const { stake_express_release_fee } = await xe.vars(opts.network.blockchain.baseURL)
+    const releaseFee = stake_express_release_fee * stake.amount
+    const releasePc = stake_express_release_fee * 100
+    console.log(`This stake has not unlocked yet. It unlocks at ${formatTime(unlockAt)}.`)
+    console.log(`You can release it instantly for a ${releasePc}% express release fee (${formatXE(releaseFee)}).`)
+    console.log()
+    console.log('To do so, execute this command again with the --express flag.')
+    return
+  }
+
+  if (!opts.yes) {
+    // eslint-disable-next-line max-len
+    console.log(`You are releasing a ${stake.type} stake.`)
+    if (needUnlock) {
+      const { stake_express_release_fee } = await xe.vars(opts.network.blockchain.baseURL)
+      const releaseFee = stake_express_release_fee * stake.amount
+      const releasePc = stake_express_release_fee * 100
+      console.log([
+        `${formatXE(stake.amount - releaseFee)} will be returned to your available balance after paying `,
+        `a ${releasePc}% express release fee (${formatXE(releaseFee)}).`
+      ].join(''))
+    }
+    else console.log(`${formatXE(stake.amount)} will be returned to your available balance.`)
+    console.log()
+    let confirm = ''
+    const ynRegexp = /^[yn]$/
+    while (confirm.length === 0) {
+      const input = await ask('Proceed with release? [yn] ')
+      if (ynRegexp.test(input)) confirm = input
+      else console.log('Please enter y or n.')
+    }
+    if (confirm === 'n') {
+      console.log('Release cancelled. Nothing has been submitted to the blockchain.')
+      return
+    }
+    console.log()
+  }
+
+  await askToSignTx(opts)
+  const wallet = decryptFileWallet(encWallet, opts.passphrase as string)
+  const api = xeWithNetwork(opts.network)
+  const onChainWallet = await api.walletWithNextNonce(wallet.address)
+
+  const data: xe.tx.TxData = {
+    action: 'release_stake',
+    memo: 'Release stake',
+    stake: stake.hash
+  }
+  if (needUnlock) data.express = true
+  const tx = xe.tx.sign({
+    timestamp: Date.now(),
+    sender: wallet.address,
+    recipient: wallet.address,
+    amount: 0,
+    data,
+    nonce: onChainWallet.nonce
+  }, wallet.privateKey)
+
+  const result = await api.createTransaction(tx)
+  if (result.metadata.accepted !== 1) {
+    console.log('There was a problem creating your transaction. The response from the blockchain is shown below:')
+    console.log()
+    console.log(JSON.stringify(result, undefined, 2))
+    process.exitCode = 1
+  }
+  else console.log('Your release request has been submitted to the blockchain.')
 }
+
+const releaseHelp = [
+  '\n',
+  'The --express option instructs the blockchain to take a portion of your stake in return for an immediate ',
+  'release of funds, rather than waiting for the unlock period to conclude.'
+].join('')
 
 const unlockAction = (parent: Command, unlockCmd: Command) => async (id: string) => {
   const opts = {
@@ -227,7 +318,7 @@ const unlockAction = (parent: Command, unlockCmd: Command) => async (id: string)
     console.log(`You are requesting to unlock a ${stake.type} stake.`)
     console.log([
       `After the unlock wait period of ${Math.ceil(stake.unlockPeriod / (1000*60*60*24))} days, `,
-      `${formatXE(stake.amount)} will be returned to your available balance.`
+      `you will be able to release the stake and return ${formatXE(stake.amount)} to your available balance.`
     ].join(''))
     console.log()
     let confirm = ''
@@ -244,21 +335,8 @@ const unlockAction = (parent: Command, unlockCmd: Command) => async (id: string)
     console.log()
   }
 
-  if (!opts.passphrase) {
-    console.log('This transaction must be signed with your private key.')
-    console.log(
-      'Please enter your passphrase to decrypt your private key, sign your transaction,',
-      'and submit it to the blockchain.'
-    )
-    console.log('For more information, see https://wiki.edge.network/TODO')
-    console.log()
-    const passphrase = await askSecure('Passphrase: ')
-    if (passphrase.length === 0) throw new Error('passphrase required')
-    opts.passphrase = passphrase
-    console.log()
-  }
-
-  const wallet = decryptFileWallet(encWallet, opts.passphrase)
+  await askToSignTx(opts)
+  const wallet = decryptFileWallet(encWallet, opts.passphrase as string)
   const api = xeWithNetwork(opts.network)
   const onChainWallet = await api.walletWithNextNonce(wallet.address)
 
@@ -321,13 +399,12 @@ export const withProgram = (parent: Command): void => {
   const release = new Command('release')
     .argument('<id>', 'stake ID')
     .description('release a stake')
-    .option('-e, --express', 'express release', false)
-    .addHelpText('after', [
-      '\n',
-      'The --express option instructs the blockchain to take a portion of your stake in return for an immediate ',
-      'release of funds, rather than waiting for the unlock period to conclude.'
-    ].join(''))
-  release.action(releaseAction(parent, release))
+    .option('-e, --express', 'express release')
+    .addOption(walletCLI.passphraseOption())
+    .addOption(walletCLI.passphraseFileOption())
+    .option('-y, --yes', 'do not ask for confirmation')
+    .addHelpText('after', releaseHelp)
+  release.action(errorHandler(parent, releaseAction(parent, release)))
 
   // edge stake unlock
   const unlock = new Command('unlock')

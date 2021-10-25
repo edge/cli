@@ -5,7 +5,7 @@
 import * as index from '@edge/index-utils'
 import * as walletCLI from '../wallet/cli'
 import * as xe from '@edge/xe-utils'
-import { withNetwork as indexWithNetwork } from './index'
+import { askToSignTx, withNetwork as indexWithNetwork } from './index'
 import { Command, Option } from 'commander'
 import { ask, askSecure } from '../input'
 import { decryptFileWallet, readWallet } from '../wallet/storage'
@@ -187,21 +187,8 @@ const sendAction = (parent: Command, sendCmd: Command) => async (amountInput: st
     console.log()
   }
 
-  if (!opts.passphrase) {
-    console.log('This transaction must be signed with your private key.')
-    console.log(
-      'Please enter your passphrase to decrypt your private key, sign your transaction,',
-      'and submit it to the blockchain.'
-    )
-    console.log('For more information, see https://wiki.edge.network/TODO')
-    console.log()
-    const passphrase = await askSecure('Passphrase: ')
-    if (passphrase.length === 0) throw new Error('passphrase required')
-    opts.passphrase = passphrase
-    console.log()
-  }
-
-  const wallet = decryptFileWallet(encWallet, opts.passphrase)
+  await askToSignTx(opts)
+  const wallet = decryptFileWallet(encWallet, opts.passphrase as string)
 
   const data: xe.tx.TxData = {}
   if (opts.memo) data.memo = opts.memo
