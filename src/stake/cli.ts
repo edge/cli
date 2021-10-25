@@ -12,6 +12,36 @@ import { formatXE, withNetwork as xeWithNetwork } from '../transaction/xe'
 
 const stakeTypes = ['host', 'gateway', 'stargate']
 
+const formatTime = (t: number): string => {
+  const d = new Date(t)
+  const [yyyy, mm, dd, h, m, s] = [
+    d.getUTCFullYear(),
+    (1 + d.getUTCMonth()).toString().padStart(2, '0'),
+    (1 + d.getUTCDate()).toString().padStart(2, '0'),
+    d.getUTCHours().toString().padStart(2, '0'),
+    d.getUTCMinutes().toString().padStart(2, '0'),
+    d.getUTCSeconds().toString().padStart(2, '0')
+  ]
+  return `${yyyy}-${mm}-${dd} ${h}:${m}:${s}`
+}
+
+const formatStake = (stake: xe.stake.Stake): string => {
+  const lines = [
+    `ID: ${stake.id}`,
+    `Hash: ${stake.hash}`,
+    `Tx: ${stake.transaction}`,
+    `Amount: ${formatXE(stake.amount)}`,
+    `Created: ${formatTime(stake.created)}`
+  ]
+  if (stake.type === 'gateway') lines.push('Type: Gateway')
+  else if (stake.type === 'host') lines.push('Type: Host')
+  else if (stake.type === 'stargate') lines.push('Type: Stargate')
+  const unlockAt = stake.created + stake.unlockPeriod
+  if (unlockAt > Date.now()) lines.push(`Status: unlocks at ${formatTime(unlockAt)}`)
+  else lines.push('Status: unlocked')
+  return lines.join('\n')
+}
+
 const createAction = (parent: Command, createCmd: Command) => async (stakeType: string) => {
   if (!stakeTypes.includes(stakeType)) throw new Error(`invalid stake type "${stakeType}"`)
 
@@ -135,8 +165,27 @@ const infoAction = (parent: Command, infoCmd: Command) => async () => {
   console.log(`Express release fee: ${vars.stake_express_release_fee} XE`)
 }
 
-const listAction = (parent: Command) => () => {
-  console.debug('stake ls WIP', parent.opts())
+const listAction = (parent: Command, listCmd: Command) => async () => {
+  const opts = {
+    ...getGlobalOptions(parent),
+    ...walletCLI.getWalletOption(parent),
+    ...getJsonOption(listCmd)
+  }
+
+  const encWallet = await readWallet(opts.wallet)
+  const stakes = await xe.stake.stakes(opts.network.blockchain.baseURL, encWallet.address)
+
+  if (opts.json) {
+    console.log(JSON.stringify(stakes, undefined, 2))
+    return
+  }
+
+  Object.values(stakes)
+    .map(stake => formatStake(stake))
+    .forEach(stake => {
+      console.log(stake)
+      console.log()
+    })
 }
 
 const releaseAction = (parent: Command, release: Command) => (id: string) => {
@@ -173,9 +222,11 @@ export const withProgram = (parent: Command): void => {
   info.action(errorHandler(parent, infoAction(parent, info)))
 
   // edge stake ls
-  const list = new Command('ls')
+  const list = new Command('list')
+    .alias('ls')
     .description('list all stakes')
-    .action(listAction(parent))
+    .option('--json', 'display stakes as json')
+  list.action(errorHandler(parent, listAction(parent, list)))
 
   // edge stake release
   const release = new Command('release')
