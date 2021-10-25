@@ -221,8 +221,7 @@ const sendAction = (parent: Command, sendCmd: Command) => async (amountInput: st
     console.log(JSON.stringify(result, undefined, 2))
     process.exitCode = 1
   }
-
-  console.log('Your transaction has been submitted to the blockchain.')
+  else console.log('Your transaction has been submitted to the blockchain.')
 }
 
 const sendHelp = [
