@@ -117,7 +117,11 @@ const createAction = (parent: Command, createCmd: Command) => async (stakeType: 
     console.log(JSON.stringify(result, undefined, 2))
     process.exitCode = 1
   }
-  else console.log('Your transaction has been submitted to the blockchain.')
+  else {
+    console.log('Your transaction has been submitted and will appear in the explorer shortly.')
+    console.log()
+    console.log(`${opts.network.explorer.baseURL}/transaction/${result.results[0].hash}`)
+  }
 }
 
 const infoAction = (parent: Command, infoCmd: Command) => async () => {
@@ -263,7 +267,11 @@ const releaseAction = (parent: Command, releaseCmd: Command) => async (id: strin
     console.log(JSON.stringify(result, undefined, 2))
     process.exitCode = 1
   }
-  else console.log('Your transaction has been submitted to the blockchain.')
+  else {
+    console.log('Your transaction has been submitted and will appear in the explorer shortly.')
+    console.log()
+    console.log(`${opts.network.explorer.baseURL}/transaction/${result.results[0].hash}`)
+  }
 }
 
 const releaseHelp = [
@@ -345,7 +353,11 @@ const unlockAction = (parent: Command, unlockCmd: Command) => async (id: string)
     console.log(JSON.stringify(result, undefined, 2))
     process.exitCode = 1
   }
-  else console.log('Your transaction has been submitted to the blockchain.')
+  else {
+    console.log('Your transaction has been submitted and will appear in the explorer shortly.')
+    console.log()
+    console.log(`${opts.network.explorer.baseURL}/transaction/${result.results[0].hash}`)
+  }
 }
 
 const getJsonOption = (cmd: Command) => {
