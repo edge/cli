@@ -180,10 +180,7 @@ const sendAction = (parent: Command, sendCmd: Command) => async (amountInput: st
       if (ynRegexp.test(input)) confirm = input
       else console.log('Please enter y or n.')
     }
-    if (confirm === 'n') {
-      console.log('Transaction cancelled. Nothing has been submitted to the blockchain.')
-      return
-    }
+    if (confirm === 'n') return
     console.log()
   }
 

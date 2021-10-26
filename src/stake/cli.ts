@@ -10,6 +10,7 @@ import { askToSignTx } from '../transaction'
 import { decryptFileWallet, readWallet } from '../wallet/storage'
 import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
 import { formatXE, withNetwork as xeWithNetwork } from '../transaction/xe'
+import { toDays, toUpperCaseFirst } from '../helpers'
 
 const stakeTypes = ['host', 'gateway', 'stargate']
 
@@ -32,17 +33,16 @@ const formatStake = (stake: xe.stake.Stake): string => {
     `Hash: ${stake.hash}`,
     `Tx: ${stake.transaction}`,
     `Amount: ${formatXE(stake.amount)}`,
-    `Created: ${formatTime(stake.created)}`
+    `Created: ${formatTime(stake.created)}`,
+    `Type: ${toUpperCaseFirst(stake.type)}`
   ]
-  if (stake.type === 'gateway') lines.push('Type: Gateway')
-  else if (stake.type === 'host') lines.push('Type: Host')
-  else if (stake.type === 'stargate') lines.push('Type: Stargate')
-  if (stake.unlockRequested !== undefined) {
+  if (stake.released !== undefined) lines.push('Status: Released')
+  else if (stake.unlockRequested !== undefined) {
     const unlockAt = stake.unlockRequested + stake.unlockPeriod
-    if (unlockAt > Date.now()) lines.push(`Status: unlocks at ${formatTime(unlockAt)}`)
-    else lines.push('Status: unlocked')
+    if (unlockAt > Date.now()) lines.push(`Status: Unlocking (unlocks at ${formatTime(unlockAt)})`)
+    else lines.push('Status: Unlocked')
   }
-  else lines.push('Status: locked')
+  else lines.push('Status: Active')
   return lines.join('\n')
 }
 
@@ -66,19 +66,19 @@ const createAction = (parent: Command, createCmd: Command) => async (stakeType: 
   const api = xeWithNetwork(opts.network)
   const onChainWallet = await api.walletWithNextNonce(encWallet.address)
 
-  const amount = (() => {
-    if (stakeType === 'host') return vars.host_stake_amount
-    else if (stakeType === 'gateway') return vars.gateway_stake_amount
-    else if (stakeType === 'stargate') return vars.stargate_stake_amount
-    else throw new Error(`no stake amount for "${stakeType}"`)
-  })()
+  // fallback 0 is just for typing - stakeType is checked at top of func, so it should never be used
+  const amount =
+    stakeType === 'host' ? vars.host_stake_amount :
+      stakeType === 'gateway' ? vars.gateway_stake_amount :
+        stakeType === 'stargate' ? vars.stargate_stake_amount : 0
+
   const resultBalance = onChainWallet.balance - amount
   // eslint-disable-next-line max-len
   if (resultBalance < 0) throw new Error(`insufficient balance to stake ${stakeType}: your wallet only contains ${formatXE(onChainWallet.balance)} (${formatXE(amount)} required)`)
 
   if (!opts.yes) {
     // eslint-disable-next-line max-len
-    console.log(`You are staking ${formatXE(amount)} to run a ${stakeType}.`)
+    console.log(`You are staking ${formatXE(amount)} to run a ${toUpperCaseFirst(stakeType)}.`)
     console.log(
       `${formatXE(amount)} will be deducted from your available balance.`,
       `You will have ${formatXE(resultBalance)} remaining.`
@@ -91,31 +91,22 @@ const createAction = (parent: Command, createCmd: Command) => async (stakeType: 
       if (ynRegexp.test(input)) confirm = input
       else console.log('Please enter y or n.')
     }
-    if (confirm === 'n') {
-      console.log('Stake cancelled. Nothing has been submitted to the blockchain.')
-      return
-    }
+    if (confirm === 'n') return
     console.log()
   }
 
   await askToSignTx(opts)
   const wallet = decryptFileWallet(encWallet, opts.passphrase as string)
 
-  const data: xe.tx.TxData = {
-    action: 'create_stake',
-    memo: (() => {
-      if (stakeType === 'host') return 'Create Host stake'
-      else if (stakeType === 'gateway') return 'Create Gateway stake'
-      else if (stakeType === 'stargate') return 'Create Stargate stake'
-      else throw new Error(`no memo for "${stakeType}"`)
-    })()
-  }
   const tx = xe.tx.sign({
     timestamp: Date.now(),
     sender: wallet.address,
     recipient: wallet.address,
     amount,
-    data,
+    data: {
+      action: 'create_stake',
+      memo: `Create ${toUpperCaseFirst(stakeType)} stake`
+    },
     nonce: onChainWallet.nonce
   }, wallet.privateKey)
 
@@ -126,7 +117,7 @@ const createAction = (parent: Command, createCmd: Command) => async (stakeType: 
     console.log(JSON.stringify(result, undefined, 2))
     process.exitCode = 1
   }
-  else console.log('Your stake has been submitted to the blockchain.')
+  else console.log('Your transaction has been submitted to the blockchain.')
 }
 
 const infoAction = (parent: Command, infoCmd: Command) => async () => {
@@ -222,7 +213,7 @@ const releaseAction = (parent: Command, releaseCmd: Command) => async (id: strin
 
   if (!opts.yes) {
     // eslint-disable-next-line max-len
-    console.log(`You are releasing a ${stake.type} stake.`)
+    console.log(`You are releasing a ${toUpperCaseFirst(stake.type)} stake.`)
     if (needUnlock) {
       const { stake_express_release_fee } = await xe.vars(opts.network.blockchain.baseURL)
       const releaseFee = stake_express_release_fee * stake.amount
@@ -241,10 +232,7 @@ const releaseAction = (parent: Command, releaseCmd: Command) => async (id: strin
       if (ynRegexp.test(input)) confirm = input
       else console.log('Please enter y or n.')
     }
-    if (confirm === 'n') {
-      console.log('Release cancelled. Nothing has been submitted to the blockchain.')
-      return
-    }
+    if (confirm === 'n') return
     console.log()
   }
 
@@ -275,7 +263,7 @@ const releaseAction = (parent: Command, releaseCmd: Command) => async (id: strin
     console.log(JSON.stringify(result, undefined, 2))
     process.exitCode = 1
   }
-  else console.log('Your release request has been submitted to the blockchain.')
+  else console.log('Your transaction has been submitted to the blockchain.')
 }
 
 const releaseHelp = [
@@ -315,9 +303,9 @@ const unlockAction = (parent: Command, unlockCmd: Command) => async (id: string)
 
   if (!opts.yes) {
     // eslint-disable-next-line max-len
-    console.log(`You are requesting to unlock a ${stake.type} stake.`)
+    console.log(`You are requesting to unlock a ${toUpperCaseFirst(stake.type)} stake.`)
     console.log([
-      `After the unlock wait period of ${Math.ceil(stake.unlockPeriod / (1000*60*60*24))} days, `,
+      `After the unlock wait period of ${toDays(stake.unlockPeriod)} days, `,
       `you will be able to release the stake and return ${formatXE(stake.amount)} to your available balance.`
     ].join(''))
     console.log()
@@ -328,10 +316,7 @@ const unlockAction = (parent: Command, unlockCmd: Command) => async (id: string)
       if (ynRegexp.test(input)) confirm = input
       else console.log('Please enter y or n.')
     }
-    if (confirm === 'n') {
-      console.log('Unlock cancelled. Nothing has been submitted to the blockchain.')
-      return
-    }
+    if (confirm === 'n') return
     console.log()
   }
 
@@ -360,7 +345,7 @@ const unlockAction = (parent: Command, unlockCmd: Command) => async (id: string)
     console.log(JSON.stringify(result, undefined, 2))
     process.exitCode = 1
   }
-  else console.log('Your unlock request has been submitted to the blockchain.')
+  else console.log('Your transaction has been submitted to the blockchain.')
 }
 
 const getJsonOption = (cmd: Command) => {
