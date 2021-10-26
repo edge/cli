@@ -7,7 +7,15 @@ import { Network } from '../config'
 
 const xeAmountRegexp = /^(?<amount>\d+) ?(?<unit>m?xe)?$/i
 
-export const formatXE = (mxeAmount: number): string => `${mxeAmount / 1e6} XE`
+export const formatXE = (mxeAmount: number): string => {
+  const xeAmount = mxeAmount / 1e6
+  if (xeAmount < 1000) return `${xeAmount} XE`
+  const withSep = xeAmount.toString().split('').reverse().reduce((s, n, i) => {
+    if (i % 3 === 0 && i > 0) return `${n},${s}`
+    return `${n}${s}`
+  }, '')
+  return `${withSep} XE`
+}
 
 export const parseAmount = (input: string): number => {
   const match = input.match(xeAmountRegexp)

@@ -11,6 +11,9 @@ export type Network = {
   blockchain: {
     baseURL: string
   }
+  explorer: {
+    baseURL: string
+  }
   index: {
     baseURL: string
   }
@@ -23,6 +26,9 @@ const config: Config = {
       blockchain: {
         baseURL: 'https://api.xe.network'
       },
+      explorer: {
+        baseURL: 'https://xe.network'
+      },
       index: {
         baseURL: 'https://index.xe.network'
       }
@@ -31,6 +37,9 @@ const config: Config = {
       name: 'test',
       blockchain: {
         baseURL: 'https://xe1.test.networkinternal.com'
+      },
+      explorer: {
+        baseURL: 'https://explorer.test.networkinternal.com'
       },
       index: {
         baseURL: 'https://index.test.networkinternal.com'

@@ -5,9 +5,9 @@
 import * as index from '@edge/index-utils'
 import * as walletCLI from '../wallet/cli'
 import * as xe from '@edge/xe-utils'
-import { withNetwork as indexWithNetwork } from './index'
+import { ask } from '../input'
 import { Command, Option } from 'commander'
-import { ask, askSecure } from '../input'
+import { askToSignTx, withNetwork as indexWithNetwork } from './index'
 import { decryptFileWallet, readWallet } from '../wallet/storage'
 import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
 import { formatXE, parseAmount, withNetwork as xeWithNetwork } from './xe'
@@ -180,28 +180,12 @@ const sendAction = (parent: Command, sendCmd: Command) => async (amountInput: st
       if (ynRegexp.test(input)) confirm = input
       else console.log('Please enter y or n.')
     }
-    if (confirm === 'n') {
-      console.log('Transaction cancelled. Nothing has been submitted to the blockchain.')
-      return
-    }
+    if (confirm === 'n') return
     console.log()
   }
 
-  if (!opts.passphrase) {
-    console.log('This transaction must be signed with your private key.')
-    console.log(
-      'Please enter your passphrase to decrypt your private key, sign your transaction,',
-      'and submit it to the blockchain.'
-    )
-    console.log('For more information, see https://wiki.edge.network/TODO')
-    console.log()
-    const passphrase = await askSecure('Passphrase: ')
-    if (passphrase.length === 0) throw new Error('passphrase required')
-    opts.passphrase = passphrase
-    console.log()
-  }
-
-  const wallet = decryptFileWallet(encWallet, opts.passphrase)
+  await askToSignTx(opts)
+  const wallet = decryptFileWallet(encWallet, opts.passphrase as string)
 
   const data: xe.tx.TxData = {}
   if (opts.memo) data.memo = opts.memo
@@ -221,8 +205,11 @@ const sendAction = (parent: Command, sendCmd: Command) => async (amountInput: st
     console.log(JSON.stringify(result, undefined, 2))
     process.exitCode = 1
   }
-
-  console.log('Your transaction has been submitted to the blockchain.')
+  else {
+    console.log('Your transaction has been submitted and will appear in the explorer shortly.')
+    console.log()
+    console.log(`${opts.network.explorer.baseURL}/transaction/${result.results[0].hash}`)
+  }
 }
 
 const sendHelp = [
