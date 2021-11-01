@@ -7,12 +7,12 @@ import main from './main'
 main(process.argv, {
   name: 'testnet',
   blockchain: {
-    baseURL: 'https://xe1.test.networkinternal.com'
+    baseURL: 'https://xe1.test.network'
   },
   explorer: {
-    baseURL: 'https://explorer.test.networkinternal.com'
+    baseURL: 'https://test.network'
   },
   index: {
-    baseURL: 'https://index.test.networkinternal.com'
+    baseURL: 'https://index.test.network'
   }
 })
