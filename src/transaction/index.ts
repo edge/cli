@@ -3,7 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as index from '@edge/index-utils'
-import { Network } from '../config'
+import { Network } from '../main'
 import { askSecure } from '../input'
 
 export const askToSignTx = async (opts: { passphrase?: string }): Promise<void> => {

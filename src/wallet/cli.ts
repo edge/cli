@@ -3,10 +3,10 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as xe from '@edge/xe-utils'
+import { errorHandler } from '../edge/cli'
 import { Command, Option } from 'commander'
 import { ask, askSecure } from '../input'
 import { decryptFileWallet, defaultFile, readWallet, withFile } from './storage'
-import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
 import { readFileSync, unlink, writeFileSync } from 'fs'
 
 export type PassphraseOption = {
@@ -23,7 +23,6 @@ export type WalletOption = {
 
 const createAction = (parent: Command, createCmd: Command) => async () => {
   const opts = {
-    ...getGlobalOptions(parent),
     ...getWalletOption(parent),
     ...getPassphraseOption(createCmd),
     ...(() => {
@@ -116,7 +115,6 @@ const createHelp = [
 
 const infoAction = (parent: Command, infoCmd: Command) => async () => {
   const opts = {
-    ...getGlobalOptions(parent),
     ...getWalletOption(parent),
     ...getPassphraseOption(infoCmd)
   }
@@ -143,7 +141,6 @@ const infoHelp = [
 
 const forgetAction = (parent: Command, forgetCmd: Command) => async () => {
   const opts = {
-    ...getGlobalOptions(parent),
     ...getWalletOption(parent),
     ...(() => {
       const { yes } = forgetCmd.opts<{ yes: boolean }>()
@@ -186,7 +183,6 @@ const forgetHelp = [
 
 const restoreAction = (parent: Command, restoreCmd: Command) => async () => {
   const opts = {
-    ...getGlobalOptions(parent),
     ...getWalletOption(parent),
     ...(() => {
       const { overwrite } = restoreCmd.opts<{ overwrite: boolean }>()

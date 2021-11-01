@@ -3,7 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as xe from '@edge/xe-utils'
-import { Network } from '../config'
+import { Network } from '../main'
 
 const xeAmountRegexp = /^(?<amount>\d+) ?(?<unit>m?xe)?$/i
 
