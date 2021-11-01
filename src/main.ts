@@ -8,15 +8,28 @@ import * as transactionCLI from './transaction/cli'
 import * as walletCLI from './wallet/cli'
 import { create as createCLI } from './edge/cli'
 
-const main = (argv: string[]): void => {
-  const cli = createCLI()
+export type Network = {
+  name: string
+  blockchain: {
+    baseURL: string
+  }
+  explorer: {
+    baseURL: string
+  }
+  index: {
+    baseURL: string
+  }
+}
+
+const main = (argv: string[], network: Network): void => {
+  const cli = createCLI(network)
 
   deviceCLI.withProgram(cli)
-  stakeCLI.withProgram(cli)
-  transactionCLI.withProgram(cli)
+  stakeCLI.withProgram(cli, network)
+  transactionCLI.withProgram(cli, network)
   walletCLI.withProgram(cli)
 
   cli.parse(argv)
 }
 
-main(process.argv)
+export default main

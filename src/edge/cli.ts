@@ -4,19 +4,19 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Command } from 'commander'
-import { Network, selectNetwork } from '../config'
+import { Network } from '../main'
 
 export type Options = {
-  network: Network
   verbose: boolean
 }
 
-export const create = (): Command => {
+export const create = (network: Network): Command => {
   const cli = new Command('edge')
     .enablePositionalOptions(true)
-    .option('-n, --network <name>', 'network to use', 'test')
-    .option('-v, --verbose', 'enable verbose logging', false)
+    .option('-v, --verbose', 'enable verbose error reporting', false)
 
+  if (network.name === 'testnet') cli.description('Edge CLI (Testnet)')
+  else cli.description('Edge CLI')
   return cli
 }
 
@@ -27,8 +27,8 @@ export const errorHandler =
         return await f(...args)
       }
       catch (err) {
-        const opts = getOptions(cli)
-        if (opts.verbose) console.error(err)
+        const { verbose } = getVerboseOption(cli)
+        if (verbose) console.error(err)
         else console.error(`${err}`)
         process.exitCode = 1
       }
@@ -42,18 +42,15 @@ export const errorHandlerSync =
         return f(...args)
       }
       catch (err) {
-        const opts = getOptions(cli)
-        if (opts.verbose) console.error(err)
+        const { verbose } = getVerboseOption(cli)
+        if (verbose) console.error(err)
         else console.error(`${err}`)
         process.exitCode = 1
       }
       return undefined
     }
 
-export const getOptions = (cli: Command): Options => {
-  const { network, verbose } = cli.opts<{ network: string, verbose: boolean }>()
-  return {
-    network: selectNetwork(network),
-    verbose: verbose
-  }
+export const getVerboseOption = (cli: Command): Options => {
+  const { verbose } = cli.opts<{ verbose: boolean }>()
+  return { verbose }
 }

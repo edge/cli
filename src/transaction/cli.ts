@@ -5,11 +5,12 @@
 import * as index from '@edge/index-utils'
 import * as walletCLI from '../wallet/cli'
 import * as xe from '@edge/xe-utils'
+import { Network } from '../main'
 import { ask } from '../input'
+import { errorHandler } from '../edge/cli'
 import { Command, Option } from 'commander'
 import { askToSignTx, withNetwork as indexWithNetwork } from './index'
 import { decryptFileWallet, readWallet } from '../wallet/storage'
-import { errorHandler, getOptions as getGlobalOptions } from '../edge/cli'
 import { formatXE, parseAmount, withNetwork as xeWithNetwork } from './xe'
 
 const formatIndexTx = (address: string, tx: index.Tx): string => {
@@ -69,16 +70,15 @@ const getListOptions = (listCmd: Command) => {
   }
 }
 
-const listAction = (parent: Command, listCmd: Command) => async () => {
+const listAction = (parent: Command, listCmd: Command, network: Network) => async () => {
   const opts = {
-    ...getGlobalOptions(parent),
     ...walletCLI.getWalletOption(parent),
     ...getJsonOption(listCmd),
     ...getListOptions(listCmd)
   }
 
   const wallet = await readWallet(opts.wallet)
-  const response = await indexWithNetwork(opts.network).transactions(wallet.address, {
+  const response = await indexWithNetwork(network).transactions(wallet.address, {
     page: opts.page,
     limit: opts.limit
   })
@@ -110,16 +110,14 @@ const listHelp = [
   'This command queries the index and displays your transactions.'
 ].join('')
 
-const listPendingAction = (parent: Command, listPendingCmd: Command) => async () => {
+const listPendingAction = (parent: Command, listPendingCmd: Command, network: Network) => async () => {
   const opts = {
-    ...getGlobalOptions(parent),
     ...walletCLI.getWalletOption(parent),
     ...getJsonOption(listPendingCmd)
   }
-  if (opts.verbose) console.debug(opts)
 
   const wallet = await readWallet(opts.wallet)
-  const txs = await xeWithNetwork(opts.network).pendingTransactions(wallet.address)
+  const txs = await xeWithNetwork(network).pendingTransactions(wallet.address)
 
   if (opts.json) {
     console.log(JSON.stringify(txs, undefined, 2))
@@ -143,9 +141,9 @@ const listPendingHelp = [
   'This command queries the blockchain and displays all of your pending transactions.'
 ].join('')
 
-const sendAction = (parent: Command, sendCmd: Command) => async (amountInput: string, recipient: string) => {
+// eslint-disable-next-line max-len
+const sendAction = (parent: Command, sendCmd: Command, network: Network) => async (amountInput: string, recipient: string) => {
   const opts = {
-    ...getGlobalOptions(parent),
     ...walletCLI.getWalletOption(parent),
     ...walletCLI.getPassphraseOption(sendCmd),
     ...(() => {
@@ -159,7 +157,7 @@ const sendAction = (parent: Command, sendCmd: Command) => async (amountInput: st
 
   const encWallet = await readWallet(opts.wallet)
 
-  const api = xeWithNetwork(opts.network)
+  const api = xeWithNetwork(network)
   const onChainWallet = await api.walletWithNextNonce(encWallet.address)
   const resultBalance = onChainWallet.balance - amount
   // eslint-disable-next-line max-len
@@ -208,7 +206,7 @@ const sendAction = (parent: Command, sendCmd: Command) => async (amountInput: st
   else {
     console.log('Your transaction has been submitted and will appear in the explorer shortly.')
     console.log()
-    console.log(`${opts.network.explorer.baseURL}/transaction/${result.results[0].hash}`)
+    console.log(`${network.explorer.baseURL}/transaction/${result.results[0].hash}`)
   }
 }
 
@@ -230,7 +228,7 @@ const getJsonOption = (cmd: Command) => {
 
 const jsonOption = () => new Option('--json', 'display results as json')
 
-export const withProgram = (parent: Command): void => {
+export const withProgram = (parent: Command, network: Network): void => {
   const transactionCLI = new Command('transaction')
     .alias('tx')
     .description('manage transactions')
@@ -243,7 +241,7 @@ export const withProgram = (parent: Command): void => {
     .addOption(jsonOption())
     .option('-p, --page <n>', 'page number', '1')
     .option('-l, --limit <n>', 'transactions per page', '10')
-  list.action(errorHandler(parent, listAction(parent, list)))
+  list.action(errorHandler(parent, listAction(parent, list, network)))
 
   // edge transaction list-pending
   const listPending = new Command('list-pending')
@@ -251,7 +249,7 @@ export const withProgram = (parent: Command): void => {
     .description('list pending transactions')
     .addHelpText('after', listPendingHelp)
     .addOption(jsonOption())
-  listPending.action(errorHandler(parent, listPendingAction(parent, listPending)))
+  listPending.action(errorHandler(parent, listPendingAction(parent, listPending, network)))
 
   // edge transaction send
   const send = new Command('send')
@@ -263,7 +261,7 @@ export const withProgram = (parent: Command): void => {
     .addOption(walletCLI.passphraseOption())
     .addOption(walletCLI.passphraseFileOption())
     .option('-y, --yes', 'do not ask for confirmation')
-  send.action(errorHandler(parent, sendAction(parent, send)))
+  send.action(errorHandler(parent, sendAction(parent, send, network)))
 
   transactionCLI
     .addCommand(list)
