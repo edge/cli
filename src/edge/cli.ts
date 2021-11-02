@@ -5,6 +5,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Command } from 'commander'
 import { Network } from '../main'
+import pkg from '../../package.json'
 
 export type Options = {
   verbose: boolean
@@ -12,6 +13,7 @@ export type Options = {
 
 export const create = (network: Network): Command => {
   const cli = new Command('edge')
+    .version(pkg.version)
     .enablePositionalOptions(true)
     .option('-v, --verbose', 'enable verbose error reporting', false)
 

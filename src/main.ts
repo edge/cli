@@ -5,6 +5,7 @@
 import * as deviceCLI from './device/cli'
 import * as stakeCLI from './stake/cli'
 import * as transactionCLI from './transaction/cli'
+import * as updateCLI from './update/cli'
 import * as walletCLI from './wallet/cli'
 import { create as createCLI } from './edge/cli'
 
@@ -16,6 +17,11 @@ export type Network = {
   explorer: {
     baseURL: string
   }
+  files: {
+    latestBuildURL: (os: string, arch: string) => string
+    latestChecksumURL: (os: string, arch: string) => string
+    latestVersionURL: (os: string, arch: string) => string
+  }
   index: {
     baseURL: string
   }
@@ -23,10 +29,10 @@ export type Network = {
 
 const main = (argv: string[], network: Network): void => {
   const cli = createCLI(network)
-
   deviceCLI.withProgram(cli)
   stakeCLI.withProgram(cli, network)
   transactionCLI.withProgram(cli, network)
+  updateCLI.withProgram(cli, network, argv)
   walletCLI.withProgram(cli)
 
   cli.parse(argv)

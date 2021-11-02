@@ -12,6 +12,11 @@ main(process.argv, {
   explorer: {
     baseURL: 'https://test.network'
   },
+  files: {
+    latestBuildURL: (os, arch) => `https://files.edge.network/cli/testnet/${os}/${arch}/latest/edge-test`,
+    latestChecksumURL: (os, arch) => `https://files.edge.network/cli/testnet/${os}/${arch}/latest/checksum`,
+    latestVersionURL: (os, arch) => `https://files.edge.network/cli/testnet/${os}/${arch}/latest/version`
+  },
   index: {
     baseURL: 'https://index.test.network'
   }
