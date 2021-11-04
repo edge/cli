@@ -1,8 +1,11 @@
 import { Command } from 'commander'
 import { Network } from '../main'
+import { SemVer } from 'semver'
 import { errorHandler } from '../edge/cli'
-import { chmodSync, copyFileSync } from 'fs'
-import { download, status } from '.'
+import path from 'path'
+import { tmpdir } from 'os'
+import { VersionStatus, download, status } from '.'
+import { chmodSync, copyFileSync, readFileSync, stat, writeFileSync } from 'fs'
 
 const checkAction = (network: Network) => async (): Promise<void> => {
   const { current, latest, requireUpdate } = await status(network)
@@ -19,6 +22,61 @@ const checkHelp = [
   '\n',
   'Check for an update to Edge CLI.'
 ].join('')
+
+const checkVersionCacheTimeout = 1000 * 60 * 60
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export const checkVersionHandler =
+  <T>(network: Network, f: (...args: any[]) => Promise<T>) =>
+    async (...args: any[]): Promise<T|undefined> => {
+      const fresult = await f(...args)
+
+      // check for locally cached version data
+      const cacheFile = tmpdir() + path.sep + '.edge-cli-version-check'
+      let vinfo: VersionStatus|undefined = undefined
+      try {
+        vinfo = await new Promise<VersionStatus|undefined>((resolve, reject) => {
+          stat(cacheFile, (err, info) => {
+            if (err !== null) return reject(err)
+            if (info.mtime.getTime() + checkVersionCacheTimeout < Date.now()) return resolve(undefined)
+            const data = JSON.parse(readFileSync(cacheFile).toString())
+            const current = new SemVer('0.0.1')
+            const latest = new SemVer('0.0.1')
+            Object.assign(current, data.current)
+            Object.assign(latest, data.latest)
+            return resolve({ current, latest, requireUpdate: data.requireUpdate })
+          })
+        })
+      }
+      catch (err) {
+        // console.error(err)
+      }
+      if (vinfo === undefined) {
+        // no local cache; check update server
+        try {
+          vinfo = await status(network)
+        }
+        catch (err) {
+          // console.error(err)
+          console.log('There was a problem reaching the update server. Please check your network connectivity.')
+        }
+        try {
+          writeFileSync(cacheFile, JSON.stringify(vinfo))
+        }
+        catch (err) {
+          // console.error(err)
+        }
+      }
+      if (vinfo !== undefined) {
+        if (vinfo.requireUpdate) {
+          console.log(`A new version of Edge CLI is available (${vinfo.latest}).`)
+          console.log('Please run \'edge update\' to update to the latest version.')
+        }
+      }
+
+      return fresult
+    }
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 const updateAction = (network: Network, argv: string[]) => async (): Promise<void> => {
   const { latest, requireUpdate } = await status(network)

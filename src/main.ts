@@ -33,7 +33,7 @@ const main = (argv: string[], network: Network): void => {
   stakeCLI.withProgram(cli, network)
   transactionCLI.withProgram(cli, network)
   updateCLI.withProgram(cli, network, argv)
-  walletCLI.withProgram(cli)
+  walletCLI.withProgram(cli, network)
 
   cli.parse(argv)
 }
