@@ -3,6 +3,8 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as xe from '@edge/xe-utils'
+import { Network } from '../main'
+import { checkVersionHandler } from '../update/cli'
 import { errorHandler } from '../edge/cli'
 import { Command, Option } from 'commander'
 import { ask, askSecure } from '../input'
@@ -282,7 +284,7 @@ export const passphraseFileOption = (): Option => new Option(
   'file containing wallet passphrase'
 )
 
-export const withProgram = (parent: Command): void => {
+export const withProgram = (parent: Command, network: Network): void => {
   const walletCLI = new Command('wallet')
     .description('manage wallet')
 
@@ -294,14 +296,32 @@ export const withProgram = (parent: Command): void => {
     .addOption(passphraseOption())
     .addOption(passphraseFileOption())
     .addOption(privateKeyFileOption())
-  create.action(errorHandler(parent, createAction(parent, create)))
+  create.action(
+    errorHandler(
+      parent,
+      checkVersionHandler(
+        parent,
+        network,
+        createAction(parent, create)
+      )
+    )
+  )
 
   // edge wallet forget
   const forget = new Command('forget')
     .description('forget saved wallet')
     .addHelpText('after', forgetHelp)
     .option('-y, --yes', 'do not ask for confirmation')
-  forget.action(errorHandler(parent, forgetAction(parent, forget)))
+  forget.action(
+    errorHandler(
+      parent,
+      checkVersionHandler(
+        parent,
+        network,
+        forgetAction(parent, forget)
+      )
+    )
+  )
 
   // edge wallet info
   const info = new Command('info')
@@ -309,7 +329,16 @@ export const withProgram = (parent: Command): void => {
     .addHelpText('after', infoHelp)
     .addOption(passphraseOption())
     .addOption(passphraseFileOption())
-  info.action(errorHandler(parent, infoAction(parent, info)))
+  info.action(
+    errorHandler(
+      parent,
+      checkVersionHandler(
+        parent,
+        network,
+        infoAction(parent, info)
+      )
+    )
+  )
 
   // edge wallet restore
   const restore = new Command('restore')
@@ -320,7 +349,16 @@ export const withProgram = (parent: Command): void => {
     .addOption(privateKeyFileOption())
     .addOption(passphraseOption())
     .addOption(passphraseFileOption())
-  restore.action(errorHandler(parent, restoreAction(parent, restore)))
+  restore.action(
+    errorHandler(
+      parent,
+      checkVersionHandler(
+        parent,
+        network,
+        restoreAction(parent, restore)
+      )
+    )
+  )
 
   walletCLI
     .addCommand(create)

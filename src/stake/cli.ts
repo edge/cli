@@ -8,6 +8,7 @@ import { Command } from 'commander'
 import { Network } from '../main'
 import { ask } from '../input'
 import { askToSignTx } from '../transaction'
+import { checkVersionHandler } from '../update/cli'
 import { errorHandler } from '../edge/cli'
 import { decryptFileWallet, readWallet } from '../wallet/storage'
 import { formatXE, withNetwork as xeWithNetwork } from '../transaction/xe'
@@ -371,20 +372,47 @@ export const withProgram = (parent: Command, network: Network): void => {
     .addOption(walletCLI.passphraseOption())
     .addOption(walletCLI.passphraseFileOption())
     .option('-y, --yes', 'do not ask for confirmation')
-  create.action(errorHandler(parent, createAction(parent, create, network)))
+  create.action(
+    errorHandler(
+      parent,
+      checkVersionHandler(
+        parent,
+        network,
+        createAction(parent, create, network)
+      )
+    )
+  )
 
   // edge stake info
   const info = new Command('info')
     .description('get on-chain staking information')
     .option('--json', 'display info as json')
-  info.action(errorHandler(parent, infoAction(info, network)))
+  info.action(
+    errorHandler(
+      parent,
+      checkVersionHandler(
+        parent,
+        network,
+        infoAction(info, network)
+      )
+    )
+  )
 
   // edge stake ls
   const list = new Command('list')
     .alias('ls')
     .description('list all stakes')
     .option('--json', 'display stakes as json')
-  list.action(errorHandler(parent, listAction(parent, list, network)))
+  list.action(
+    errorHandler(
+      parent,
+      checkVersionHandler(
+        parent,
+        network,
+        listAction(parent, list, network)
+      )
+    )
+  )
 
   // edge stake release
   const release = new Command('release')
@@ -395,7 +423,16 @@ export const withProgram = (parent: Command, network: Network): void => {
     .addOption(walletCLI.passphraseFileOption())
     .option('-y, --yes', 'do not ask for confirmation')
     .addHelpText('after', releaseHelp)
-  release.action(errorHandler(parent, releaseAction(parent, release, network)))
+  release.action(
+    errorHandler(
+      parent,
+      checkVersionHandler(
+        parent,
+        network,
+        releaseAction(parent, release, network)
+      )
+    )
+  )
 
   // edge stake unlock
   const unlock = new Command('unlock')
@@ -404,7 +441,16 @@ export const withProgram = (parent: Command, network: Network): void => {
     .addOption(walletCLI.passphraseOption())
     .addOption(walletCLI.passphraseFileOption())
     .option('-y, --yes', 'do not ask for confirmation')
-  unlock.action(errorHandler(parent, unlockAction(parent, unlock, network)))
+  unlock.action(
+    errorHandler(
+      parent,
+      checkVersionHandler(
+        parent,
+        network,
+        unlockAction(parent, unlock, network)
+      )
+    )
+  )
 
   stakeCLI
     .addCommand(create)

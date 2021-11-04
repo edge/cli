@@ -7,6 +7,7 @@ import * as walletCLI from '../wallet/cli'
 import * as xe from '@edge/xe-utils'
 import { Network } from '../main'
 import { ask } from '../input'
+import { checkVersionHandler } from '../update/cli'
 import { errorHandler } from '../edge/cli'
 import { Command, Option } from 'commander'
 import { askToSignTx, withNetwork as indexWithNetwork } from './index'
@@ -241,7 +242,16 @@ export const withProgram = (parent: Command, network: Network): void => {
     .addOption(jsonOption())
     .option('-p, --page <n>', 'page number', '1')
     .option('-l, --limit <n>', 'transactions per page', '10')
-  list.action(errorHandler(parent, listAction(parent, list, network)))
+  list.action(
+    errorHandler(
+      parent,
+      checkVersionHandler(
+        parent,
+        network,
+        listAction(parent, list, network)
+      )
+    )
+  )
 
   // edge transaction list-pending
   const listPending = new Command('list-pending')
@@ -249,7 +259,16 @@ export const withProgram = (parent: Command, network: Network): void => {
     .description('list pending transactions')
     .addHelpText('after', listPendingHelp)
     .addOption(jsonOption())
-  listPending.action(errorHandler(parent, listPendingAction(parent, listPending, network)))
+  listPending.action(
+    errorHandler(
+      parent,
+      checkVersionHandler(
+        parent,
+        network,
+        listPendingAction(parent, listPending, network)
+      )
+    )
+  )
 
   // edge transaction send
   const send = new Command('send')
@@ -261,7 +280,16 @@ export const withProgram = (parent: Command, network: Network): void => {
     .addOption(walletCLI.passphraseOption())
     .addOption(walletCLI.passphraseFileOption())
     .option('-y, --yes', 'do not ask for confirmation')
-  send.action(errorHandler(parent, sendAction(parent, send, network)))
+  send.action(
+    errorHandler(
+      parent,
+      checkVersionHandler(
+        parent,
+        network,
+        sendAction(parent, send, network)
+      )
+    )
+  )
 
   transactionCLI
     .addCommand(list)
