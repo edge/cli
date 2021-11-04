@@ -13,7 +13,7 @@ main(process.argv, {
     baseURL: 'https://xe.network'
   },
   files: {
-    latestBuildURL: (os, arch) => `https://files.edge.network/cli/mainnet/${os}/${arch}/latest/edge-test`,
+    latestBuildURL: (os, arch) => `https://files.edge.network/cli/mainnet/${os}/${arch}/latest/edge`,
     latestChecksumURL: (os, arch) => `https://files.edge.network/cli/mainnet/${os}/${arch}/latest/checksum`,
     latestVersionURL: (os, arch) => `https://files.edge.network/cli/mainnet/${os}/${arch}/latest/version`
   },

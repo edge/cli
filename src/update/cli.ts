@@ -12,8 +12,8 @@ const checkAction = (network: Network) => async (): Promise<void> => {
   if (requireUpdate) {
     console.log(`Current Edge CLI version: ${current}`)
     console.log()
-    console.log('A new version of Edge CLI is available.')
-    console.log(`Run 'edge update' to upgrade to ${latest}.`)
+    console.log(`A new version of Edge CLI is available (${latest}).`)
+    console.log('Run \'edge update\' to update to the latest version.')
   }
   else console.log('Edge CLI is up to date.')
 }
