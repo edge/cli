@@ -300,6 +300,7 @@ export const withProgram = (parent: Command, network: Network): void => {
     errorHandler(
       parent,
       checkVersionHandler(
+        parent,
         network,
         createAction(parent, create)
       )
@@ -315,6 +316,7 @@ export const withProgram = (parent: Command, network: Network): void => {
     errorHandler(
       parent,
       checkVersionHandler(
+        parent,
         network,
         forgetAction(parent, forget)
       )
@@ -331,6 +333,7 @@ export const withProgram = (parent: Command, network: Network): void => {
     errorHandler(
       parent,
       checkVersionHandler(
+        parent,
         network,
         infoAction(parent, info)
       )
@@ -350,6 +353,7 @@ export const withProgram = (parent: Command, network: Network): void => {
     errorHandler(
       parent,
       checkVersionHandler(
+        parent,
         network,
         restoreAction(parent, restore)
       )

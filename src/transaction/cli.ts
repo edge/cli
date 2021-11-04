@@ -246,6 +246,7 @@ export const withProgram = (parent: Command, network: Network): void => {
     errorHandler(
       parent,
       checkVersionHandler(
+        parent,
         network,
         listAction(parent, list, network)
       )
@@ -262,6 +263,7 @@ export const withProgram = (parent: Command, network: Network): void => {
     errorHandler(
       parent,
       checkVersionHandler(
+        parent,
         network,
         listPendingAction(parent, listPending, network)
       )
@@ -282,6 +284,7 @@ export const withProgram = (parent: Command, network: Network): void => {
     errorHandler(
       parent,
       checkVersionHandler(
+        parent,
         network,
         sendAction(parent, send, network)
       )

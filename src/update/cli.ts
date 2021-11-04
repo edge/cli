@@ -1,11 +1,12 @@
 import { Command } from 'commander'
 import { Network } from '../main'
 import { SemVer } from 'semver'
-import { errorHandler } from '../edge/cli'
+import color from '../edge/color'
 import path from 'path'
 import { tmpdir } from 'os'
 import { VersionStatus, download, status } from '.'
 import { chmodSync, copyFileSync, readFileSync, stat, writeFileSync } from 'fs'
+import { errorHandler, getNoColorOption } from '../edge/cli'
 
 const checkAction = (network: Network) => async (): Promise<void> => {
   const { current, latest, requireUpdate } = await status(network)
@@ -27,9 +28,11 @@ const checkVersionCacheTimeout = 1000 * 60 * 60
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const checkVersionHandler =
-  <T>(network: Network, f: (...args: any[]) => Promise<T>) =>
+  <T>(cli: Command, network: Network, f: (...args: any[]) => Promise<T>) =>
     async (...args: any[]): Promise<T|undefined> => {
       const fresult = await f(...args)
+
+      const { noColor } = getNoColorOption(cli)
 
       // check for locally cached version data
       const cacheFile = tmpdir() + path.sep + '.edge-cli-version-check'
@@ -58,7 +61,9 @@ export const checkVersionHandler =
         }
         catch (err) {
           // console.error(err)
-          console.log('There was a problem reaching the update server. Please check your network connectivity.')
+          let msg = 'There was a problem reaching the update server. Please check your network connectivity.'
+          if (!noColor) msg = color.warn(msg)
+          console.log(msg)
         }
         try {
           writeFileSync(cacheFile, JSON.stringify(vinfo))
@@ -69,8 +74,12 @@ export const checkVersionHandler =
       }
       if (vinfo !== undefined) {
         if (vinfo.requireUpdate) {
-          console.log(`A new version of Edge CLI is available (${vinfo.latest}).`)
-          console.log('Please run \'edge update\' to update to the latest version.')
+          let msgs = [
+            `A new version of Edge CLI is available (${vinfo.latest}).`,
+            'Please run \'edge update\' to update to the latest version.'
+          ]
+          if (!noColor) msgs = msgs.map(l => color.info(l))
+          msgs.forEach(l => console.log(l))
         }
       }
 
