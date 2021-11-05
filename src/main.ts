@@ -29,7 +29,7 @@ export type Network = {
 
 const main = (argv: string[], network: Network): void => {
   const cli = createCLI(network)
-  deviceCLI.withProgram(cli)
+  // deviceCLI.withProgram(cli)
   stakeCLI.withProgram(cli, network)
   transactionCLI.withProgram(cli, network)
   updateCLI.withProgram(cli, network, argv)
