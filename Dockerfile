@@ -42,4 +42,4 @@ RUN npx pkg out/src/main-$NETWORK.js \
   --debug
 
 # Copy the binaries to the mount point for extraction
-CMD ["cp", "-r", "/cli/bin/*", "/mnt/bin"]
+CMD ["cp", "-r", "/cli/bin/.", "/mnt/bin"]
