@@ -6,29 +6,21 @@
 pipeline {
   agent any
   stages {
-    stage('Build') {
-      stages {
-        stage('Install deps') {
-          steps {
-            sh 'npm install'
-          }
-        }
+    stage('Install deps') {
+      steps {
+        sh 'npm install'
+      }
+    }
 
-        stage('Lint') {
-          steps {
-            sh 'npm run lint'
-          }
-        }
+    stage('Lint') {
+      steps {
+        sh 'npm run lint'
+      }
+    }
 
-        stage('Test') {
-          steps {
-            sh 'npm test'
-          }
-        }
-
-        stage('Build') {
-          // TODO
-        }
+    stage('Test') {
+      steps {
+        sh 'npm test'
       }
     }
   }
