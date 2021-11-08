@@ -15,18 +15,14 @@ pipeline {
   stages {
 
     stage('Build binaries') {
+      agent {
+        label 'arch-amd64'
+      }
       steps {
         script {
           def node = 'node12'
           def network = 'mainnet'
           sh "docker build -t cli-bins --build-arg NETWORK=$network --build-arg NODE=$node ."
-        }
-      }
-    }
-
-    stage('Extract binaries from image') {
-      steps {
-        script {
           sh 'docker run --rm -v \"$(pwd)/bin\":/mnt/bin cli-bins'
           sh 'ls -al \"$(pwd)/bin\"'
         }
