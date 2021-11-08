@@ -27,8 +27,8 @@ pipeline {
     stage('Extract binaries from image') {
       steps {
         script {
-          sh 'docker run --rm -v "$(pwd)/bin":/mnt/bin cli-bins'
-          sh 'ls -al "$(pwd)/bin"'
+          sh 'docker run --rm -v \"$(pwd)/bin\":/mnt/bin cli-bins'
+          sh 'ls -al \"$(pwd)/bin\"'
         }
       }
     }
