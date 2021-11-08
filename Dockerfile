@@ -16,6 +16,8 @@ ENV PKG_CACHE_PATH=/pkg-cache
 RUN npm install -g pkg-fetch
 RUN pkg-fetch -n ${NODE} -p linux -a x64
 RUN pkg-fetch -n ${NODE} -p linux -a arm64
+RUN pkg-fetch -n ${NODE} -p linuxstatic -a x64
+RUN pkg-fetch -n ${NODE} -p linuxstatic -a arm64
 RUN pkg-fetch -n ${NODE} -p macos -a x64
 RUN pkg-fetch -n ${NODE} -p macos -a arm64
 RUN pkg-fetch -n ${NODE} -p win -a x64
