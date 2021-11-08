@@ -1,0 +1,25 @@
+#!/usr/bin/env groovy
+// Copyright (C) 2021 Edge Network Technologies Limited
+// Use of this source code is governed by a GNU GPL-style license
+// that can be found in the LICENSE.md file. All rights reserved.
+
+pipeline {
+  agent any
+  stages {
+    stage('Install deps') {
+      sh 'npm install'
+    }
+
+    stage('Lint') {
+      sh 'npm run lint'
+    }
+
+    stage('Test') {
+      sh 'npm test'
+    }
+
+    stage('Build') {
+      // TODO
+    }
+  }
+}
