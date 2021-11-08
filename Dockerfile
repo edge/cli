@@ -9,6 +9,8 @@ WORKDIR /cli
 ARG NETWORK=mainnet
 ARG NODE=node14
 
+ENV PKG_CACHE_PATH=/pkg-cache
+
 RUN echo "PKG_CACHE_PATH: $PKG_CACHE_PATH"
 
 # Pre-fetch Node base binaries to avoid
