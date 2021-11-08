@@ -9,6 +9,8 @@ WORKDIR /cli
 ARG NETWORK=mainnet
 ARG NODE=node14
 
+RUN echo "PKG_CACHE_PATH: $PKG_CACHE_PATH"
+
 # Pre-fetch Node base binaries to avoid
 # issues with pulling during build
 RUN npm install -g pkg-fetch
@@ -18,6 +20,9 @@ RUN pkg-fetch -n ${NODE} -p macos -a x64
 RUN pkg-fetch -n ${NODE} -p macos -a arm64
 RUN pkg-fetch -n ${NODE} -p win -a x64
 RUN pkg-fetch -n ${NODE} -p win -a arm64
+
+RUN ls -al $PKG_CACHE_PATH
+RUN ls -alR $PKG_CACHE_PATH
 
 # Install dependencies
 COPY package*.json ./
@@ -33,6 +38,10 @@ RUN npm run lint && npm run test
 RUN npm run $NETWORK:build:src
 
 # Using pkg build packages for all platforms and architectures
+
+RUN ls -al $PKG_CACHE_PATH
+RUN ls -alR $PKG_CACHE_PATH
+
 RUN npx pkg out/src/main-$NETWORK.js \
   --target $NODE-linux-x64,$NODE-linux-arm64,$NODE-macos-x64,$NODE-macos-arm64,$NODE-win-x64,$NODE-win-arm64 \
   --output /cli/bin/edge
