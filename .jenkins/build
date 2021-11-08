@@ -20,7 +20,7 @@ pipeline {
       }
       steps {
         script {
-          def node = 'node12'
+          def node = 'node14'
           def network = 'mainnet'
           sh "docker build -t cli-bins --build-arg NETWORK=$network --build-arg NODE=$node ."
           sh 'docker run --rm -v \"$(pwd)/bin\":/mnt/bin cli-bins'
