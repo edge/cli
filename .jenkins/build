@@ -16,9 +16,11 @@ pipeline {
 
     stage('Build binaries') {
       steps {
-        def node = 'node14'
-        def network = 'mainnet'
-        sh "docker build -t cli-bins --build-arg NETWORK=$network --build-arg NODE=$node ."
+        script {
+          def node = 'node14'
+          def network = 'mainnet'
+          sh "docker build -t cli-bins --build-arg NETWORK=$network --build-arg NODE=$node ."
+        }
       }
     }
 
