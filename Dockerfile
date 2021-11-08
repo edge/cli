@@ -11,6 +11,11 @@ ARG NODE=node14
 
 ENV PKG_CACHE_PATH=/pkg-cache
 
+# Prepare the build environment
+RUN dpkg --add-architecture i386
+RUN apt-get update -qy
+RUN apt-get install -qy libc6:i386 libstdc++6:i386
+
 # Pre-fetch Node base binaries to avoid
 # issues with pulling during build
 RUN npm install -g pkg-fetch
