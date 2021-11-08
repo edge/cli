@@ -35,7 +35,7 @@
   },
   "dependencies": {
     "@edge/index-utils": "^0.1.0",
-    "@edge/xe-utils": "^0.3.1",
+    "@edge/xe-utils": "^1.0.1",
     "chalk": "^4.1.2",
     "commander": "^8.1.0",
     "semver": "^7.3.5",
