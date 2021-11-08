@@ -16,7 +16,7 @@ pipeline {
 
     stage('Build binaries') {
       agent {
-        label 'arch-amd64'
+        label 'remote'
       }
       steps {
         script {
