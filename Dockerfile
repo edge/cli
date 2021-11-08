@@ -15,11 +15,11 @@ ENV PKG_CACHE_PATH=/pkg-cache
 # issues with pulling during build
 RUN npm install -g pkg-fetch
 RUN pkg-fetch -n ${NODE} -p linux -a x64
-RUN pkg-fetch -n ${NODE} -p linux -a arm64
-RUN pkg-fetch -n ${NODE} -p macos -a x64
-RUN pkg-fetch -n ${NODE} -p macos -a arm64
-RUN pkg-fetch -n ${NODE} -p win -a x64
-RUN ls -al $PKG_CACHE_PATH
+#RUN pkg-fetch -n ${NODE} -p linux -a arm64
+#RUN pkg-fetch -n ${NODE} -p macos -a x64
+#RUN pkg-fetch -n ${NODE} -p macos -a arm64
+#RUN pkg-fetch -n ${NODE} -p win -a x64
+RUN ls -Ral $PKG_CACHE_PATH
 
 # Install dependencies
 COPY package*.json ./
@@ -35,8 +35,9 @@ RUN npm run lint && npm run test
 RUN npm run $NETWORK:build:src
 
 # Using pkg build packages for all platforms and architectures
+# $NODE-linux-x64,$NODE-linux-arm64,$NODE-macos-x64,$NODE-macos-arm64,$NODE-win-x64 \
 RUN npx pkg out/src/main-$NETWORK.js \
-  --target $NODE-linux-x64,$NODE-linux-arm64,$NODE-macos-x64,$NODE-macos-arm64,$NODE-win-x64 \
+  --target $NODE-linux-x64 \
   --output /cli/bin/edge \
   --debug
 
