@@ -4,10 +4,20 @@
 
 FROM node:lts AS build
 
+WORKDIR /cli
+
 ARG NETWORK=mainnet
 ARG NODE=node14
 
-WORKDIR /cli
+# Pre-fetch Node base binaries to avoid
+# issues with pulling during build
+RUN npm install -g pkg-fetch
+RUN pkg-fetch -n ${NODE} -p linux -a x64
+RUN pkg-fetch -n ${NODE} -p linux -a arm64
+RUN pkg-fetch -n ${NODE} -p macos -a x64
+RUN pkg-fetch -n ${NODE} -p macos -a arm64
+RUN pkg-fetch -n ${NODE} -p win -a x64
+RUN pkg-fetch -n ${NODE} -p win -a arm64
 
 # Install dependencies
 COPY package*.json ./
@@ -26,3 +36,6 @@ RUN npm run $NETWORK:build:src
 RUN npx pkg out/src/main-$NETWORK.js \
   --target $NODE-linux-x64,$NODE-linux-arm64,$NODE-macos-x64,$NODE-macos-arm64,$NODE-win-x64,$NODE-win-arm64 \
   --output /cli/bin/edge
+
+# Copy all binaries from /cli/bin to the /mnt/bin directory
+CMD ["cp", "-r", "/cli/bin/*", "/mnt/bin"]

@@ -24,5 +24,21 @@ pipeline {
       }
     }
 
+    stage('Extract binaries from image') {
+      steps {
+        script {
+          sh "docker run --rm -ti -v $(pwd)/bin:/mnt/bin cli-bins"
+          sh "ls -al $(pwd)/bin"
+        }
+      }
+    }
+
+    // stage('Upload binaries') {
+    //   steps {
+    //     script {
+    //       //
+    //     }
+    //   }
+    // }
   }
 }
