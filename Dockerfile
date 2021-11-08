@@ -20,7 +20,7 @@ RUN apt-get install -qy libc6:i386 libstdc++6:i386
 # issues with pulling during build
 RUN npm install -g pkg-fetch
 RUN pkg-fetch -n ${NODE} -p linux -a x64
-RUN pkg-fetch -n ${NODE} -p linux -a arm64
+#RUN pkg-fetch -n ${NODE} -p linux -a arm64
 #RUN pkg-fetch -n ${NODE} -p macos -a x64
 #RUN pkg-fetch -n ${NODE} -p macos -a arm64
 #RUN pkg-fetch -n ${NODE} -p win -a x64
@@ -42,7 +42,7 @@ RUN npm run $NETWORK:build:src
 # Using pkg build packages for all platforms and architectures
 # $NODE-linux-x64,$NODE-linux-arm64,$NODE-macos-x64,$NODE-macos-arm64,$NODE-win-x64 \
 RUN npx pkg out/src/main-$NETWORK.js \
-  --target $NODE-linux-x64,$NODE-linux-arm64 \
+  --target $NODE-linux-x64 \
   --output /cli/bin/edge \
   --debug
 
