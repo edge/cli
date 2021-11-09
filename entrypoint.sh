@@ -33,7 +33,7 @@ main() {
       # Append .exe to the filename if windows and skip
       # win/arm64 until we are able to support it
       if [ $platform = "win" ]; then
-        if [ $arch = "arm64" ] continue
+        if [ $arch = "arm64" ]; continue
         FILE="${FILENAME}.exe"
       fi
 
