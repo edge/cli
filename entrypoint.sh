@@ -28,13 +28,14 @@ main() {
   do
     for arch in "${ARCHS[@]}"
     do
-      # Skip win/arm64 until we can support it
-      if [ $platform = "win" && $arch = "arm64" ]; then
-        continue
-      fi
+      FILE="${FILENAME}"
 
-      # If windows, append .exe to the filename
-      FILE = [ $platform = "win" ] && FILE="${FILENAME}.exe" || FILE="${FILENAME}"
+      # Append .exe to the filename if windows and skip
+      # win/arm64 until we are able to support it
+      if [ $platform = "win" ]; then
+        if [ $arch = "arm64" ] continue
+        FILE="${FILENAME}.exe"
+      fi
 
       copyFile $platform $arch $VERSION $FILE
       copyFile $platform $arch latest $FILE
