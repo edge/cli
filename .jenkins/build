@@ -34,7 +34,7 @@ def deployScript() {
     --rm \
     --volume fileserver-data:/mnt/fileserver \
     $IMAGE \
-      uname
+      ls -al /mnt/fileserver
   ''')
 }
 
