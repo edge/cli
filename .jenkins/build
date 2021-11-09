@@ -35,13 +35,12 @@ def deployScript() {
 }
 
 pipeline {
-  agent any
+  agent {
+    label 'remote'
+  }
   stages {
 
     stage('Build') {
-      agent {
-        label 'remote'
-      }
       steps {
         def buildArgs = "--build-arg NETWORK=$NETWORK --build-arg NODE=$NODE"
         buildAndPushImage(REGISTRY, REGISTRY_CREDENTIAL, NAME, buildArgs)
@@ -49,9 +48,6 @@ pipeline {
     }
 
     stage('Deploy') {
-      agent {
-        label 'remote'
-      }
       steps {
         script {
           def sshPort = env.SSH_PORT != null ? env.SSH_PORT : 22
