@@ -3,13 +3,6 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-// bin-linux-arm64
-// bin-linux-x64
-// bin-macos-arm64
-// bin-macos-x64
-// bin-win-arm64.exe
-// bin-win-x64.exe
-
 def buildAndPushImage(registry, registryCredential, tag, buildArgs) {
   docker.withRegistry("https://$registry", registryCredential) {
     def image = docker.build("$registry/$tag", "$buildArgs .")
@@ -18,7 +11,18 @@ def buildAndPushImage(registry, registryCredential, tag, buildArgs) {
   }
 }
 
+def b64e(input) {
+  return input.bytes.encodeBase64().toString()
+}
+
 def deployScript() {
+  // bin-linux-arm64
+  // bin-linux-x64
+  // bin-macos-arm64
+  // bin-macos-x64
+  // bin-win-arm64.exe
+  // bin-win-x64.exe
+
   return b64e('''
   #!/bin/bash
 
