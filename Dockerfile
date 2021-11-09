@@ -40,11 +40,11 @@ RUN npm run lint && npm run test
 RUN npm run $NETWORK:build:src
 
 # Using pkg build packages for all platforms and architectures
-# $NODE-linux-x64,$NODE-linux-arm64,$NODE-macos-x64,$NODE-macos-arm64,$NODE-win-x64 \
 RUN npx pkg out/src/main-$NETWORK.js \
   --target $NODE-linux-x64,$NODE-linux-arm64,$NODE-macos-x64,$NODE-macos-arm64,$NODE-win-x64 \
   --output /cli/bin/edge \
   --debug
 
-# Copy the binaries to the mount point for extraction
-CMD ["cp", "-r", "/cli/bin/.", "/mnt/bin"]
+# Copy binaries to empty image
+FROM busybox
+COPY --from=build /cli/bin /cli/bin/
