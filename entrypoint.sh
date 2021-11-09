@@ -6,31 +6,33 @@
 set -e
 
 main() {
-  declare -a PLATFORMS=("linux" "macos" "win")
-  declare -a ARCHS=("x64" "arm64")
+  # declare -a PLATFORMS=("linux" "macos" "win")
+  # declare -a ARCHS=("x64" "arm64")
 
-  # If network or version are not set, exit
-  if [[ -z $NETWORK || -z $VERSION ]]; then
-    echo "Usage: NETWORK=<network> VERSION=<version> ./entrypoint.sh"
-    exit 1
-  fi
+  # # If network or version are not set, exit
+  # if [[ -z $NETWORK || -z $VERSION ]]; then
+  #   echo "Usage: NETWORK=<network> VERSION=<version> ./entrypoint.sh"
+  #   exit 1
+  # fi
 
-  # Set filename to edge if network is mainnet otherwise set it to edgetest
-  if [ $NETWORK ]; then
-    FILENAME="edge"
-  else
-    FILENAME="edgetest"
-  fi
+  # # Set filename to edge if network is mainnet otherwise set it to edgetest
+  # if [ $NETWORK ]; then
+  #   FILENAME="edge"
+  # else
+  #   FILENAME="edgetest"
+  # fi
 
-  # Loop through platforms and then archs, copying files
-  for platform in "${PLATFORMS[@]}"
-  do
-    for arch in "${ARCHS[@]}"
-    do
-      copyFile $platform $arch $VERSION $FILENAME
-      copyFile $platform $arch latest $FILENAME
-    done
-  done
+  # # Loop through platforms and then archs, copying files
+  # for platform in "${PLATFORMS[@]}"
+  # do
+  #   for arch in "${ARCHS[@]}"
+  #   do
+  #     copyFile $platform $arch $VERSION $FILENAME
+  #     copyFile $platform $arch latest $FILENAME
+  #   done
+  # done
+
+  ls -al cli/bin/
 }
 
 # $1 is platform, $2 is arch, $3 is version, $4 is filename
