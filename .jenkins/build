@@ -3,6 +3,8 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+@Library('semver-compare-lib@1.0.0') _
+
 def buildAndPushImage(registry, registryCredential, tag, buildArgs) {
   docker.withRegistry("https://$registry", registryCredential) {
     def image = docker.build("$registry/$tag", "$buildArgs .")
@@ -32,17 +34,31 @@ def deployScript() {
   # Transfer binaries from image to volume
   docker run \
     --rm \
+    --env NETWORK=$NETWORK \
+    --env VERSION=$VERSION \
     --volume fileserver-data:/mnt/fileserver \
-    $IMAGE \
-      ls -al /mnt/fileserver
+    $IMAGE
   ''')
 }
+
+def thisVersion
 
 pipeline {
   agent {
     label 'remote'
   }
   stages {
+
+    stage('Check version') {
+      steps {
+        script {
+          def latestVersion = sh(script: 'wget https://files.edge.network/cli/mainnet/linux/x64/latest/version', returnStdout: true)
+          version = sh(script: 'cat packge.json | jq -r .version', returnStdout: true)
+
+          if (semver_compare(version, latestVersion) <= 0) exit 0
+        }
+      }
+    }
 
     stage('Build') {
       steps {
@@ -69,6 +85,8 @@ pipeline {
             sh "$ssh 'echo $script | base64 -d > ${filename} && \
               chmod +x ${filename} && \
               IMAGE=$image \
+              NETWORK=$NETWORK \
+              VERSION=$version \
                 bash -x ./${filename} && \
               rm ${filename}'"
           }
