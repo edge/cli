@@ -16,7 +16,7 @@ main() {
   fi
 
   # Set filename to edge if network is mainnet otherwise set it to edgetest
-  if [ $NETWORK ]; then
+  if [ $NETWORK = "mainnet" ]; then
     FILENAME="edge"
   else
     FILENAME="edgetest"
@@ -28,7 +28,8 @@ main() {
   do
     for arch in "${ARCHS[@]}"
     do
-      FILE="${FILENAME}"
+      DEST="${FILENAME}"
+      SRC="edge-${platform}-${arch}"
 
       # Append .exe to the filename if windows and skip
       # win/arm64 until we are able to support it
@@ -36,11 +37,12 @@ main() {
         if [ $arch = "arm64" ]; then
           continue
         fi
-        FILE="${FILENAME}.exe"
+        DEST="${DEST}.exe"
+        SRC="${SRC}.exe"
       fi
 
-      copyFile $platform $arch $VERSION $FILE
-      copyFile $platform $arch latest $FILE
+      copyFile $platform $arch $VERSION $SRC $DEST
+      copyFile $platform $arch latest $SRC $DEST
 
       # If mac, sign the file
       # TODO
@@ -48,13 +50,13 @@ main() {
   done
 }
 
-# $1 is platform, $2 is arch, $3 is version, $4 is filename
+# $1 is platform, $2 is arch, $3 is version, $4 is source file, $5 is dest file
 copyFile() {
   mkdir -p /mnt/fileserver/cli/$NETWORK/$1/$2/$3
-  cp /cli/bin/edge-$1-$2 /mnt/fileserver/cli/$NETWORK/$1/$2/$3/$4
-  chmod +x /mnt/fileserver/cli/$NETWORK/$1/$2/$3/$4
+  cp /cli/bin/$4 /mnt/fileserver/cli/$NETWORK/$1/$2/$3/$5
+  chmod +x /mnt/fileserver/cli/$NETWORK/$1/$2/$3/$5
   echo $3 > /mnt/fileserver/cli/$NETWORK/$1/$2/$3/version
-  sha256sum /mnt/fileserver/cli/$NETWORK/$1/$2/$3/$4 > /mnt/fileserver/cli/$NETWORK/$1/$2/$3/checksum
+  sha256sum /mnt/fileserver/cli/$NETWORK/$1/$2/$3/$5 > /mnt/fileserver/cli/$NETWORK/$1/$2/$3/checksum
 }
 
 main "$@"; exit
