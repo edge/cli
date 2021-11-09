@@ -10,21 +10,66 @@
 // bin-win-arm64.exe
 // bin-win-x64.exe
 
+def buildAndPushImage(registry, registryCredential, tag, buildArgs) {
+  docker.withRegistry("https://$registry", registryCredential) {
+    def image = docker.build("$registry/$tag", "$buildArgs .")
+    image.push()
+    return "$registry/$tag"
+  }
+}
+
+def deployScript() {
+  return b64e('''
+  #!/bin/bash
+
+  # Pull the latest version
+  docker pull $IMAGE
+
+  # Transfer binaries from image to volume
+  docker run \
+    --rm \
+    --volume fileserver-data:/mnt/fileserver \
+    $IMAGE \
+      uname
+  ''')
+}
+
 pipeline {
   agent any
   stages {
 
-    stage('Build binaries') {
+    stage('Build') {
+      agent {
+        label 'remote'
+      }
+      steps {
+        def buildArgs = "--build-arg NETWORK=$NETWORK --build-arg NODE=$NODE"
+        buildAndPushImage(REGISTRY, REGISTRY_CREDENTIAL, NAME, buildArgs)
+      }
+    }
+
+    stage('Deploy') {
       agent {
         label 'remote'
       }
       steps {
         script {
-          def node = 'node14'
-          def network = 'mainnet'
-          sh "docker build -t cli-bins --build-arg NETWORK=$network --build-arg NODE=$node ."
-          sh 'docker run --rm -v \"$(pwd)/bin\":/mnt/bin cli-bins'
-          sh 'ls -al bin'
+          def sshPort = env.SSH_PORT != null ? env.SSH_PORT : 22
+          def ssh = "ssh -o ServerAliveInterval=120 -o ServerAliveCountMax=5 -o StrictHostKeyChecking=no -p ${sshPort} jenkins@${DEPLOY_TARGET} "
+          def filename = "deploy_${UUID.randomUUID().toString()}.sh"
+          def script = deployScript()
+          def image = "$REGISTRY/$NAME"
+
+          sshagent(credentials: ['a687b920-fcb4-41e4-a878-5ae1f6850b26']) {
+            println "> deploying CLI binaries (${image}) to ${DEPLOY_TARGET}..."
+
+            // Execute the script
+            sh "$ssh 'echo $script | base64 -d > ${filename} && \
+              chmod +x ${filename} && \
+              IMAGE=$image \
+                bash -x ./${filename} && \
+              rm ${filename}'"
+          }
         }
       }
     }
