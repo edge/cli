@@ -42,8 +42,10 @@ pipeline {
 
     stage('Build') {
       steps {
-        def buildArgs = "--build-arg NETWORK=$NETWORK --build-arg NODE=$NODE"
-        buildAndPushImage(REGISTRY, REGISTRY_CREDENTIAL, NAME, buildArgs)
+        script {
+          def buildArgs = "--build-arg NETWORK=$NETWORK --build-arg NODE=$NODE"
+          buildAndPushImage(REGISTRY, REGISTRY_CREDENTIAL, NAME, buildArgs)
+        }
       }
     }
 
