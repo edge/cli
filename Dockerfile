@@ -49,4 +49,5 @@ RUN npx pkg out/src/main-$NETWORK.js \
 FROM busybox
 COPY --from=build /cli/bin /cli/bin/
 COPY ./entrypoint.sh ./entrypoint.sh
-ENTRYPOINT ["./entrypoint.sh"]
+RUN cat entrypoint.sh
+CMD ["sh", "./entrypoint.sh"]
