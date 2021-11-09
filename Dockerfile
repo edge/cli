@@ -46,7 +46,8 @@ RUN npx pkg out/src/main-$NETWORK.js \
   --debug
 
 # Copy binaries to empty image
-FROM busybox
+FROM alpine:latest
+RUN apk add bash
 COPY --from=build /cli/bin /cli/bin/
 COPY ./entrypoint.sh ./entrypoint.sh
 CMD ["sh", "./entrypoint.sh"]
