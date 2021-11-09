@@ -6,7 +6,7 @@
 set -e
 
 main() {
-  declare -a PLATFORMS=("linux" "macos" "windows")
+  declare -a PLATFORMS=("linux" "macos" "win")
   declare -a ARCHS=("x64" "arm64")
 
   # If network or version are not set, exit
