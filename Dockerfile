@@ -50,4 +50,4 @@ FROM alpine:latest
 RUN apk add bash
 COPY --from=build /cli/bin /cli/bin/
 COPY ./entrypoint.sh ./entrypoint.sh
-CMD ["sh", "./entrypoint.sh"]
+CMD ["bash", "./entrypoint.sh"]
