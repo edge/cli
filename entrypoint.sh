@@ -5,10 +5,10 @@
 
 set -e
 
-main() {
-  declare -a PLATFORMS=("linux" "macos" "windows")
-  declare -a ARCHS=("x64" "arm64")
+declare -a PLATFORMS=("linux" "macos" "windows")
+declare -a ARCHS=("x64" "arm64")
 
+main() {
   # If network or version are not set, exit
   if [[ -z $NETWORK || -z $VERSION ]]; then
     echo "Usage: NETWORK=<network> VERSION=<version> ./entrypoint.sh"
