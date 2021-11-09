@@ -57,7 +57,7 @@ pipeline {
           def latestVersion = sh(script: 'curl -s https://files.edge.network/test/latest/version', returnStdout: true).trim()
           version = sh(script: 'cat package.json | jq -r .version', returnStdout: true).trim()
 
-          if (semver_compare(version, latestVersion) <= 0) {
+          if (semver_compare(version, latestVersion) <= 0 && FORCE_UPDATE == 'false') {
             skipRemainingStages = true
             println "version $version <= latest version $latestVersion, skipping"
           }
