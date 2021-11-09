@@ -53,8 +53,8 @@ pipeline {
       steps {
         script {
           // https://files.edge.network/cli/mainnet/linux/x64/latest/version
-          def latestVersion = sh(script: 'wget https://files.edge.network/test/latest/version', returnStdout: true)
-          version = sh(script: 'cat packge.json | jq -r .version', returnStdout: true)
+          def latestVersion = sh(script: 'curl https://files.edge.network/test/latest/version', returnStdout: true)
+          version = sh(script: 'cat package.json | jq -r .version', returnStdout: true)
           def comparison = semver_compare(version, latestVersion)
 
           println "latestVersion: $latestVersion"
