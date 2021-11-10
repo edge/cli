@@ -41,22 +41,18 @@ main() {
         SRC="${SRC}.exe"
       fi
 
-      copyFile $platform $arch $VERSION $SRC $DEST
-      copyFile $platform $arch latest $SRC $DEST
+      mkdir -p /mnt/fileserver/cli/$NETWORK/$platform/$arch/$VERSION
+      cp /cli/bin/$SRC /mnt/fileserver/cli/$NETWORK/$platform/$arch/$VERSION/$DEST
+      chmod +x /mnt/fileserver/cli/$NETWORK/$platform/$arch/$VERSION/$DEST
+      echo $VERSION > /mnt/fileserver/cli/$NETWORK/$platform/$arch/$VERSION/version
+      sha256sum /mnt/fileserver/cli/$NETWORK/$platform/$arch/$VERSION/$DEST | head -c 64 > /mnt/fileserver/cli/$NETWORK/$platform/$arch/$VERSION/checksum
+      rm -rf /mnt/fileserver/cli/$NETWORK/$platform/$arch/latest
+      cp -r /mnt/fileserver/cli/$NETWORK/$platform/$arch/$VERSION /mnt/fileserver/cli/$NETWORK/$platform/$arch/latest
 
-      # If mac, sign the file
-      # TODO
+      # TODO:
+      # - If mac, sign the file
     done
   done
-}
-
-# $1 is platform, $2 is arch, $3 is version, $4 is source file, $5 is dest file
-copyFile() {
-  mkdir -p /mnt/fileserver/cli/$NETWORK/$1/$2/$3
-  cp /cli/bin/$4 /mnt/fileserver/cli/$NETWORK/$1/$2/$3/$5
-  chmod +x /mnt/fileserver/cli/$NETWORK/$1/$2/$3/$5
-  echo $3 > /mnt/fileserver/cli/$NETWORK/$1/$2/$3/version
-  sha256sum /mnt/fileserver/cli/$NETWORK/$1/$2/$3/$5 > /mnt/fileserver/cli/$NETWORK/$1/$2/$3/checksum
 }
 
 main "$@"; exit
