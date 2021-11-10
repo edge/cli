@@ -5,7 +5,8 @@
   "private": true,
   "author": "Edge Network <core@edge.network>",
   "contributors": [
-    "Aneurin \"Anny\" Barker Snook <aneurin@edge.network>"
+    "Aneurin \"Anny\" Barker Snook <aneurin@edge.network>",
+    "Adam K Dean <adam@edge.network>"
   ],
   "license": "SEE LICENSE IN LICENSE.md",
   "scripts": {
