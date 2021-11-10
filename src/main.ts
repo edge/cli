@@ -2,7 +2,7 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-import * as deviceCLI from './device/cli'
+// import * as deviceCLI from './device/cli'
 import * as stakeCLI from './stake/cli'
 import * as transactionCLI from './transaction/cli'
 import * as updateCLI from './update/cli'
