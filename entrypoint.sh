@@ -41,9 +41,11 @@ main() {
         SRC="${SRC}.exe"
       fi
 
+      # Here we ensure the version directory exists, then copy the binary into it renaming it to the correct name,
+      # then update the version file with the correct version, generate a checksum and update the checksum file,
+      # before finally removing and updating the latest directory to point to the correct version
       mkdir -p /mnt/fileserver/cli/$NETWORK/$platform/$arch/$VERSION
       cp /cli/bin/$SRC /mnt/fileserver/cli/$NETWORK/$platform/$arch/$VERSION/$DEST
-      chmod +x /mnt/fileserver/cli/$NETWORK/$platform/$arch/$VERSION/$DEST
       echo $VERSION > /mnt/fileserver/cli/$NETWORK/$platform/$arch/$VERSION/version
       sha256sum /mnt/fileserver/cli/$NETWORK/$platform/$arch/$VERSION/$DEST | head -c 64 > /mnt/fileserver/cli/$NETWORK/$platform/$arch/$VERSION/checksum
       rm -rf /mnt/fileserver/cli/$NETWORK/$platform/$arch/latest
