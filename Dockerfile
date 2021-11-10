@@ -14,7 +14,7 @@ ENV PKG_CACHE_PATH=/pkg-cache
 # Prepare the build environment
 RUN dpkg --add-architecture i386
 RUN apt-get update -qy
-RUN apt-get install -qy libc6:i386 libstdc++6:i386 qemu qemu-user-binfmt
+RUN apt-get install -qy libc6:i386 libstdc++6:i386 qemu
 
 # Pre-fetch Node base binaries to avoid
 # issues with pulling during build
