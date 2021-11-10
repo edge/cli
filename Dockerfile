@@ -24,7 +24,6 @@ RUN pkg-fetch -n ${NODE} -p linux -a arm64
 RUN pkg-fetch -n ${NODE} -p macos -a x64
 RUN pkg-fetch -n ${NODE} -p macos -a arm64
 RUN pkg-fetch -n ${NODE} -p win -a x64
-RUN ls -Ral $PKG_CACHE_PATH
 
 # Install dependencies
 COPY package*.json ./
