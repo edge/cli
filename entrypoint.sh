@@ -50,9 +50,6 @@ main() {
       sha256sum /mnt/fileserver/cli/$NETWORK/$platform/$arch/$VERSION/$DEST | head -c 64 > /mnt/fileserver/cli/$NETWORK/$platform/$arch/$VERSION/checksum
       rm -rf /mnt/fileserver/cli/$NETWORK/$platform/$arch/latest
       cp -r /mnt/fileserver/cli/$NETWORK/$platform/$arch/$VERSION /mnt/fileserver/cli/$NETWORK/$platform/$arch/latest
-
-      # TODO:
-      # - If mac, sign the file
     done
   done
 }
