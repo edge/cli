@@ -1,0 +1,105 @@
+#!/usr/bin/env groovy
+// Copyright (C) 2021 Edge Network Technologies Limited
+// Use of this source code is governed by a GNU GPL-style license
+// that can be found in the LICENSE.md file. All rights reserved.
+
+@Library('semver-compare-lib@1.0.0') _
+
+def buildAndPushImage(registry, registryCredential, tag, buildArgs) {
+  docker.withRegistry("https://$registry", registryCredential) {
+    def image = docker.build("$registry/$tag", "$buildArgs .")
+    image.push()
+    return "$registry/$tag"
+  }
+}
+
+def b64e(input) {
+  return input.bytes.encodeBase64().toString()
+}
+
+def deployScript() {
+  return b64e('''
+  #!/bin/bash
+
+  # Pull the latest version
+  docker pull $IMAGE
+
+  # Transfer binaries from image to volume
+  docker run \
+    --rm \
+    --env NETWORK=$NETWORK \
+    --env VERSION=$VERSION \
+    --volume fileserver-data:/mnt/fileserver \
+    $IMAGE
+  ''')
+}
+
+def skipRemainingStages = false
+def version
+
+pipeline {
+  agent {
+    label 'remote'
+  }
+  stages {
+
+    stage('Check version') {
+      steps {
+        script {
+          def versionCheckUrl = 'https://files.edge.network/cli/$NETWORK/linux/x64/latest/version'
+          def latestVersion = sh(script: "curl -s $versionCheckUrl", returnStdout: true).trim()
+          version = sh(script: 'cat package.json | jq -r .version', returnStdout: true).trim()
+
+          if (semver_compare(version, latestVersion) <= 0 && FORCE_UPDATE == 'false') {
+            skipRemainingStages = true
+            println "version $version <= latest version $latestVersion, skipping"
+          }
+        }
+      }
+    }
+
+    stage('Build') {
+      when {
+        expression {
+          !skipRemainingStages
+        }
+      }
+      steps {
+        script {
+          def buildArgs = "--build-arg NETWORK=$NETWORK --build-arg NODE=$NODE"
+          buildAndPushImage(REGISTRY, REGISTRY_CREDENTIAL, NAME, buildArgs)
+        }
+      }
+    }
+
+    stage('Deploy') {
+      when {
+        expression {
+          !skipRemainingStages
+        }
+      }
+      steps {
+        script {
+          def sshPort = env.SSH_PORT != null ? env.SSH_PORT : 22
+          def ssh = "ssh -o ServerAliveInterval=120 -o ServerAliveCountMax=5 -o StrictHostKeyChecking=no -p ${sshPort} jenkins@${DEPLOY_TARGET} "
+          def filename = "deploy_${UUID.randomUUID().toString()}.sh"
+          def script = deployScript()
+          def image = "$REGISTRY/$NAME"
+
+          sshagent(credentials: ['a687b920-fcb4-41e4-a878-5ae1f6850b26']) {
+            println "> deploying CLI binaries (${image}) to ${DEPLOY_TARGET}..."
+
+            // Execute the script
+            sh "$ssh 'echo $script | base64 -d > ${filename} && \
+              chmod +x ${filename} && \
+              IMAGE=$image \
+              NETWORK=$NETWORK \
+              VERSION=$version \
+                bash -x ./${filename} && \
+              rm ${filename}'"
+          }
+        }
+      }
+    }
+  }
+}
