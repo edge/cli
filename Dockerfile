@@ -45,9 +45,20 @@ RUN npx pkg out/src/main-$NETWORK.js \
   --output /cli/bin/edge \
   --debug
 
+# Sign MacOS binaries
+FROM registry.edge.network/edge/alpine-ldid AS ldid
+COPY --from=build /cli/bin/edge-macos-x64 /cli/bin/edge-macos-x64
+COPY --from=build /cli/bin/edge-macos-arm64 /cli/bin/edge-macos-arm64
+RUN /root/ldid/ldid -S /cli/bin/edge-macos-x64
+RUN /root/ldid/ldid -s /cli/bin/edge-macos-arm64
+
 # Copy binaries to empty image
 FROM alpine:latest
 RUN apk add bash
-COPY --from=build /cli/bin /cli/bin/
+COPY --from=build /cli/bin/edge-linux-x64 /cli/bin/edge-linux-x64
+COPY --from=build /cli/bin/edge-linux-arm64 /cli/bin/edge-linux-arm64
+COPY --from=build /cli/bin/edge-win-x64 /cli/bin/edge-win-x64
+COPY --from=ldid /cli/bin/edge-macos-x64 /cli/bin/edge-macos-x64
+COPY --from=ldid /cli/bin/edge-macos-arm64 /cli/bin/edge-macos-arm64
 COPY ./entrypoint.sh ./entrypoint.sh
 CMD ["bash", "./entrypoint.sh"]
