@@ -6,7 +6,7 @@
 set -e
 
 main() {
-  declare -a PLATFORMS=("linux" "macos" "win")
+  declare -a PLATFORMS=("linux" "macos" "windows")
   declare -a ARCHS=("x64" "arm64")
 
   # If network or version are not set, exit
@@ -32,8 +32,8 @@ main() {
       SRC="edge-${platform}-${arch}"
 
       # Append .exe to the filename if windows and skip
-      # win/arm64 until we are able to support it
-      if [ $platform = "win" ]; then
+      # windows/arm64 until we are able to support it
+      if [ $platform = "windows" ]; then
         if [ $arch = "arm64" ]; then
           continue
         fi
