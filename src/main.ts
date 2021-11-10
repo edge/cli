@@ -18,7 +18,7 @@ export type Network = {
     baseURL: string
   }
   files: {
-    latestBuildURL: (os: string, arch: string) => string
+    latestBuildURL: (os: string, arch: string, ext: string) => string
     latestChecksumURL: (os: string, arch: string) => string
     latestVersionURL: (os: string, arch: string) => string
   }

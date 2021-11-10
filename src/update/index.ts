@@ -70,7 +70,7 @@ export const download = async (network: Network): Promise<DownloadInfo> => {
     const checksum = csResponse.text.trim()
 
     const file = mkdtempSync(path.join(tmpdir(), 'edge-update-')) + path.sep + 'edge'
-    const buildURL = network.files.latestBuildURL(normalizedPlatform(), arch())
+    const buildURL = network.files.latestBuildURL(normalizedPlatform(), arch(), ext())
     await downloadURL(buildURL, file)
 
     const filesum = await calcDigest(file)
@@ -81,6 +81,8 @@ export const download = async (network: Network): Promise<DownloadInfo> => {
     throw new Error(`failed to download latest binary: ${err}`)
   }
 }
+
+const ext = (): string => normalizedPlatform() === 'windows' ? '.exe' : ''
 
 export const latestVersion = async (network: Network): Promise<SemVer> => {
   const url = network.files.latestVersionURL(normalizedPlatform(), arch())
