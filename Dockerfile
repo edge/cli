@@ -50,8 +50,6 @@ FROM registry.edge.network/edge/alpine-ldid AS ldid
 COPY entitlements.plist ./
 COPY --from=build /cli/bin/edge-macos-x64 /cli/bin/edge-macos-x64
 COPY --from=build /cli/bin/edge-macos-arm64 /cli/bin/edge-macos-arm64
-# RUN /root/ldid/ldid -Sentitlements.plist /cli/bin/edge-macos-x64
-# RUN /root/ldid/ldid -Sentitlements.plist /cli/bin/edge-macos-arm64
 RUN /root/ldid/ldid -S /cli/bin/edge-macos-x64
 RUN /root/ldid/ldid -S /cli/bin/edge-macos-arm64
 
