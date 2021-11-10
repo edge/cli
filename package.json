@@ -14,7 +14,7 @@
     "mainnet:build:executable": "pkg out/src/main-mainnet.js -t host --output bin/edge",
     "testnet:build": "npm run testnet:build:src && npm run testnet:build:executable",
     "testnet:build:src": "tsc",
-    "testnet:build:executable": "pkg out/src/main-testnet.js -t host --output bin/edge-test",
+    "testnet:build:executable": "pkg out/src/main-testnet.js -t host --output bin/edgetest",
     "testnet:dev": "ts-node src/main-testnet.ts",
     "testnet:dev:from-src": "node out/src/main-testnet.js",
     "lint": "eslint --ext .ts src",
