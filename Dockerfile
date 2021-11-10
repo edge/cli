@@ -57,7 +57,7 @@ FROM alpine:latest
 RUN apk add bash
 COPY --from=build /cli/bin/edge-linux-x64 /cli/bin/edge-linux-x64
 COPY --from=build /cli/bin/edge-linux-arm64 /cli/bin/edge-linux-arm64
-COPY --from=build /cli/bin/edge-win-x64 /cli/bin/edge-win-x64
+COPY --from=build /cli/bin/edge-win-x64.exe /cli/bin/edge-win-x64.exe
 COPY --from=ldid /cli/bin/edge-macos-x64 /cli/bin/edge-macos-x64
 COPY --from=ldid /cli/bin/edge-macos-arm64 /cli/bin/edge-macos-arm64
 COPY ./entrypoint.sh ./entrypoint.sh
