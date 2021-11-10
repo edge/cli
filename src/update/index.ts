@@ -98,6 +98,7 @@ export const latestVersion = async (network: Network): Promise<SemVer> => {
 const normalizedPlatform = (): string => {
   const p = platform()
   if (p === 'darwin') return 'macos'
+  if (p === 'win32') return 'windows'
   return p
 }
 
