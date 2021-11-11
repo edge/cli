@@ -93,7 +93,7 @@ pipeline {
 
     stage('Package') {
       agent {
-        label 'local'
+        label 'arch-x64'
       }
       when {
         expression {
@@ -109,6 +109,9 @@ pipeline {
     }
 
     stage('Deploy') {
+      agent {
+        label 'arch-x64'
+      }
       when {
         expression {
           !skipRemainingStages
