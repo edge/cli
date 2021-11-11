@@ -22,15 +22,24 @@ def deployScript() {
   #!/bin/bash
 
   # Pull the latest version
-  docker pull $IMAGE
+  docker pull registry.edge.network/internal/cli-x64
+  docker pull registry.edge.network/internal/cli-arm64
 
-  # Transfer binaries from image to volume
+  # Transfer x64 binaries from image to volume
   docker run \
     --rm \
     --env NETWORK=$NETWORK \
     --env VERSION=$VERSION \
     --volume fileserver-data:/mnt/fileserver \
-    $IMAGE
+    $REGISTRY/internal/cli-x64
+
+  # Transfer arm64 binaries from image to volume
+  docker run \
+    --rm \
+    --env NETWORK=$NETWORK \
+    --env VERSION=$VERSION \
+    --volume fileserver-data:/mnt/fileserver \
+    $REGISTRY/internal/cli-arm64
   ''')
 }
 
@@ -71,10 +80,8 @@ pipeline {
           }
           steps {
             script {
-              sh 'uname -a'
-              sh 'uptime'
-              // def buildArgs = "--build-arg NETWORK=$NETWORK --build-arg NODE=$NODE --build-arg ARCH=x64"
-              // buildAndPushImage(REGISTRY, REGISTRY_CREDENTIAL, NAME, buildArgs)
+              def buildArgs = "--build-arg NETWORK=$NETWORK --build-arg NODE=$NODE --build-arg ARCH=x64"
+              buildAndPushImage(REGISTRY, REGISTRY_CREDENTIAL, "internal/cli-x64", buildArgs)
             }
           }
         }
@@ -84,10 +91,8 @@ pipeline {
           }
           steps {
             script {
-              sh 'uname -a'
-              sh 'uptime'
-              // def buildArgs = "--build-arg NETWORK=$NETWORK --build-arg NODE=$NODE --build-arg ARCH=arm64"
-              // buildAndPushImage(REGISTRY, REGISTRY_CREDENTIAL, NAME, buildArgs)
+              def buildArgs = "--build-arg NETWORK=$NETWORK --build-arg NODE=$NODE --build-arg ARCH=arm64"
+              buildAndPushImage(REGISTRY, REGISTRY_CREDENTIAL, "internal/cli-arm64", buildArgs)
             }
           }
         }
@@ -106,15 +111,14 @@ pipeline {
           def ssh = "ssh -o ServerAliveInterval=120 -o ServerAliveCountMax=5 -o StrictHostKeyChecking=no -p ${sshPort} jenkins@${DEPLOY_TARGET} "
           def filename = "deploy_${UUID.randomUUID().toString()}.sh"
           def script = deployScript()
-          def image = "$REGISTRY/$NAME"
 
           sshagent(credentials: ['a687b920-fcb4-41e4-a878-5ae1f6850b26']) {
-            println "> deploying CLI binaries (${image}) to ${DEPLOY_TARGET}..."
+            println "> deploying CLI binaries to ${DEPLOY_TARGET}..."
 
             // Execute the script
             sh "$ssh 'echo $script | base64 -d > ${filename} && \
               chmod +x ${filename} && \
-              IMAGE=$image \
+              REGISTRY=$REGISTRY \
               NETWORK=$NETWORK \
               VERSION=$version \
                 bash -x ./${filename} && \
