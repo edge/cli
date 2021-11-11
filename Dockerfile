@@ -47,7 +47,7 @@ RUN /root/ldid/ldid -S /cli/bin/edge-macos
 
 # Copy binaries to empty image, being sure to
 # rename win to windows for consistency
-FROM alpine:latest
+FROM --platform=linux/amd64 alpine:latest
 ARG ARCH=x64
 ENV ARCH=$ARCH
 RUN apk add bash
