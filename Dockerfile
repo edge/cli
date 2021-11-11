@@ -37,8 +37,7 @@ RUN npm run $NETWORK:build:src
 # Using pkg build packages for all platforms and architectures
 RUN npx pkg out/src/main-$NETWORK.js \
   --target $NODE-linux-$ARCH,$NODE-macos-$ARCH,$NODE-win-$ARCH \
-  --output /cli/bin/edge \
-  --debug
+  --output /cli/bin/edge
 
 # Sign MacOS binaries
 FROM $LDID_IMAGE AS ldid
