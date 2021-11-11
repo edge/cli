@@ -48,8 +48,7 @@ RUN /root/ldid/ldid -S /cli/bin/edge-macos
 # rename win to windows for consistency
 FROM alpine:latest
 RUN apk add bash
-RUN echo "cachebust=1"
 COPY --from=build /cli/bin/edge-linux /cli/bin/edge-linux
-COPY --from=build /cli/bin/edge-win.exe /cli/bin/edge-windows.exe
+COPY --from=build /cli/bin/edge-windows.exe /cli/bin/edge-windows.exe
 COPY --from=ldid /cli/bin/edge-macos /cli/bin/edge-macos
 RUN ls -al /cli/bin
