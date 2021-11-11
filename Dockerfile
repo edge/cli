@@ -2,14 +2,15 @@
 # Use of this source code is governed by a GNU GPL-style license
 # that can be found in the LICENSE.md file. All rights reserved.
 
-ARG NETWORK=mainnet
-ARG NODE=node14
 ARG ARCH=x64
 ARG LDID_IMAGE=registry.edge.network/internal/alpine-ldid-$ARCH
 
 FROM node:lts AS build
 
 WORKDIR /cli
+
+ARG NETWORK=mainnet
+ARG NODE=node14
 
 ENV PKG_CACHE_PATH=/pkg-cache
 
