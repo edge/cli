@@ -2,13 +2,14 @@
 # Use of this source code is governed by a GNU GPL-style license
 # that can be found in the LICENSE.md file. All rights reserved.
 
-FROM node:lts AS build
-
-WORKDIR /cli
-
 ARG NETWORK=mainnet
 ARG NODE=node14
 ARG ARCH=x64
+ARG LDID_IMAGE=registry.edge.network/internal/alpine-ldid-$ARCH
+
+FROM node:lts AS build
+
+WORKDIR /cli
 
 ENV PKG_CACHE_PATH=/pkg-cache
 
@@ -38,14 +39,13 @@ RUN npx pkg out/src/main-$NETWORK.js \
   --debug
 
 # Sign MacOS binaries
-FROM registry.edge.network/internal/alpine-ldid-$ARCH AS ldid
+FROM $LDID_IMAGE AS ldid
 COPY --from=build /cli/bin/edge-macos /cli/bin/edge-macos
 RUN /root/ldid/ldid -S /cli/bin/edge-macos
 
 # Copy binaries to empty image, being sure to
 # rename win to windows for consistency
 FROM alpine:latest
-ARG ARCH=x64
 ENV ARCH=$ARCH
 RUN apk add bash
 COPY --from=build /cli/bin/edge-linux /cli/bin/edge-linux
