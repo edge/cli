@@ -8,22 +8,15 @@ WORKDIR /cli
 
 ARG NETWORK=mainnet
 ARG NODE=node14
+ARG ARCH=x64
 
 ENV PKG_CACHE_PATH=/pkg-cache
 
-# Prepare the build environment
-RUN dpkg --add-architecture i386
-RUN apt-get update -qy
-RUN apt-get install -qy libc6:i386 libstdc++6:i386 qemu
-
-# Pre-fetch Node base binaries to avoid
-# issues with pulling during build
+# Pre-fetch Node base binaries to avoid build time issues
 RUN npm install -g pkg-fetch
-RUN pkg-fetch -n ${NODE} -p linux -a x64
-RUN pkg-fetch -n ${NODE} -p linux -a arm64
-RUN pkg-fetch -n ${NODE} -p macos -a x64
-RUN pkg-fetch -n ${NODE} -p macos -a arm64
-RUN pkg-fetch -n ${NODE} -p win -a x64
+RUN pkg-fetch -n ${NODE} -p linux -a $ARCH
+RUN pkg-fetch -n ${NODE} -p macos -a $ARCH
+RUN pkg-fetch -n ${NODE} -p win -a $ARCH
 
 # Install dependencies
 COPY package*.json ./
@@ -40,25 +33,23 @@ RUN npm run $NETWORK:build:src
 
 # Using pkg build packages for all platforms and architectures
 RUN npx pkg out/src/main-$NETWORK.js \
-  --target $NODE-linux-x64,$NODE-linux-arm64,$NODE-macos-x64,$NODE-macos-arm64,$NODE-win-x64 \
+  --target $NODE-linux-$ARCH,$NODE-macos-$ARCH,$NODE-win-$ARCH \
   --output /cli/bin/edge \
   --debug
 
 # Sign MacOS binaries
 FROM registry.edge.network/edge/alpine-ldid AS ldid
-COPY --from=build /cli/bin/edge-macos-x64 /cli/bin/edge-macos-x64
-COPY --from=build /cli/bin/edge-macos-arm64 /cli/bin/edge-macos-arm64
-RUN /root/ldid/ldid -S /cli/bin/edge-macos-x64
-RUN /root/ldid/ldid -S /cli/bin/edge-macos-arm64
+ARG ARCH=x64
+COPY --from=build /cli/bin/edge-macos-$ARCH /cli/bin/edge-macos-$ARCH
+RUN /root/ldid/ldid -S /cli/bin/edge-macos-$ARCH
 
 # Copy binaries to empty image, being sure to
 # rename win to windows for consistency
 FROM alpine:latest
+ARG ARCH=x64
 RUN apk add bash
-COPY --from=build /cli/bin/edge-linux-x64 /cli/bin/edge-linux-x64
-COPY --from=build /cli/bin/edge-linux-arm64 /cli/bin/edge-linux-arm64
-COPY --from=build /cli/bin/edge-win-x64.exe /cli/bin/edge-windows-x64.exe
-COPY --from=ldid /cli/bin/edge-macos-x64 /cli/bin/edge-macos-x64
-COPY --from=ldid /cli/bin/edge-macos-arm64 /cli/bin/edge-macos-arm64
+COPY --from=build /cli/bin/edge-linux-$ARCH /cli/bin/edge-linux-$ARCH
+COPY --from=build /cli/bin/edge-win-$ARCH.exe /cli/bin/edge-windows-$ARCH.exe
+COPY --from=ldid /cli/bin/edge-macos-$ARCH /cli/bin/edge-macos-$ARCH
 COPY ./entrypoint.sh ./entrypoint.sh
 CMD ["bash", "./entrypoint.sh"]
