@@ -42,7 +42,6 @@ pipeline {
     label 'remote'
   }
   stages {
-
     stage('Check version') {
       steps {
         script {
@@ -59,15 +58,38 @@ pipeline {
     }
 
     stage('Build') {
+      failFast true
       when {
         expression {
           !skipRemainingStages
         }
       }
-      steps {
-        script {
-          def buildArgs = "--build-arg NETWORK=$NETWORK --build-arg NODE=$NODE"
-          buildAndPushImage(REGISTRY, REGISTRY_CREDENTIAL, NAME, buildArgs)
+      parallel {
+        stage('x64') {
+          agent {
+            label 'arch-x64'
+          }
+          steps {
+            script {
+              sh 'uname -a'
+              sh 'uptime'
+              // def buildArgs = "--build-arg NETWORK=$NETWORK --build-arg NODE=$NODE --build-arg ARCH=x64"
+              // buildAndPushImage(REGISTRY, REGISTRY_CREDENTIAL, NAME, buildArgs)
+            }
+          }
+        }
+        stage('arm64') {
+          agent {
+            label 'arch-arm64'
+          }
+          steps {
+            script {
+              sh 'uname -a'
+              sh 'uptime'
+              // def buildArgs = "--build-arg NETWORK=$NETWORK --build-arg NODE=$NODE --build-arg ARCH=arm64"
+              // buildAndPushImage(REGISTRY, REGISTRY_CREDENTIAL, NAME, buildArgs)
+            }
+          }
         }
       }
     }
