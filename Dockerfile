@@ -38,7 +38,7 @@ RUN npx pkg out/src/main-$NETWORK.js \
   --debug
 
 # Sign MacOS binaries
-FROM registry.edge.network/edge/alpine-ldid AS ldid
+FROM registry.edge.network/internal/alpine-ldid-$ARCH AS ldid
 COPY --from=build /cli/bin/edge-macos /cli/bin/edge-macos
 RUN /root/ldid/ldid -S /cli/bin/edge-macos
 
