@@ -31,15 +31,7 @@ def deployScript() {
     --env NETWORK=$NETWORK \
     --env VERSION=$VERSION \
     --volume fileserver-data:/mnt/fileserver \
-    $REGISTRY/internal/cli-x64
-
-  # Transfer arm64 binaries from image to volume
-  docker run \
-    --rm \
-    --env NETWORK=$NETWORK \
-    --env VERSION=$VERSION \
-    --volume fileserver-data:/mnt/fileserver \
-    $REGISTRY/internal/cli-arm64
+    $REGISTRY/internal/cli-packaged
   ''')
 }
 
