@@ -4,6 +4,8 @@
 
 FROM alpine:latest
 
+ARG REGISTRY
+
 RUN apk add bash
 
 COPY --from=$REGISTRY/internal/cli-x64 /cli/bin/edge-linux /cli/bin/edge-linux-x64
