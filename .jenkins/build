@@ -93,7 +93,7 @@ pipeline {
 
     stage('Package') {
       agent {
-        label 'arch-arm64'
+        label 'local'
       }
       when {
         expression {
