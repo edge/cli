@@ -5,11 +5,11 @@
 
 @Library('semver-compare-lib@1.0.0') _
 
-def buildAndPushImage(registry, registryCredential, tag, args) {
-  docker.withRegistry("https://$registry", registryCredential) {
-    def image = docker.build("$registry/$tag", "$args .")
+def buildAndPushImage(registryCredential, tag, args) {
+  docker.withRegistry("https://registry.edge.network", registryCredential) {
+    def image = docker.build("registry.edge.network/$tag", "$args .")
     image.push()
-    return "$registry/$tag"
+    return "registry.edge.network/$tag"
   }
 }
 
@@ -31,7 +31,7 @@ def deployScript() {
     --env NETWORK=$NETWORK \
     --env VERSION=$VERSION \
     --volume fileserver-data:/mnt/fileserver \
-    $REGISTRY/internal/cli-packaged
+    registry.edge.network/internal/cli-packaged
   ''')
 }
 
@@ -73,7 +73,7 @@ pipeline {
           steps {
             script {
               def args = "--file .docker/build --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE --build-arg ARCH=x64"
-              buildAndPushImage(REGISTRY, REGISTRY_CREDENTIAL, "internal/cli-x64", args)
+              buildAndPushImage(REGISTRY_CREDENTIAL, "internal/cli-x64", args)
             }
           }
         }
@@ -84,7 +84,7 @@ pipeline {
           steps {
             script {
               def args = "--file .docker/build --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE --build-arg ARCH=arm64"
-              buildAndPushImage(REGISTRY, REGISTRY_CREDENTIAL, "internal/cli-arm64", args)
+              buildAndPushImage(REGISTRY_CREDENTIAL, "internal/cli-arm64", args)
             }
           }
         }
@@ -102,8 +102,8 @@ pipeline {
       }
       steps {
         script {
-          def args = "--file .docker/package --build-arg REGISTRY=$REGISTRY --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE"
-          buildAndPushImage(REGISTRY, REGISTRY_CREDENTIAL, "internal/cli-packaged", args)
+          def args = "--file .docker/package --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE"
+          buildAndPushImage(REGISTRY_CREDENTIAL, "internal/cli-packaged", args)
         }
       }
     }
@@ -127,7 +127,6 @@ pipeline {
             // Execute the script
             sh "$ssh 'echo $script | base64 -d > ${filename} && \
               chmod +x ${filename} && \
-              REGISTRY=$REGISTRY \
               NETWORK=$NETWORK \
               VERSION=$version \
                 bash -x ./${filename} && \

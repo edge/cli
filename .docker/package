@@ -8,13 +8,13 @@ ARG REGISTRY
 
 RUN apk add bash
 
-COPY --from=$REGISTRY/internal/cli-x64 /cli/bin/edge-linux /cli/bin/edge-linux-x64
-COPY --from=$REGISTRY/internal/cli-x64 /cli/bin/edge-win.exe /cli/bin/edge-windows-x64.exe
-COPY --from=$REGISTRY/internal/cli-x64 /cli/bin/edge-macos /cli/bin/edge-macos-x64
+COPY --from=registry.edge.network/internal/cli-x64 /cli/bin/edge-linux /cli/bin/edge-linux-x64
+COPY --from=registry.edge.network/internal/cli-x64 /cli/bin/edge-win.exe /cli/bin/edge-windows-x64.exe
+COPY --from=registry.edge.network/internal/cli-x64 /cli/bin/edge-macos /cli/bin/edge-macos-x64
 
-COPY --from=$REGISTRY/internal/cli-arm64 /cli/bin/edge-linux /cli/bin/edge-linux-arm64
-COPY --from=$REGISTRY/internal/cli-arm64 /cli/bin/edge-win.exe /cli/bin/edge-windows-arm64.exe
-COPY --from=$REGISTRY/internal/cli-arm64 /cli/bin/edge-macos /cli/bin/edge-macos-arm64
+COPY --from=registry.edge.network/internal/cli-arm64 /cli/bin/edge-linux /cli/bin/edge-linux-arm64
+COPY --from=registry.edge.network/internal/cli-arm64 /cli/bin/edge-win.exe /cli/bin/edge-windows-arm64.exe
+COPY --from=registry.edge.network/internal/cli-arm64 /cli/bin/edge-macos /cli/bin/edge-macos-arm64
 
 RUN ls -al /cli/bin
 

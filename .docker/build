@@ -34,7 +34,7 @@ COPY .eslint* ./
 RUN npm run lint && npm run test
 RUN npm run $NETWORK:build:src
 
-# Using pkg build packages for all platforms and architectures
+# Using pkg build packages
 RUN npx pkg out/src/main-$NETWORK.js \
   --target $NODE-linux-$ARCH,$NODE-macos-$ARCH,$NODE-win-$ARCH \
   --output /cli/bin/edge
