@@ -37,21 +37,20 @@ RUN npx pkg out/src/main-$NETWORK.js \
   --output /cli/bin/edge \
   --debug
 
-RUN ls -al /cli/bin
-
 # Sign MacOS binaries
 FROM registry.edge.network/edge/alpine-ldid AS ldid
-ARG ARCH=x64
-COPY --from=build /cli/bin/edge-macos-$ARCH /cli/bin/edge-macos-$ARCH
-RUN /root/ldid/ldid -S /cli/bin/edge-macos-$ARCH
+COPY --from=build /cli/bin/edge-macos /cli/bin/edge-macos
+RUN /root/ldid/ldid -S /cli/bin/edge-macos
 
 # Copy binaries to empty image, being sure to
 # rename win to windows for consistency
 FROM alpine:latest
 ARG ARCH=x64
+ENV ARCH
 RUN apk add bash
-COPY --from=build /cli/bin/edge-linux-$ARCH /cli/bin/edge-linux-$ARCH
-COPY --from=build /cli/bin/edge-win-$ARCH.exe /cli/bin/edge-windows-$ARCH.exe
-COPY --from=ldid /cli/bin/edge-macos-$ARCH /cli/bin/edge-macos-$ARCH
+COPY --from=build /cli/bin/edge-linux /cli/bin/edge-linux
+COPY --from=build /cli/bin/edge-win.exe /cli/bin/edge-windows.exe
+COPY --from=ldid /cli/bin/edge-macos /cli/bin/edge-macos
 COPY ./entrypoint.sh ./entrypoint.sh
+RUN env
 CMD ["bash", "./entrypoint.sh"]
