@@ -9,6 +9,7 @@ FROM node:lts AS build
 
 WORKDIR /cli
 
+ARG ARCH=x64
 ARG NETWORK=mainnet
 ARG NODE=node14
 
@@ -47,6 +48,7 @@ RUN /root/ldid/ldid -S /cli/bin/edge-macos
 # Copy binaries to empty image, being sure to
 # rename win to windows for consistency
 FROM alpine:latest
+ARG ARCH=x64
 ENV ARCH=$ARCH
 RUN apk add bash
 COPY --from=build /cli/bin/edge-linux /cli/bin/edge-linux
