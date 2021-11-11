@@ -18,5 +18,5 @@ COPY --from=registry.edge.network/internal/cli-arm64 /cli/bin/edge-macos /cli/bi
 
 RUN ls -al /cli/bin
 
-# COPY ./entrypoint.sh ./entrypoint.sh
-# CMD ["bash", "./entrypoint.sh"]
+COPY ./unpack.sh ./unpack.sh
+CMD ["bash", "./unpack.sh"]
