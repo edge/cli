@@ -46,7 +46,7 @@ RUN /root/ldid/ldid -S /cli/bin/edge-macos
 # rename win to windows for consistency
 FROM alpine:latest
 ARG ARCH=x64
-ENV ARCH
+ENV ARCH=$ARCH
 RUN apk add bash
 COPY --from=build /cli/bin/edge-linux /cli/bin/edge-linux
 COPY --from=build /cli/bin/edge-win.exe /cli/bin/edge-windows.exe
