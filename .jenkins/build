@@ -5,9 +5,9 @@
 
 @Library('semver-compare-lib@1.0.0') _
 
-def buildAndPushImage(registry, registryCredential, tag, buildArgs) {
+def buildAndPushImage(registry, registryCredential, tag, buildArgs, context) {
   docker.withRegistry("https://$registry", registryCredential) {
-    def image = docker.build("$registry/$tag", "$buildArgs .")
+    def image = docker.build("$registry/$tag", "$buildArgs $context")
     image.push()
     return "$registry/$tag"
   }
@@ -81,7 +81,7 @@ pipeline {
           steps {
             script {
               def buildArgs = "--build-arg NETWORK=$NETWORK --build-arg NODE=$NODE --build-arg ARCH=x64"
-              buildAndPushImage(REGISTRY, REGISTRY_CREDENTIAL, "internal/cli-x64", buildArgs)
+              buildAndPushImage(REGISTRY, REGISTRY_CREDENTIAL, "internal/cli-x64", buildArgs, ".jenkins/build")
             }
           }
         }
@@ -92,9 +92,26 @@ pipeline {
           steps {
             script {
               def buildArgs = "--build-arg NETWORK=$NETWORK --build-arg NODE=$NODE --build-arg ARCH=arm64"
-              buildAndPushImage(REGISTRY, REGISTRY_CREDENTIAL, "internal/cli-arm64", buildArgs)
+              buildAndPushImage(REGISTRY, REGISTRY_CREDENTIAL, "internal/cli-arm64", buildArgs, ".jenkins/build")
             }
           }
+        }
+      }
+    }
+
+    stage('Package') {
+      agent {
+        label 'arch-arm64'
+      }
+      when {
+        expression {
+          !skipRemainingStages
+        }
+      }
+      steps {
+        script {
+          def buildArgs = "--build-arg NETWORK=$NETWORK --build-arg NODE=$NODE"
+          buildAndPushImage(REGISTRY, REGISTRY_CREDENTIAL, "internal/cli-packaged", buildArgs, ".jenkins/package")
         }
       }
     }
