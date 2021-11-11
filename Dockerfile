@@ -3,7 +3,7 @@
 # that can be found in the LICENSE.md file. All rights reserved.
 
 ARG ARCH=x64
-ARG LDID_IMAGE="registry.edge.network/internal/alpine-ldid-$ARCH"
+ARG LDID_IMAGE=registry.edge.network/internal/alpine-ldid-$ARCH
 
 FROM node:lts AS build
 
