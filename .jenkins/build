@@ -22,8 +22,7 @@ def deployScript() {
   #!/bin/bash
 
   # Pull the latest version
-  docker pull registry.edge.network/internal/cli-x64
-  docker pull registry.edge.network/internal/cli-arm64
+  docker pull registry.edge.network/internal/cli-packaged
 
   # Transfer x64 binaries from image to volume
   docker run \
