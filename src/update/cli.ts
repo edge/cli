@@ -100,8 +100,14 @@ const updateAction = (network: Network, argv: string[]) => async (): Promise<voi
 
   const selfPath = argv[0]
   if (/node$/.test(selfPath)) throw new Error('path to binary appears to be node path')
+
+  console.log('downloading file')
   const { file } = await download(network)
+
+  console.log('chmoding file')
   chmodSync(file, 0o755)
+
+  console.log('replacing current file with new')
   copyFileSync(file, selfPath)
 
   console.log(`Updated Edge CLI to ${latest}`)
