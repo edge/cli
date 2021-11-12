@@ -101,7 +101,7 @@ pipeline {
       }
       steps {
         script {
-          def args = "--file .ci/docker/package --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE"
+          def args = "--no-cache --file .ci/docker/package --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE"
           buildAndPushImage(REGISTRY_CREDENTIAL, "internal/cli-packaged", args)
         }
       }
