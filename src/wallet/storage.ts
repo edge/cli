@@ -65,7 +65,7 @@ export const readWallet = async (file: string): Promise<FileWallet> => {
 
 export const writeWallet = async (file: string, wallet: FileWallet): Promise<void> => {
   try {
-    prepareDirectory(file)
+    await prepareDirectory(file)
     const data = JSON.stringify(wallet)
     await new Promise<void>((resolve, reject) => writeFile(file, data, err => {
       if (err !== null) return reject(err)
