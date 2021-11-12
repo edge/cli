@@ -82,7 +82,7 @@ pipeline {
           }
           steps {
             script {
-              def args = "--file .ci/docker/build --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE --build-arg ARCH=arm64"
+              def args = "--no-cache --file .ci/docker/build --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE --build-arg ARCH=arm64"
               buildAndPushImage(REGISTRY_CREDENTIAL, "internal/cli-arm64", args)
             }
           }
