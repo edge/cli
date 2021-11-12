@@ -1,0 +1,19 @@
+# Copyright (C) 2021 Edge Network Technologies Limited
+# Use of this source code is governed by a GNU GPL-style license
+# that can be found in the LICENSE.md file. All rights reserved.
+
+FROM alpine:latest
+RUN apk add bash
+
+# Copy the x64 files from the x64 image
+COPY --from=registry.edge.network/internal/cli-x64 /cli/bin/edge-linux /cli/bin/edge-linux-x64
+COPY --from=registry.edge.network/internal/cli-x64 /cli/bin/edge-windows.exe /cli/bin/edge-windows-x64.exe
+COPY --from=registry.edge.network/internal/cli-x64 /cli/bin/edge-macos /cli/bin/edge-macos-x64
+
+# Copy the arm64 files from the arm64 image
+COPY --from=registry.edge.network/internal/cli-arm64 /cli/bin/edge-linux /cli/bin/edge-linux-arm64
+COPY --from=registry.edge.network/internal/cli-arm64 /cli/bin/edge-windows.exe /cli/bin/edge-windows-arm64.exe
+COPY --from=registry.edge.network/internal/cli-arm64 /cli/bin/edge-macos /cli/bin/edge-macos-arm64
+
+COPY .ci/docker/unpack.sh ./unpack.sh
+CMD ["bash", "./unpack.sh"]

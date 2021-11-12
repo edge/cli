@@ -1,0 +1,45 @@
+{
+  "name": "@edge/cli",
+  "version": "1.0.0",
+  "description": "Command line interface for the Edge network",
+  "private": true,
+  "author": "Edge Network <core@edge.network>",
+  "contributors": [
+    "Aneurin \"Anny\" Barker Snook <aneurin@edge.network>",
+    "Adam K Dean <adam@edge.network>"
+  ],
+  "license": "SEE LICENSE IN LICENSE.md",
+  "scripts": {
+    "mainnet:build": "npm run mainnet:build:src && npm run mainnet:build:executable",
+    "mainnet:build:src": "tsc",
+    "mainnet:build:executable": "pkg out/src/main-mainnet.js -t host --output bin/edge",
+    "testnet:build": "npm run testnet:build:src && npm run testnet:build:executable",
+    "testnet:build:src": "tsc",
+    "testnet:build:executable": "pkg out/src/main-testnet.js -t host --output bin/edgetest",
+    "testnet:dev": "ts-node src/main-testnet.ts",
+    "testnet:dev:from-src": "node out/src/main-testnet.js",
+    "lint": "eslint --ext .ts src",
+    "lint:fix": "eslint --fix --ext .ts src",
+    "test": "echo \"Error: no test specified\""
+  },
+  "devDependencies": {
+    "@edge/eslint-config-typescript": "^0.1.0",
+    "@types/node": "^16.7.2",
+    "@types/semver": "^7.3.9",
+    "@types/superagent": "^4.1.13",
+    "@typescript-eslint/eslint-plugin": "^4.29.3",
+    "@typescript-eslint/parser": "^4.29.3",
+    "eslint": "^7.32.0",
+    "pkg": "^5.3.1",
+    "ts-node": "^10.2.1",
+    "typescript": "^4.4.2"
+  },
+  "dependencies": {
+    "@edge/index-utils": "^0.1.0",
+    "@edge/xe-utils": "^1.0.1",
+    "chalk": "^4.1.2",
+    "commander": "^8.1.0",
+    "semver": "^7.3.5",
+    "superagent": "^6.1.0"
+  }
+}

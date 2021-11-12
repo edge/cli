@@ -1,0 +1,84 @@
+name: Check PR to develop
+
+on:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - .github/workflows/pr-develop.yml
+      - package-lock.json
+      - package.json
+      - src/**
+      - tsconfig.json
+
+jobs:
+  install:
+    name: Install dependencies
+    runs-on: ubuntu-latest
+    container:
+      image: docker://node:14
+      volumes:
+        - ${{ github.workspace }}:/build
+      options: --workdir /build
+    steps:
+      # checkout
+      - name: Checkout code
+        uses: actions/checkout@v2
+      # initialize node cache
+      - name: Cache node_modules
+        uses: actions/cache@v2
+        with:
+          path: ${{ github.workspace }}/node_modules
+          key: ${{ runner.os }}-${{ secrets.BUILD_CACHE_ID }}-node_modules-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-${{ secrets.BUILD_CACHE_ID }}-node_modules-
+      # npm install
+      - name: Install dependencies
+        run: npm i
+
+  lint:
+    name: Run linting
+    needs: install
+    runs-on: ubuntu-latest
+    container:
+      image: docker://node:14
+      volumes:
+        - ${{ github.workspace }}:/build
+      options: --workdir /build
+    steps:
+      # checkout
+      - name: Checkout code
+        uses: actions/checkout@v2
+      # initialize cache
+      - name: Cache node_modules
+        uses: actions/cache@v2
+        with:
+          path: ${{ github.workspace }}/node_modules
+          key: ${{ runner.os }}-${{ secrets.BUILD_CACHE_ID }}-node_modules-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-${{ secrets.BUILD_CACHE_ID }}-node_modules-
+      # lint
+      - name: Run linting
+        run: npx eslint --ext .ts src
+
+  test:
+    name: Run tests
+    needs: install
+    runs-on: ubuntu-latest
+    container:
+      image: docker://node:14
+      volumes:
+        - ${{ github.workspace }}:/build
+      options: --workdir /build
+    steps:
+      # checkout
+      - name: Checkout code
+        uses: actions/checkout@v2
+      # restore node cache
+      - name: Cache node_modules
+        uses: actions/cache@v2
+        with:
+          path: ${{ github.workspace }}/node_modules
+          key: ${{ runner.os }}-${{ secrets.BUILD_CACHE_ID }}-node_modules-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-${{ secrets.BUILD_CACHE_ID }}-node_modules-
+      # test
+      - name: Run tests
+        run: npm run test
