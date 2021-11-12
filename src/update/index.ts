@@ -26,7 +26,7 @@ export type VersionStatus = {
 
 const calcDigest = async (file: string): Promise<string> => {
   const data = await new Promise<Buffer>((resolve) => {
-    const s = createReadStream(file, { encoding: 'binary' })
+    const s = createReadStream(file)
     const chunks: string[] = []
     s.on('readable', () => {
       let chunk
