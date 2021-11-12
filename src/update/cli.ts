@@ -101,10 +101,10 @@ const updateAction = (network: Network, argv: string[]) => async (): Promise<voi
   const selfPath = argv[0]
   if (/node$/.test(selfPath)) throw new Error('path to binary appears to be node path')
 
-  console.log(`- Downloading v${latest}`)
+  console.log(`Downloading v${latest}`)
   const { file } = await download(network)
 
-  console.log(`- Updating from v${pkg.version} to v${latest}`)
+  console.log(`Updating from v${pkg.version} to v${latest}`)
   chmodSync(file, 0o755)
   unlinkSync(selfPath)
   copyFileSync(file, selfPath)

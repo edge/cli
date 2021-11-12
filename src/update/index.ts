@@ -23,20 +23,13 @@ export type VersionStatus = {
 }
 
 const calcDigest = async (file: string): Promise<string> => new Promise<string>((resolve, reject) => {
-  console.log('calculating digest for', file)
   readFile(file, (err, data) => {
-    if (err) {
-      console.log('error calculating digest', err)
-      return reject(err)
-    }
-    const hash = createHash('sha256').update(data).digest('hex')
-    console.log('hash calculated:', hash)
-    resolve(hash)
+    if (err) return reject(err)
+    resolve(createHash('sha256').update(data).digest('hex'))
   })
 })
 
 const downloadURL = async (url: string, file: string) => new Promise<void>((resolve, reject) => {
-  console.log('downloading', url, 'to', file)
   const stream = createWriteStream(file)
   const request = superagent.get(url)
   request.pipe(stream)
