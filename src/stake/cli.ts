@@ -52,7 +52,7 @@ const createAction = (parent: Command, createCmd: Command, network: Network) => 
   if (!stakeTypes.includes(stakeType)) throw new Error(`invalid stake type "${stakeType}"`)
 
   const opts = {
-    ...walletCLI.getWalletOption(parent),
+    ...walletCLI.getWalletOption(parent, network),
     ...walletCLI.getPassphraseOption(createCmd),
     ...(() => {
       const { yes } = createCmd.opts<{ yes: boolean }>()
@@ -149,7 +149,7 @@ const infoAction = (infoCmd: Command, network: Network) => async () => {
 
 const listAction = (parent: Command, listCmd: Command, network: Network) => async () => {
   const opts = {
-    ...walletCLI.getWalletOption(parent),
+    ...walletCLI.getWalletOption(parent, network),
     ...getJsonOption(listCmd)
   }
 
@@ -171,7 +171,7 @@ const listAction = (parent: Command, listCmd: Command, network: Network) => asyn
 
 const releaseAction = (parent: Command, releaseCmd: Command, network: Network) => async (id: string) => {
   const opts = {
-    ...walletCLI.getWalletOption(parent),
+    ...walletCLI.getWalletOption(parent, network),
     ...walletCLI.getPassphraseOption(releaseCmd),
     ...(() => {
       const { express, yes } = releaseCmd.opts<{ express: boolean, yes: boolean }>()
@@ -278,7 +278,7 @@ const releaseHelp = [
 
 const unlockAction = (parent: Command, unlockCmd: Command, network: Network) => async (id: string) => {
   const opts = {
-    ...walletCLI.getWalletOption(parent),
+    ...walletCLI.getWalletOption(parent, network),
     ...walletCLI.getPassphraseOption(unlockCmd),
     ...(() => {
       const { yes } = unlockCmd.opts<{ yes: boolean }>()

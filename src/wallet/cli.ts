@@ -9,7 +9,7 @@ import { errorHandler } from '../edge/cli'
 import { formatXE } from '../transaction/xe'
 import { Command, Option } from 'commander'
 import { ask, askSecure } from '../input'
-import { decryptFileWallet, defaultFile, readWallet, withFile } from './storage'
+import { decryptFileWallet, readWallet, withFile } from './storage'
 import { readFileSync, unlink, writeFileSync } from 'fs'
 
 export type PassphraseOption = {
@@ -25,7 +25,7 @@ export type WalletOption = {
 }
 
 const balanceAction = (parent: Command, network: Network) => async () => {
-  const opts = getWalletOption(parent)
+  const opts = getWalletOption(parent, network)
   const { address } = await readWallet(opts.wallet)
 
   const { balance } = await xe.wallet.info(network.blockchain.baseURL, address)
@@ -34,9 +34,9 @@ const balanceAction = (parent: Command, network: Network) => async () => {
   console.log(`Balance: ${formatXE(balance)}`)
 }
 
-const createAction = (parent: Command, createCmd: Command) => async () => {
+const createAction = (parent: Command, createCmd: Command, network: Network) => async () => {
   const opts = {
-    ...getWalletOption(parent),
+    ...getWalletOption(parent, network),
     ...getPassphraseOption(createCmd),
     ...(() => {
       const { privateKeyFile, overwrite } = createCmd.opts<{
@@ -126,9 +126,9 @@ const createHelp = [
   'This should be copied to a secure location and kept secret.'
 ].join('')
 
-const infoAction = (parent: Command, infoCmd: Command) => async () => {
+const infoAction = (parent: Command, infoCmd: Command, network: Network) => async () => {
   const opts = {
-    ...getWalletOption(parent),
+    ...getWalletOption(parent, network),
     ...getPassphraseOption(infoCmd)
   }
 
@@ -152,9 +152,9 @@ const infoHelp = [
   'If a passphrase is provided, this command will also decrypt and display your private key.'
 ].join('')
 
-const forgetAction = (parent: Command, forgetCmd: Command) => async () => {
+const forgetAction = (parent: Command, forgetCmd: Command, network: Network) => async () => {
   const opts = {
-    ...getWalletOption(parent),
+    ...getWalletOption(parent, network),
     ...(() => {
       const { yes } = forgetCmd.opts<{ yes: boolean }>()
       return { yes }
@@ -194,9 +194,9 @@ const forgetHelp = [
   'This command deletes your wallet from disk.'
 ].join('')
 
-const restoreAction = (parent: Command, restoreCmd: Command) => async () => {
+const restoreAction = (parent: Command, restoreCmd: Command, network: Network) => async () => {
   const opts = {
-    ...getWalletOption(parent),
+    ...getWalletOption(parent, network),
     ...(() => {
       const { overwrite } = restoreCmd.opts<{ overwrite: boolean }>()
       return { overwrite }
@@ -277,10 +277,9 @@ export const getPrivateKeyOption = (cmd: Command): PrivateKeyOption => {
   return {}
 }
 
-export const getWalletOption = (parent: Command): WalletOption => {
+export const getWalletOption = (parent: Command, network: Network): WalletOption => {
   const { wallet } = parent.opts<Partial<WalletOption>>()
-  if (wallet && wallet.length) return { wallet }
-  return { wallet: defaultFile() }
+  return { wallet: wallet || network.wallet.defaultFile }
 }
 
 export const privateKeyOption = (): Option => new Option('-k, --private-key <string>', 'wallet private key')
@@ -327,7 +326,7 @@ export const withProgram = (parent: Command, network: Network): void => {
       checkVersionHandler(
         parent,
         network,
-        createAction(parent, create)
+        createAction(parent, create, network)
       )
     )
   )
@@ -343,7 +342,7 @@ export const withProgram = (parent: Command, network: Network): void => {
       checkVersionHandler(
         parent,
         network,
-        forgetAction(parent, forget)
+        forgetAction(parent, forget, network)
       )
     )
   )
@@ -360,7 +359,7 @@ export const withProgram = (parent: Command, network: Network): void => {
       checkVersionHandler(
         parent,
         network,
-        infoAction(parent, info)
+        infoAction(parent, info, network)
       )
     )
   )
@@ -380,7 +379,7 @@ export const withProgram = (parent: Command, network: Network): void => {
       checkVersionHandler(
         parent,
         network,
-        restoreAction(parent, restore)
+        restoreAction(parent, restore, network)
       )
     )
   )

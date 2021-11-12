@@ -73,7 +73,7 @@ const getListOptions = (listCmd: Command) => {
 
 const listAction = (parent: Command, listCmd: Command, network: Network) => async () => {
   const opts = {
-    ...walletCLI.getWalletOption(parent),
+    ...walletCLI.getWalletOption(parent, network),
     ...getJsonOption(listCmd),
     ...getListOptions(listCmd)
   }
@@ -113,7 +113,7 @@ const listHelp = [
 
 const listPendingAction = (parent: Command, listPendingCmd: Command, network: Network) => async () => {
   const opts = {
-    ...walletCLI.getWalletOption(parent),
+    ...walletCLI.getWalletOption(parent, network),
     ...getJsonOption(listPendingCmd)
   }
 
@@ -145,7 +145,7 @@ const listPendingHelp = [
 // eslint-disable-next-line max-len
 const sendAction = (parent: Command, sendCmd: Command, network: Network) => async (amountInput: string, recipient: string) => {
   const opts = {
-    ...walletCLI.getWalletOption(parent),
+    ...walletCLI.getWalletOption(parent, network),
     ...walletCLI.getPassphraseOption(sendCmd),
     ...(() => {
       const { memo, yes } = sendCmd.opts<{ memo?: string, yes: boolean }>()
