@@ -71,7 +71,7 @@ pipeline {
           }
           steps {
             script {
-              def args = "--file .docker/build --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE --build-arg ARCH=x64"
+              def args = "--file .ci/docker/build --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE --build-arg ARCH=x64"
               buildAndPushImage(REGISTRY_CREDENTIAL, "internal/cli-x64", args)
             }
           }
@@ -82,7 +82,7 @@ pipeline {
           }
           steps {
             script {
-              def args = "--file .docker/build --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE --build-arg ARCH=arm64"
+              def args = "--file .ci/docker/build --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE --build-arg ARCH=arm64"
               buildAndPushImage(REGISTRY_CREDENTIAL, "internal/cli-arm64", args)
             }
           }
@@ -101,7 +101,7 @@ pipeline {
       }
       steps {
         script {
-          def args = "--file .docker/package --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE"
+          def args = "--file .ci/docker/package --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE"
           buildAndPushImage(REGISTRY_CREDENTIAL, "internal/cli-packaged", args)
         }
       }
