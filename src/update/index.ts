@@ -26,6 +26,7 @@ export type VersionStatus = {
 }
 
 const calcDigest = async (file: string): Promise<string> => new Promise<string>((resolve, reject) => {
+  console.log('calculating digest for', file)
   fs.readFile(file, (err, data) => {
     if (err) return reject(err)
     resolve(createHash('sha256').update(data).digest('hex'))
