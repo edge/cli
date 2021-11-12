@@ -4,6 +4,7 @@
 
 import { Network } from '../main'
 import { createHash } from 'crypto'
+import fs from 'fs'
 import http from 'http'
 import https from 'https'
 import path from 'path'
@@ -11,7 +12,7 @@ import pkg from '../../package.json'
 import superagent from 'superagent'
 import { SemVer, parse } from 'semver'
 import { arch, platform, tmpdir } from 'os'
-import { createReadStream, createWriteStream, mkdtempSync } from 'fs'
+import { createWriteStream, mkdtempSync } from 'fs'
 
 export type DownloadInfo = {
   checksum: string
@@ -24,21 +25,12 @@ export type VersionStatus = {
   requireUpdate: boolean
 }
 
-const calcDigest = async (file: string): Promise<string> => {
-  const data = await new Promise<Buffer>((resolve) => {
-    const s = createReadStream(file)
-    const chunks: string[] = []
-    s.on('readable', () => {
-      let chunk
-      while (null !== (chunk = s.read())) chunks.push(chunk)
-    })
-    s.on('end', () => {
-      s.close()
-      resolve(Buffer.from(chunks.join(''), 'binary'))
-    })
+const calcDigest = async (file: string): Promise<string> => new Promise<string>((resolve, reject) => {
+  fs.readFile(file, (err, data) => {
+    if (err) return reject(err)
+    resolve(createHash('sha256').update(data).digest('hex'))
   })
-  return createHash('sha256').update(data).digest().toString('hex').trim()
-}
+})
 
 const downloadURL = async (url: string, file: string) => new Promise<void>((resolve, reject) => {
   const s = createWriteStream(file, { encoding: 'binary' })
