@@ -4,15 +4,12 @@
 
 import { Network } from '../main'
 import { createHash } from 'crypto'
-import fs from 'fs'
-import http from 'http'
-import https from 'https'
 import path from 'path'
 import pkg from '../../package.json'
 import superagent from 'superagent'
 import { SemVer, parse } from 'semver'
 import { arch, platform, tmpdir } from 'os'
-import { createWriteStream, mkdtempSync } from 'fs'
+import { createWriteStream, mkdtempSync, readFile } from 'fs'
 
 export type DownloadInfo = {
   checksum: string
@@ -27,33 +24,19 @@ export type VersionStatus = {
 
 const calcDigest = async (file: string): Promise<string> => new Promise<string>((resolve, reject) => {
   console.log('calculating digest for', file)
-  fs.readFile(file, (err, data) => {
+  readFile(file, (err, data) => {
     if (err) return reject(err)
     resolve(createHash('sha256').update(data).digest('hex'))
   })
 })
 
 const downloadURL = async (url: string, file: string) => new Promise<void>((resolve, reject) => {
-  const s = createWriteStream(file, { encoding: 'binary' })
-  let req
-  if (url.slice(0, 5) === 'https') {
-    req = https.get(url, res => {
-      res.pipe(s)
-    })
-  }
-  else {
-    req = http.get(url, res => {
-      res.pipe(s)
-    })
-  }
-  req.on('error', () => {
-    s.close()
-    reject()
-  })
-  req.on('close', () => {
-    s.close()
-    resolve()
-  })
+  console.log('downloading', url, 'to', file)
+  const stream = createWriteStream(file)
+  const request = superagent.get(url)
+  request.pipe(stream)
+  request.on('end', () => resolve())
+  request.on('error', reject)
 })
 
 export const download = async (network: Network): Promise<DownloadInfo> => {
