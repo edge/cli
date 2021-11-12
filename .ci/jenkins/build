@@ -72,7 +72,7 @@ pipeline {
           steps {
             script {
               def args = "--file .ci/docker/build --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE --build-arg ARCH=x64"
-              buildAndPushImage(REGISTRY_CREDENTIAL, "internal/cli-x64", args)
+              buildAndPushImage(REGISTRY_CREDENTIAL, "internal/cli-x64:$NETWORK", args)
             }
           }
         }
@@ -83,7 +83,7 @@ pipeline {
           steps {
             script {
               def args = "--file .ci/docker/build --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE --build-arg ARCH=arm64"
-              buildAndPushImage(REGISTRY_CREDENTIAL, "internal/cli-arm64", args)
+              buildAndPushImage(REGISTRY_CREDENTIAL, "internal/cli-arm64:$NETWORK", args)
             }
           }
         }
@@ -102,11 +102,11 @@ pipeline {
       steps {
         script {
           // Ensure required images are up to date
-          sh 'docker pull registry.edge.network/internal/cli-x64'
-          sh 'docker pull registry.edge.network/internal/cli-arm64'
+          sh "docker pull registry.edge.network/internal/cli-x64:$NETWORK"
+          sh "docker pull registry.edge.network/internal/cli-arm64:$NETWORK"
 
           def args = "--no-cache --file .ci/docker/package --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE"
-          buildAndPushImage(REGISTRY_CREDENTIAL, "internal/cli-packaged", args)
+          buildAndPushImage(REGISTRY_CREDENTIAL, "internal/cli-packaged:$NETWORK", args)
         }
       }
     }
