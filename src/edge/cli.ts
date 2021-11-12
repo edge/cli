@@ -7,16 +7,20 @@ import { Command } from 'commander'
 import { Network } from '../main'
 import color from './color'
 import pkg from '../../package.json'
+import { toUpperCaseFirst } from '../helpers'
 
 export const create = (network: Network): Command => {
-  const cli = new Command('edge')
-    .version(pkg.version)
+  const name = network.name === 'testnet' ? 'edgetest' : 'edge'
+  const version = `Edge CLI v${pkg.version} (${toUpperCaseFirst(network.name)})`
+  const desc = `Edge CLI (${toUpperCaseFirst(network.name)})`
+
+  const cli = new Command(name)
+    .version(version)
+    .description(desc)
     .enablePositionalOptions(true)
     .option('--no-color', 'disable terminal text colors')
     .option('-v, --verbose', 'enable verbose error reporting')
 
-  if (network.name === 'testnet') cli.description('Edge CLI (Testnet)')
-  else cli.description('Edge CLI')
   return cli
 }
 

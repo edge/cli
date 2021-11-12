@@ -13,7 +13,7 @@ export const askToSignTx = async (opts: { passphrase?: string }): Promise<void> 
       'Please enter your passphrase to decrypt your private key, sign your transaction,',
       'and submit it to the blockchain.'
     )
-    console.log('For more information, see https://wiki.edge.network/TODO')
+    // console.log('For more information, see https://wiki.edge.network/TODO')
     console.log()
     const passphrase = await askSecure('Passphrase: ')
     if (passphrase.length === 0) throw new Error('passphrase required')
