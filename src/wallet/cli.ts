@@ -30,7 +30,7 @@ const balanceAction = (parent: Command, network: Network) => async () => {
 
   const { balance } = await xe.wallet.info(network.blockchain.baseURL, address)
 
-  console.log(`Wallet address: ${address}`)
+  console.log(`Address: ${address}`)
   console.log(`Balance: ${formatXE(balance)}`)
 }
 
