@@ -52,7 +52,7 @@ const createAction = (parent: Command, createCmd: Command) => async () => {
 
   if (!opts.passphrase) {
     console.log('To ensure your wallet is secure it will be encrypted locally using a passphrase.')
-    console.log('For more information, see https://wiki.edge.network/TODO')
+    // console.log('For more information, see https://wiki.edge.network/TODO')
     console.log()
     const passphrase = await askSecure('Please enter a passphrase: ')
     if (passphrase.length === 0) throw new Error('passphrase required')
@@ -218,7 +218,7 @@ const restoreAction = (parent: Command, restoreCmd: Command) => async () => {
 
   if (!opts.passphrase) {
     console.log('To ensure your wallet is secure it will be encrypted locally using a passphrase.')
-    console.log('For more information, see https://wiki.edge.network/TODO')
+    // console.log('For more information, see https://wiki.edge.network/TODO')
     console.log()
     const passphrase = await askSecure('Please enter a passphrase: ')
     if (passphrase.length === 0) throw new Error('passphrase required')
