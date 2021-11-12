@@ -22,7 +22,7 @@ def deployScript() {
   #!/bin/bash
 
   # Pull the latest version
-  docker pull registry.edge.network/internal/cli-packaged
+  docker pull registry.edge.network/internal/cli-packaged:$NETWORK
 
   # Transfer x64 binaries from image to volume
   docker run \
@@ -30,7 +30,7 @@ def deployScript() {
     --env NETWORK=$NETWORK \
     --env VERSION=$VERSION \
     --volume fileserver-data:/mnt/fileserver \
-    registry.edge.network/internal/cli-packaged
+    registry.edge.network/internal/cli-packaged$NETWORK
   ''')
 }
 
