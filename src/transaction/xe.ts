@@ -4,18 +4,11 @@
 
 import * as xe from '@edge/xe-utils'
 import { Network } from '../main'
+import { formatXe } from '@edge/wallet-utils'
 
 const xeAmountRegexp = /^(?<amount>\d+) ?(?<unit>m?xe)?$/i
 
-export const formatXE = (mxeAmount: number): string => {
-  const xeAmount = mxeAmount / 1e6
-  if (xeAmount < 1000) return `${xeAmount} XE`
-  const withSep = xeAmount.toString().split('').reverse().reduce((s, n, i) => {
-    if (i % 3 === 0 && i > 0) return `${n},${s}`
-    return `${n}${s}`
-  }, '')
-  return `${withSep} XE`
-}
+export const formatXE = (mxeAmount: number): string => formatXe(mxeAmount / 1e6, true) + ' XE'
 
 export const parseAmount = (input: string): number => {
   const match = input.match(xeAmountRegexp)

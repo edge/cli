@@ -2,10 +2,9 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-import os from 'os'
+import { dirname } from 'path'
 import { EncryptedWallet, Wallet, decryptWallet, encryptWallet } from './wallet'
 import { HashPair, compare, createSalt, hash } from './hash'
-import { dirname, sep } from 'path'
 import { mkdir, readFile, stat, writeFile } from 'fs'
 
 export type FileWallet = EncryptedWallet & {
@@ -35,8 +34,6 @@ export const createFileWallet = (wallet: Wallet, passphrase: string): FileWallet
   ...encryptWallet(wallet, passphrase),
   secret: hash(passphrase, createSalt())
 })
-
-export const defaultFile = (): string => `${os.homedir}${sep}.xe-wallet.json`
 
 export const decryptFileWallet = (wallet: FileWallet, passphrase: string): Wallet => {
   if (!compare(passphrase, wallet.secret)) throw new Error('invalid passphrase')
@@ -68,7 +65,7 @@ export const readWallet = async (file: string): Promise<FileWallet> => {
 
 export const writeWallet = async (file: string, wallet: FileWallet): Promise<void> => {
   try {
-    prepareDirectory(file)
+    await prepareDirectory(file)
     const data = JSON.stringify(wallet)
     await new Promise<void>((resolve, reject) => writeFile(file, data, err => {
       if (err !== null) return reject(err)

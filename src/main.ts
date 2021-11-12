@@ -25,6 +25,9 @@ export type Network = {
   index: {
     baseURL: string
   }
+  wallet: {
+    defaultFile: string
+  }
 }
 
 const main = (argv: string[], network: Network): void => {
