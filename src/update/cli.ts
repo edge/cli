@@ -8,6 +8,7 @@ import { SemVer } from 'semver'
 import color from '../edge/color'
 import path from 'path'
 import pkg from '../../package.json'
+import semver from 'semver'
 import { tmpdir } from 'os'
 import { VersionStatus, download, status } from '.'
 import { chmodSync, copyFileSync, readFileSync, renameSync, stat, unlinkSync, writeFileSync } from 'fs'
@@ -78,7 +79,9 @@ export const checkVersionHandler =
         }
       }
       if (vinfo !== undefined) {
-        if (vinfo.requireUpdate) {
+        const current = semver.parse(pkg.version)
+        if (current === null) throw new Error('Edge CLI version is invalid. Please update manually.')
+        if (current.compare(vinfo.latest) < 0) {
           let msgs = [
             `A new version of Edge CLI is available (${vinfo.latest}).`,
             'Please run \'edge update\' to update to the latest version.'
