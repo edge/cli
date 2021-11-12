@@ -10,7 +10,7 @@ import path from 'path'
 import pkg from '../../package.json'
 import { tmpdir } from 'os'
 import { VersionStatus, download, status } from '.'
-import { chmodSync, copyFileSync, readFileSync, stat, unlinkSync, writeFileSync } from 'fs'
+import { chmodSync, copyFileSync, readFileSync, renameSync, stat, unlinkSync, writeFileSync } from 'fs'
 import { errorHandler, getNoColorOption } from '../edge/cli'
 
 const checkAction = (network: Network) => async (): Promise<void> => {
@@ -99,15 +99,28 @@ const updateAction = (network: Network, argv: string[]) => async (): Promise<voi
   }
 
   const selfPath = argv[0]
+
   if (/node$/.test(selfPath)) throw new Error('path to binary appears to be node path')
 
   console.log(`Downloading v${latest}`)
   const { file } = await download(network)
+  const tmpFilename = `${path.dirname(file)}/tmp-${Date.now}`
 
+  // After downloading the file, we move the current binary to a temporary
+  // location, move the new file to the current binary location, and then
+  // attempt to remove the previous binary. This may fail on windows.
   console.log(`Updating from v${pkg.version} to v${latest}`)
   chmodSync(file, 0o755)
-  unlinkSync(selfPath)
+  renameSync(selfPath, tmpFilename)
   copyFileSync(file, selfPath)
+
+  // Try to remove file but ignore any errors.
+  try {
+    unlinkSync(tmpFilename)
+  }
+  catch (e) {
+    // Nothing to see here.
+  }
 
   console.log(`Updated Edge CLI to v${latest}`)
 }
