@@ -106,7 +106,7 @@ const createAction = (parent: Command, createCmd: Command, network: Network) => 
     amount,
     data: {
       action: 'create_stake',
-      memo: `Create ${toUpperCaseFirst(stakeType)} stake`
+      memo: `Create ${toUpperCaseFirst(stakeType)} Stake`
     },
     nonce: onChainWallet.nonce
   }, wallet.privateKey)
@@ -243,7 +243,7 @@ const releaseAction = (parent: Command, releaseCmd: Command, network: Network) =
 
   const data: xe.tx.TxData = {
     action: 'release_stake',
-    memo: 'Release stake',
+    memo: 'Release Stake',
     stake: stake.hash
   }
   if (needUnlock) data.express = true
@@ -335,7 +335,7 @@ const unlockAction = (parent: Command, unlockCmd: Command, network: Network) => 
     amount: 0,
     data: {
       action: 'unlock_stake',
-      memo: 'Unlock stake',
+      memo: 'Unlock Stake',
       stake: stake.hash
     },
     nonce: onChainWallet.nonce
