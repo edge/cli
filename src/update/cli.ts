@@ -9,7 +9,7 @@ import color from '../edge/color'
 import path from 'path'
 import { tmpdir } from 'os'
 import { VersionStatus, download, status } from '.'
-import { chmodSync, copyFileSync, readFileSync, stat, writeFileSync } from 'fs'
+import { chmodSync, copyFileSync, readFileSync, renameSync, stat, unlinkSync, writeFileSync } from 'fs'
 import { errorHandler, getNoColorOption } from '../edge/cli'
 
 const checkAction = (network: Network) => async (): Promise<void> => {
@@ -107,8 +107,14 @@ const updateAction = (network: Network, argv: string[]) => async (): Promise<voi
   console.log('chmoding file')
   chmodSync(file, 0o755)
 
+  console.log('renaming current file')
+  renameSync(selfPath, `${selfPath}.tmp`)
+
   console.log('replacing current file with new')
   copyFileSync(file, selfPath)
+
+  console.log('renaming old file')
+  unlinkSync(`${selfPath}.tmp`)
 
   console.log(`Updated Edge CLI to ${latest}`)
 }
