@@ -6,11 +6,11 @@ import * as xe from '@edge/xe-utils'
 import { Network } from '../main'
 import { checkVersionHandler } from '../update/cli'
 import { errorHandler } from '../edge/cli'
+import { formatXE } from '../transaction/xe'
 import { Command, Option } from 'commander'
 import { ask, askSecure } from '../input'
 import { decryptFileWallet, defaultFile, readWallet, withFile } from './storage'
 import { readFileSync, unlink, writeFileSync } from 'fs'
-import { formatXE } from '../transaction/xe'
 
 export type PassphraseOption = {
   passphrase?: string
