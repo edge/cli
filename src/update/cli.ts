@@ -7,9 +7,10 @@ import { Network } from '../main'
 import { SemVer } from 'semver'
 import color from '../edge/color'
 import path from 'path'
+import pkg from '../../package.json'
 import { tmpdir } from 'os'
 import { VersionStatus, download, status } from '.'
-import { chmodSync, copyFileSync, readFileSync, renameSync, stat, unlinkSync, writeFileSync } from 'fs'
+import { chmodSync, copyFileSync, readFileSync, stat, unlinkSync, writeFileSync } from 'fs'
 import { errorHandler, getNoColorOption } from '../edge/cli'
 
 const checkAction = (network: Network) => async (): Promise<void> => {
@@ -89,34 +90,26 @@ export const checkVersionHandler =
 
       return fresult
     }
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 const updateAction = (network: Network, argv: string[]) => async (): Promise<void> => {
   const { latest, requireUpdate } = await status(network)
   if (!requireUpdate) {
-    console.log('Edge CLI is up to date.')
+    console.log(`Edge CLI v${latest} is the latest version`)
     return
   }
 
   const selfPath = argv[0]
   if (/node$/.test(selfPath)) throw new Error('path to binary appears to be node path')
 
-  console.log('downloading file')
+  console.log(`- Downloading v${latest}`)
   const { file } = await download(network)
 
-  console.log('chmoding file')
+  console.log(`- Updating from v${pkg.version} to v${latest}`)
   chmodSync(file, 0o755)
-
-  console.log('renaming current file')
-  renameSync(selfPath, `${selfPath}.tmp`)
-
-  console.log('replacing current file with new')
+  unlinkSync(selfPath)
   copyFileSync(file, selfPath)
 
-  console.log('renaming old file')
-  unlinkSync(`${selfPath}.tmp`)
-
-  console.log(`Updated Edge CLI to ${latest}`)
+  console.log(`Updated Edge CLI to v${latest}`)
 }
 
 const updateHelp = [
