@@ -30,7 +30,7 @@ def deployScript() {
     --env NETWORK=$NETWORK \
     --env VERSION=$VERSION \
     --volume fileserver-data:/mnt/fileserver \
-    registry.edge.network/internal/cli-packaged$NETWORK
+    registry.edge.network/internal/cli-packaged:$NETWORK
   ''')
 }
 
