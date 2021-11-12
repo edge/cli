@@ -15,7 +15,7 @@ main() {
 
   # If network or version are not set, exit
   if [[ -z $NETWORK || -z $VERSION ]]; then
-    echo "Usage: NETWORK=<network> VERSION=<version> ./entrypoint.sh"
+    echo "Usage: NETWORK=<network> VERSION=<version> ./unpack.sh"
     exit 1
   fi
 

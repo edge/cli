@@ -5,6 +5,9 @@
 ARG ARCH=x64
 ARG LDID_IMAGE=registry.edge.network/internal/alpine-ldid-$ARCH
 
+#
+# Compile the binaries
+#
 FROM node:lts AS build
 
 WORKDIR /cli
@@ -39,16 +42,19 @@ RUN npx pkg out/src/main-$NETWORK.js \
   --target $NODE-linux-$ARCH,$NODE-macos-$ARCH,$NODE-win-$ARCH \
   --output /cli/bin/edge
 
-# Sign MacOS binaries
+#
+# Sign the MacOS binaries
+#
 FROM $LDID_IMAGE AS ldid
 COPY --from=build /cli/bin/edge-macos /cli/bin/edge-macos
 RUN /root/ldid/ldid -S /cli/bin/edge-macos
 
-# Copy binaries to empty image, being sure to
-# rename win to windows for consistency
+#
+# Copy the binaries to empty image, being sure
+# to rename win to windows for consistency
+#
 FROM alpine:latest
 RUN apk add bash
 COPY --from=build /cli/bin/edge-linux /cli/bin/edge-linux
 COPY --from=build /cli/bin/edge-win.exe /cli/bin/edge-windows.exe
 COPY --from=ldid /cli/bin/edge-macos /cli/bin/edge-macos
-RUN ls -al /cli/bin
