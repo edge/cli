@@ -10,6 +10,7 @@ import { Command, Option } from 'commander'
 import { ask, askSecure } from '../input'
 import { decryptFileWallet, defaultFile, readWallet, withFile } from './storage'
 import { readFileSync, unlink, writeFileSync } from 'fs'
+import { formatXE } from '../transaction/xe'
 
 export type PassphraseOption = {
   passphrase?: string
@@ -21,6 +22,16 @@ export type PrivateKeyOption = {
 
 export type WalletOption = {
   wallet: string
+}
+
+const balanceAction = (parent: Command, network: Network) => async () => {
+  const opts = getWalletOption(parent)
+  const { address } = await readWallet(opts.wallet)
+
+  const { balance } = await xe.wallet.info(network.blockchain.baseURL, address)
+
+  console.log(`Wallet address: ${address}`)
+  console.log(`Balance: ${formatXE(balance)}`)
 }
 
 const createAction = (parent: Command, createCmd: Command) => async () => {
@@ -288,6 +299,20 @@ export const withProgram = (parent: Command, network: Network): void => {
   const walletCLI = new Command('wallet')
     .description('manage wallet')
 
+  // edge wallet balance
+  const balance = new Command('balance')
+    .description('check balance')
+  balance.action(
+    errorHandler(
+      parent,
+      checkVersionHandler(
+        parent,
+        network,
+        balanceAction(parent, network)
+      )
+    )
+  )
+
   // edge wallet create
   const create = new Command('create')
     .description('create a new wallet')
@@ -361,6 +386,7 @@ export const withProgram = (parent: Command, network: Network): void => {
   )
 
   walletCLI
+    .addCommand(balance)
     .addCommand(create)
     .addCommand(forget)
     .addCommand(info)
