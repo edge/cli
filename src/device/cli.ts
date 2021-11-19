@@ -2,6 +2,8 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+import { Network } from '../main'
+import { checkVersionHandler } from '../update/cli'
 import config from '../config'
 import { Command, Option } from 'commander'
 import Docker, { ContainerInfo, DockerOptions } from 'dockerode'
@@ -10,7 +12,7 @@ import { errorHandler, getVerboseOption } from '../edge/cli'
 // dummy value for testing docker interactions - replace with staking integration later
 const imageName = 'registry.edge.network/library/nginx'
 
-const registerAction = (parent: Command) => () => {
+const registerAction = (parent: Command) => async () => {
   console.debug('device register WIP', parent.opts())
 }
 
@@ -131,37 +133,82 @@ const getServiceInfo = async (docker: Docker): Promise<ContainerInfo|undefined> 
 
 const socketPathOption = () => new Option('--docker-socket-path', 'Docker socket path')
 
-export const withProgram = (parent: Command): void => {
+export const withProgram = (parent: Command, network: Network): void => {
   const deviceCLI = new Command('device')
     .description('manage device')
 
   // edge device register
   const register = new Command('register')
     .description('register this device on the network')
-    .action(registerAction(parent))
+    .action(
+      errorHandler(
+        parent,
+        checkVersionHandler(
+          parent,
+          network,
+          registerAction(parent)
+        )
+      )
+    )
 
   // edge device restart
   const restart = new Command('restart')
     .description('restart services')
-  restart.action(errorHandler(parent, restartAction(parent, restart)))
+  restart.action(
+    errorHandler(
+      parent,
+      checkVersionHandler(
+        parent,
+        network,
+        restartAction(parent, restart)
+      )
+    )
+  )
 
   // edge device start
   const start = new Command('start')
     .description('start services')
     .addOption(socketPathOption())
-  start.action(errorHandler(parent, startAction(parent, start)))
+  start.action(
+    errorHandler(
+      parent,
+      checkVersionHandler(
+        parent,
+        network,
+        startAction(parent, start)
+      )
+    )
+  )
 
   // edge device status
   const status = new Command('status')
     .description('display services status')
     .addOption(socketPathOption())
-  status.action(errorHandler(parent, statusAction(parent, status)))
+  status.action(
+    errorHandler(
+      parent,
+      checkVersionHandler(
+        parent,
+        network,
+        statusAction(parent, status)
+      )
+    )
+  )
 
   // edge device stop
   const stop = new Command('stop')
     .description('stop services')
     .addOption(socketPathOption())
-  stop.action(errorHandler(parent, stopAction(parent, stop)))
+  stop.action(
+    errorHandler(
+      parent,
+      checkVersionHandler(
+        parent,
+        network,
+        stopAction(parent, stop)
+      )
+    )
+  )
 
   deviceCLI
     .addCommand(register)
