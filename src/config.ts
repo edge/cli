@@ -7,11 +7,13 @@ export type Config = {
 }
 
 type Docker = {
+  dataVolume: string
   socketPath: string
 }
 
 const config: Config = {
   docker: {
+    dataVolume: process.env.DOCKER_DATA_VOLUME || 'edge-device-data',
     socketPath: process.env.DOCKER_SOCKET_PATH || '/var/run/docker.sock'
   }
 }

@@ -4,11 +4,12 @@
 
 import { Network } from '../main'
 import { createHash } from 'crypto'
+import { normalizedPlatform } from '../helpers'
 import path from 'path'
 import pkg from '../../package.json'
 import superagent from 'superagent'
 import { SemVer, parse } from 'semver'
-import { arch, platform, tmpdir } from 'os'
+import { arch, tmpdir } from 'os'
 import { createWriteStream, mkdtempSync, readFile } from 'fs'
 
 export type DownloadInfo = {
@@ -69,13 +70,6 @@ export const latestVersion = async (network: Network): Promise<SemVer> => {
   catch (err) {
     throw new Error(`unable to retrieve latest version: ${err}`)
   }
-}
-
-const normalizedPlatform = (): string => {
-  const p = platform()
-  if (p === 'darwin') return 'macos'
-  if (p === 'win32') return 'windows'
-  return p
 }
 
 export const status = async (network: Network): Promise<VersionStatus> => {
