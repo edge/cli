@@ -45,6 +45,7 @@ const formatStake = (stake: xe.stake.Stake): string => {
     else lines.push('Status: Unlocked')
   }
   else lines.push('Status: Active')
+  if (stake.device !== undefined) lines.push(`Device: ${stake.device}`)
   return lines.join('\n')
 }
 

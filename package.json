@@ -39,7 +39,7 @@
   "dependencies": {
     "@edge/index-utils": "^0.1.0",
     "@edge/wallet-utils": "^0.14.2",
-    "@edge/xe-utils": "^1.0.1",
+    "@edge/xe-utils": "^1.0.4",
     "@types/tar-stream": "^2.2.2",
     "chalk": "^4.1.2",
     "commander": "^8.1.0",
