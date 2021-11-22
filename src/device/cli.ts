@@ -8,13 +8,13 @@ import * as walletCLI from '../wallet/cli'
 import * as xe from '@edge/xe-utils'
 import { Network } from '../main'
 import { ask } from '../input'
-import { askToSignTx } from '../transaction'
 import { checkVersionHandler } from '../update/cli'
 import config from '../config'
 import { toUpperCaseFirst } from '../helpers'
 import { withNetwork as xeWithNetwork } from '../transaction/xe'
 import { Command, Option } from 'commander'
 import Docker, { DockerOptions } from 'dockerode'
+import { askToSignTx, handleCreateTxResult } from '../transaction'
 import { decryptFileWallet, readWallet } from '../wallet/storage'
 import { errorHandler, getVerboseOption } from '../edge/cli'
 
@@ -70,8 +70,11 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
   }
 
   if (!opts.yes) {
-    console.log(`You are assigning this device to the ${toUpperCaseFirst(stake.type)} stake ${stake.hash}.`)
-    console.log(`This will allow the device to run a ${toUpperCaseFirst(stake.type)} node.`)
+    console.log('You are adding this device to the network.')
+    console.log([
+      `This will assign the ${toUpperCaseFirst(stake.type)} stake ${stake.hash}, `,
+      `allowing this device to run a ${toUpperCaseFirst(stake.type)} node.`
+    ].join(''))
     console.log()
     let confirm = ''
     const ynRegexp = /^[yn]$/
@@ -89,34 +92,22 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
   const api = xeWithNetwork(network)
   const onChainWallet = await api.walletWithNextNonce(wallet.address)
 
-  const txData: xe.tx.TxData = {
-    action: 'assign_device',
-    device: deviceWallet.address,
-    memo: 'Assign device to stake',
-    stake: stake.hash
-  }
   const tx = xe.tx.sign({
     timestamp: Date.now(),
     sender: wallet.address,
     recipient: wallet.address,
     amount: 0,
-    data: txData,
+    data: {
+      action: 'assign_device',
+      device: deviceWallet.address,
+      memo: 'Assign device to stake',
+      stake: stake.hash
+    },
     nonce: onChainWallet.nonce
   }, wallet.privateKey)
 
   const result = await api.createTransaction(tx)
-  if (result.metadata.accepted !== 1) {
-    console.log('There was a problem creating your transaction. The response from the blockchain is shown below:')
-    console.log()
-    console.log(JSON.stringify(result, undefined, 2))
-    process.exitCode = 1
-  }
-  else {
-    console.log('Your transaction has been submitted and will appear in the explorer shortly.')
-    console.log()
-    console.log(`${network.explorer.baseURL}/transaction/${result.results[0].hash}`)
-  }
-
+  if (!handleCreateTxResult(network, result)) process.exitCode = 1
 }
 
 const restartAction = (parent: Command, restartCmd: Command) => async () => {
@@ -201,16 +192,7 @@ const stopAction = (parent: Command, stopCmd: Command) => async () => {
     return
   }
 
-  const container = docker.getContainer(info.Id)
-  await new Promise<unknown>((resolve, reject) => container.stop((err, result) => {
-    if (err !== null) return reject(err)
-    return resolve(result)
-  }))
-  await new Promise<unknown>((resolve, reject) => container.remove((err, result) => {
-    if (err !== null) return reject(err)
-    return resolve(result)
-  }))
-
+  await service.stop(docker, info)
   console.log('Service stopped')
   if (opts.verbose) console.log(info.Id)
 }

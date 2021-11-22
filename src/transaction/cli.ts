@@ -11,7 +11,7 @@ import { checkVersionHandler } from '../update/cli'
 import { errorHandler } from '../edge/cli'
 import { printData } from '../helpers'
 import { Command, Option } from 'commander'
-import { askToSignTx, withNetwork as indexWithNetwork } from './index'
+import { askToSignTx, handleCreateTxResult, withNetwork as indexWithNetwork } from './index'
 import { decryptFileWallet, readWallet } from '../wallet/storage'
 import { formatXE, parseAmount, withNetwork as xeWithNetwork } from './xe'
 
@@ -190,17 +190,7 @@ const sendAction = (parent: Command, sendCmd: Command, network: Network) => asyn
   }, wallet.privateKey)
 
   const result = await api.createTransaction(tx)
-  if (result.metadata.accepted !== 1) {
-    console.log('There was a problem creating your transaction. The response from the blockchain is shown below:')
-    console.log()
-    console.log(JSON.stringify(result, undefined, 2))
-    process.exitCode = 1
-  }
-  else {
-    console.log('Your transaction has been submitted and will appear in the explorer shortly.')
-    console.log()
-    console.log(`${network.explorer.baseURL}/transaction/${result.results[0].hash}`)
-  }
+  if (!handleCreateTxResult(network, result)) process.exitCode = 1
 }
 
 const sendHelp = [

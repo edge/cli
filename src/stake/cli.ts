@@ -7,9 +7,9 @@ import * as xe from '@edge/xe-utils'
 import { Command } from 'commander'
 import { Network } from '../main'
 import { ask } from '../input'
-import { askToSignTx } from '../transaction'
 import { checkVersionHandler } from '../update/cli'
 import { errorHandler } from '../edge/cli'
+import { askToSignTx, handleCreateTxResult } from '../transaction'
 import { decryptFileWallet, readWallet } from '../wallet/storage'
 import { formatXE, withNetwork as xeWithNetwork } from '../transaction/xe'
 import { printData, toDays, toUpperCaseFirst } from '../helpers'
@@ -120,17 +120,7 @@ const createAction = (parent: Command, createCmd: Command, network: Network) => 
   }, wallet.privateKey)
 
   const result = await api.createTransaction(tx)
-  if (result.metadata.accepted !== 1) {
-    console.log('There was a problem creating your transaction. The response from the blockchain is shown below:')
-    console.log()
-    console.log(JSON.stringify(result, undefined, 2))
-    process.exitCode = 1
-  }
-  else {
-    console.log('Your transaction has been submitted and will appear in the explorer shortly.')
-    console.log()
-    console.log(`${network.explorer.baseURL}/transaction/${result.results[0].hash}`)
-  }
+  if (!handleCreateTxResult(network, result)) process.exitCode = 1
 }
 
 const infoAction = (infoCmd: Command, network: Network) => async () => {
@@ -265,17 +255,7 @@ const releaseAction = (parent: Command, releaseCmd: Command, network: Network) =
   }, wallet.privateKey)
 
   const result = await api.createTransaction(tx)
-  if (result.metadata.accepted !== 1) {
-    console.log('There was a problem creating your transaction. The response from the blockchain is shown below:')
-    console.log()
-    console.log(JSON.stringify(result, undefined, 2))
-    process.exitCode = 1
-  }
-  else {
-    console.log('Your transaction has been submitted and will appear in the explorer shortly.')
-    console.log()
-    console.log(`${network.explorer.baseURL}/transaction/${result.results[0].hash}`)
-  }
+  if (!handleCreateTxResult(network, result)) process.exitCode = 1
 }
 
 const releaseHelp = [
@@ -350,17 +330,7 @@ const unlockAction = (parent: Command, unlockCmd: Command, network: Network) => 
   }, wallet.privateKey)
 
   const result = await api.createTransaction(tx)
-  if (result.metadata.accepted !== 1) {
-    console.log('There was a problem creating your transaction. The response from the blockchain is shown below:')
-    console.log()
-    console.log(JSON.stringify(result, undefined, 2))
-    process.exitCode = 1
-  }
-  else {
-    console.log('Your transaction has been submitted and will appear in the explorer shortly.')
-    console.log()
-    console.log(`${network.explorer.baseURL}/transaction/${result.results[0].hash}`)
-  }
+  if (!handleCreateTxResult(network, result)) process.exitCode = 1
 }
 
 const getJsonOption = (cmd: Command) => {
