@@ -4,42 +4,119 @@
 
 import * as data from './data'
 import * as service from './service'
-// import * as walletCLI from '../wallet/cli'
+import * as walletCLI from '../wallet/cli'
 import * as xe from '@edge/xe-utils'
 import { Network } from '../main'
+import { ask } from '../input'
+import { askToSignTx } from '../transaction'
 import { checkVersionHandler } from '../update/cli'
 import config from '../config'
+import { toUpperCaseFirst } from '../helpers'
+import { withNetwork as xeWithNetwork } from '../transaction/xe'
 import { Command, Option } from 'commander'
 import Docker, { DockerOptions } from 'dockerode'
+import { decryptFileWallet, readWallet } from '../wallet/storage'
 import { errorHandler, getVerboseOption } from '../edge/cli'
 
 // dummy value for testing docker interactions - replace with staking integration later
 const imageName = 'registry.edge.network/library/nginx'
 
-const registerAction = (parent: Command, registerCmd: Command, network: Network) => async () => {
-  // const opts = {
-  //   ...walletCLI.getWalletOption(parent, network)
-  // }
+const registerAction = (parent: Command, registerCmd: Command, network: Network) => async (stakeHash: string) => {
+  const opts = {
+    ...walletCLI.getWalletOption(parent, network),
+    ...walletCLI.getPassphraseOption(registerCmd),
+    ...(() => {
+      const { yes } = registerCmd.opts<{ yes: boolean }>()
+      return { yes }
+    })()
+  }
 
   const docker = new Docker(getDockerOptions(registerCmd))
   const volume = await data.volume(docker)
 
-  let deviceWallet: data.Data | undefined = undefined
-  try {
-    console.log('Reading device data...')
-    deviceWallet = await data.read(docker, volume)
-  }
-  catch (err) {
-    console.log(err)
-    console.log('Initializing device data...')
-    deviceWallet = { ...xe.wallet.create(), network: network.name }
-    await data.write(docker, volume, deviceWallet)
+  const deviceWallet = await (async () => {
+    let w: data.Data | undefined = undefined
+    try {
+      console.log('Reading device data...')
+      w = await data.read(docker, volume)
+    }
+    catch (err) {
+      console.log(err)
+      console.log('Initializing device data...')
+      w = { ...xe.wallet.create(), network: network.name }
+      await data.write(docker, volume, w)
+    }
+    return w as data.Data
+  })()
+
+  const encWallet = await readWallet(opts.wallet)
+  const stakes = await xe.stake.stakes(network.blockchain.baseURL, encWallet.address)
+
+  // TODO interactive stake selection
+  const stake = Object.values(stakes).find(s => s.hash === stakeHash)
+  if (stake === undefined) throw new Error(`no stake with hash ${stakeHash}`)
+
+  const assigned = Object.values(stakes).find(s => s.device === deviceWallet.address)
+  if (assigned !== undefined) {
+    if (assigned.id === stake.id) console.log('This device is already assigned to the requested stake.')
+    else {
+      console.log(`This device is already assigned to a ${toUpperCaseFirst(assigned.type)} stake: ${assigned.hash}`)
+      console.log([
+        'To reassign this device, run \'edge device remove\' first to remove it from the network, then run ',
+        '\'edge device register\' again to re-register it.'
+      ].join(''))
+    }
+    return
   }
 
-  console.log(`Device ID: ${deviceWallet.address}`)
+  if (!opts.yes) {
+    console.log(`You are assigning this device to the ${toUpperCaseFirst(stake.type)} stake ${stake.hash}.`)
+    console.log(`This will allow the device to run a ${toUpperCaseFirst(stake.type)} node.`)
+    console.log()
+    let confirm = ''
+    const ynRegexp = /^[yn]$/
+    while (confirm.length === 0) {
+      const input = await ask('Proceed with assignment? [yn] ')
+      if (ynRegexp.test(input)) confirm = input
+      else console.log('Please enter y or n.')
+    }
+    if (confirm === 'n') return
+    console.log()
+  }
 
-  // WIP
-  // const stakes = await xe.stake.stakes(network.blockchain.baseURL, deviceWallet.address)
+  await askToSignTx(opts)
+  const wallet = decryptFileWallet(encWallet, opts.passphrase as string)
+  const api = xeWithNetwork(network)
+  const onChainWallet = await api.walletWithNextNonce(wallet.address)
+
+  const txData: xe.tx.TxData = {
+    action: 'assign_device',
+    device: deviceWallet.address,
+    memo: 'Assign device to stake',
+    stake: stake.hash
+  }
+  const tx = xe.tx.sign({
+    timestamp: Date.now(),
+    sender: wallet.address,
+    recipient: wallet.address,
+    amount: 0,
+    data: txData,
+    nonce: onChainWallet.nonce
+  }, wallet.privateKey)
+
+  const result = await api.createTransaction(tx)
+  if (result.metadata.accepted !== 1) {
+    console.log('There was a problem creating your transaction. The response from the blockchain is shown below:')
+    console.log()
+    console.log(JSON.stringify(result, undefined, 2))
+    process.exitCode = 1
+  }
+  else {
+    console.log('Your transaction has been submitted and will appear in the explorer shortly.')
+    console.log()
+    console.log(`${network.explorer.baseURL}/transaction/${result.results[0].hash}`)
+  }
+
 }
 
 const restartAction = (parent: Command, restartCmd: Command) => async () => {
@@ -157,9 +234,10 @@ export const withProgram = (parent: Command, network: Network): void => {
 
   // edge device register
   const register = new Command('register')
-    .argument('[id]', 'stake ID')
+    .argument('[hash]', 'stake hash')
     .description('register this device on the network')
     .addOption(socketPathOption())
+    .option('-y, --yes', 'do not ask for confirmation')
   register.action(
     errorHandler(
       parent,
