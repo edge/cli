@@ -110,6 +110,82 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
   if (!handleCreateTxResult(network, result)) process.exitCode = 1
 }
 
+const removeAction = (parent: Command, removeCmd: Command, network: Network) => async () => {
+  const opts = {
+    ...walletCLI.getWalletOption(parent, network),
+    ...walletCLI.getPassphraseOption(removeCmd),
+    ...(() => {
+      const { yes } = removeCmd.opts<{ yes: boolean }>()
+      return { yes }
+    })()
+  }
+
+  const docker = new Docker(getDockerOptions(removeCmd))
+  const volume = await data.volume(docker, false)
+
+  const deviceWallet = await data.read(docker, volume)
+
+  const encWallet = await readWallet(opts.wallet)
+  const stakes = await xe.stake.stakes(network.blockchain.baseURL, encWallet.address)
+
+  const stake = Object.values(stakes).find(s => s.device === deviceWallet.address)
+
+  if (!opts.yes) {
+    console.log('You are removing this device from the network.')
+    if (stake !== undefined) console.log(`This will unassign the ${toUpperCaseFirst(stake.type)} stake ${stake.hash}.`)
+    else console.log('This device does not currently have a stake assigned.')
+    console.log()
+    let confirm = ''
+    const ynRegexp = /^[yn]$/
+    while (confirm.length === 0) {
+      const input = await ask('Proceed with removal? [yn] ')
+      if (ynRegexp.test(input)) confirm = input
+      else console.log('Please enter y or n.')
+    }
+    if (confirm === 'n') return
+    console.log()
+  }
+
+  if (stake !== undefined) {
+    await askToSignTx(opts)
+    const wallet = decryptFileWallet(encWallet, opts.passphrase as string)
+    const api = xeWithNetwork(network)
+    const onChainWallet = await api.walletWithNextNonce(wallet.address)
+
+    const tx = xe.tx.sign({
+      timestamp: Date.now(),
+      sender: wallet.address,
+      recipient: wallet.address,
+      amount: 0,
+      data: {
+        action: 'unassign_device',
+        memo: 'Unassign device from stake',
+        stake: stake.hash
+      },
+      nonce: onChainWallet.nonce
+    }, wallet.privateKey)
+
+    console.log('Unassigning stake...')
+    const result = await api.createTransaction(tx)
+    if (!handleCreateTxResult(network, result)) {
+      process.exitCode = 1
+      return
+    }
+  }
+
+  const info = await service.info(docker, imageName)
+  if (info !== undefined) {
+    console.log('Stopping service...')
+    await service.stop(docker, info)
+    console.log('Stopped')
+  }
+
+  const v = await docker.getVolume(volume.Name)
+  console.log('Removing device...')
+  await v.remove()
+  console.log('This device has been removed from the network.')
+}
+
 const restartAction = (parent: Command, restartCmd: Command) => async () => {
   const opts = {
     ...getVerboseOption(parent)
@@ -231,6 +307,22 @@ export const withProgram = (parent: Command, network: Network): void => {
     )
   )
 
+  // edge device remove
+  const remove = new Command('remove')
+    .description('remove this device from the network')
+    .addOption(socketPathOption())
+    .option('-y, --yes', 'do not ask for confirmation')
+  remove.action(
+    errorHandler(
+      parent,
+      checkVersionHandler(
+        parent,
+        network,
+        removeAction(parent, remove, network)
+      )
+    )
+  )
+
   // edge device restart
   const restart = new Command('restart')
     .description('restart services')
@@ -293,6 +385,7 @@ export const withProgram = (parent: Command, network: Network): void => {
 
   deviceCLI
     .addCommand(add)
+    .addCommand(remove)
     .addCommand(restart)
     .addCommand(start)
     .addCommand(status)
