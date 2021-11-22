@@ -21,17 +21,17 @@ import { errorHandler, getVerboseOption } from '../edge/cli'
 // dummy value for testing docker interactions - replace with staking integration later
 const imageName = 'registry.edge.network/library/nginx'
 
-const registerAction = (parent: Command, registerCmd: Command, network: Network) => async (stakeHash: string) => {
+const addAction = (parent: Command, addCmd: Command, network: Network) => async (stakeHash: string) => {
   const opts = {
     ...walletCLI.getWalletOption(parent, network),
-    ...walletCLI.getPassphraseOption(registerCmd),
+    ...walletCLI.getPassphraseOption(addCmd),
     ...(() => {
-      const { yes } = registerCmd.opts<{ yes: boolean }>()
+      const { yes } = addCmd.opts<{ yes: boolean }>()
       return { yes }
     })()
   }
 
-  const docker = new Docker(getDockerOptions(registerCmd))
+  const docker = new Docker(getDockerOptions(addCmd))
   const volume = await data.volume(docker)
 
   const deviceWallet = await (async () => {
@@ -63,7 +63,7 @@ const registerAction = (parent: Command, registerCmd: Command, network: Network)
       console.log(`This device is already assigned to a ${toUpperCaseFirst(assigned.type)} stake: ${assigned.hash}`)
       console.log([
         'To reassign this device, run \'edge device remove\' first to remove it from the network, then run ',
-        '\'edge device register\' again to re-register it.'
+        '\'edge device add\' again to add it back.'
       ].join(''))
     }
     return
@@ -232,19 +232,19 @@ export const withProgram = (parent: Command, network: Network): void => {
   const deviceCLI = new Command('device')
     .description('manage device')
 
-  // edge device register
-  const register = new Command('register')
+  // edge device add
+  const add = new Command('add')
     .argument('[hash]', 'stake hash')
-    .description('register this device on the network')
+    .description('add this device to the network')
     .addOption(socketPathOption())
     .option('-y, --yes', 'do not ask for confirmation')
-  register.action(
+  add.action(
     errorHandler(
       parent,
       checkVersionHandler(
         parent,
         network,
-        registerAction(parent, register, network)
+        addAction(parent, add, network)
       )
     )
   )
@@ -310,7 +310,7 @@ export const withProgram = (parent: Command, network: Network): void => {
   )
 
   deviceCLI
-    .addCommand(register)
+    .addCommand(add)
     .addCommand(restart)
     .addCommand(start)
     .addCommand(status)
