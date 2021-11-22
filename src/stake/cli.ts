@@ -12,7 +12,7 @@ import { checkVersionHandler } from '../update/cli'
 import { errorHandler } from '../edge/cli'
 import { decryptFileWallet, readWallet } from '../wallet/storage'
 import { formatXE, withNetwork as xeWithNetwork } from '../transaction/xe'
-import { toDays, toUpperCaseFirst } from '../helpers'
+import { printData, toDays, toUpperCaseFirst } from '../helpers'
 
 const stakeTypes = ['host', 'gateway', 'stargate']
 
@@ -30,23 +30,30 @@ const formatTime = (t: number): string => {
 }
 
 const formatStake = (stake: xe.stake.Stake): string => {
-  const lines = [
-    `ID: ${stake.id}`,
-    `Hash: ${stake.hash}`,
-    `Tx: ${stake.transaction}`,
-    `Amount: ${formatXE(stake.amount)}`,
-    `Created: ${formatTime(stake.created)}`,
-    `Type: ${toUpperCaseFirst(stake.type)}`
-  ]
-  if (stake.released !== undefined) lines.push('Status: Released')
+  const data: Record<string, string> = {
+    ID: stake.id,
+    Hash: stake.hash,
+    Tx: stake.transaction,
+    Created: formatTime(stake.created),
+    ...(() => {
+      if (stake.device !== undefined) {
+        return {
+          Device: stake.device,
+          Assigned: formatTime(stake.deviceAssigned as number)
+        }
+      }
+    })(),
+    Amount: formatXE(stake.amount),
+    Type: toUpperCaseFirst(stake.type)
+  }
+  if (stake.released !== undefined) data.Status = 'Released'
   else if (stake.unlockRequested !== undefined) {
     const unlockAt = stake.unlockRequested + stake.unlockPeriod
-    if (unlockAt > Date.now()) lines.push(`Status: Unlocking (unlocks at ${formatTime(unlockAt)})`)
-    else lines.push('Status: Unlocked')
+    if (unlockAt > Date.now()) data.Status = `Unlocking (unlocks at ${formatTime(unlockAt)})`
+    else data.Status = 'Unlocked'
   }
-  else lines.push('Status: Active')
-  if (stake.device !== undefined) lines.push(`Device: ${stake.device}`)
-  return lines.join('\n')
+  else data.Status = 'Active'
+  return printData(data)
 }
 
 const createAction = (parent: Command, createCmd: Command, network: Network) => async (stakeType: string) => {

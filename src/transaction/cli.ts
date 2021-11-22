@@ -9,28 +9,25 @@ import { Network } from '../main'
 import { ask } from '../input'
 import { checkVersionHandler } from '../update/cli'
 import { errorHandler } from '../edge/cli'
+import { printData } from '../helpers'
 import { Command, Option } from 'commander'
 import { askToSignTx, withNetwork as indexWithNetwork } from './index'
 import { decryptFileWallet, readWallet } from '../wallet/storage'
 import { formatXE, parseAmount, withNetwork as xeWithNetwork } from './xe'
 
 const formatIndexTx = (address: string, tx: index.Tx): string => {
-  const lines: string[] = [
-    `Tx: ${tx.hash}`,
-    `Nonce: ${tx.nonce} Block: ${tx.block.height} At: ` + formatTimestamp(new Date(tx.timestamp))
-  ]
-  if (tx.sender === address) lines.push(`To: ${tx.recipient}`)
-  else lines.push(`From: ${tx.sender}`)
-  lines.push(`Amount: ${formatXE(tx.amount)}`)
-  const dataKeys = Object.keys(tx.data) as (keyof index.TxData)[]
-  if (dataKeys.length) {
-    lines.push('Data:')
-    dataKeys.forEach(key => {
-      lines.push(`  ${key}: ${tx.data[key]}`)
-    })
+  const data: Record<string, string> = {
+    Tx: tx.hash,
+    Nonce: tx.nonce.toString(),
+    Block: tx.block.height.toString(),
+    At: formatTimestamp(new Date(tx.timestamp))
   }
-  lines.push(`Signature: ${tx.signature}`)
-  return lines.join('\n')
+  if (tx.sender === address) data.To = tx.recipient
+  else data.From = tx.sender
+  data.Amount = formatXE(tx.amount)
+  if (tx.data.memo !== undefined) data.Memo = tx.data.memo
+  data.Signature = tx.signature
+  return printData(data)
 }
 
 const formatTimestamp = (d: Date): string => {
@@ -44,22 +41,17 @@ const formatTimestamp = (d: Date): string => {
 }
 
 const formatTx = (address: string, tx: xe.tx.Tx): string => {
-  const lines: string[] = [
-    `Tx: ${tx.hash}`,
-    `Nonce: ${tx.nonce} At: ` + formatTimestamp(new Date(tx.timestamp))
-  ]
-  if (tx.sender === address) lines.push(`To: ${tx.recipient}`)
-  else lines.push(`From: ${tx.sender}`)
-  lines.push(`Amount: ${formatXE(tx.amount)}`)
-  const dataKeys = Object.keys(tx.data) as (keyof index.TxData)[]
-  if (dataKeys.length) {
-    lines.push('Data:')
-    dataKeys.forEach(key => {
-      lines.push(`  ${key}: ${tx.data[key]}`)
-    })
+  const data: Record<string, string> = {
+    Tx: tx.hash,
+    Nonce: tx.nonce.toString(),
+    At: formatTimestamp(new Date(tx.timestamp))
   }
-  lines.push(`Signature: ${tx.signature}`)
-  return lines.join('\n')
+  if (tx.sender === address) data.To = tx.recipient
+  else data.From = tx.sender
+  data.Amount = formatXE(tx.amount)
+  if (tx.data.memo !== undefined) data.Memo = tx.data.memo
+  data.Signature = tx.signature
+  return printData(data)
 }
 
 const getListOptions = (listCmd: Command) => {

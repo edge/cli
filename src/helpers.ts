@@ -11,6 +11,14 @@ export const normalizedPlatform = (): string => {
   return p
 }
 
+export const printData = (data: Record<string, string>, sep = ':'): string => {
+  const klen = sep.length + Object.keys(data).reduce((n, k) => Math.max(n, k.length), 0)
+  return Object.keys(data).map(k => [k, data[k]]).map(([k, v]) => {
+    const kprint = `${k}${sep}`.padEnd(klen, ' ')
+    return `${kprint} ${v}`
+  }).join('\n')
+}
+
 const msDay = 1000 * 60 * 60 * 24
 export const toDays = (t: number): number => Math.ceil(t / msDay)
 
