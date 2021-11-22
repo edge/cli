@@ -24,8 +24,17 @@ const registerAction = (parent: Command, registerCmd: Command, network: Network)
   const docker = new Docker(getDockerOptions(registerCmd))
   const volume = await data.volume(docker)
 
-  const deviceWallet = xe.wallet.create()
-  data.write(docker, volume, { ...deviceWallet, network: network.name })
+  let deviceWallet: data.Data | undefined = undefined
+  try {
+    console.log('Reading device data...')
+    deviceWallet = await data.read(docker, volume)
+  }
+  catch (err) {
+    console.log(err)
+    console.log('Initializing device data...')
+    deviceWallet = { ...xe.wallet.create(), network: network.name }
+    await data.write(docker, volume, deviceWallet)
+  }
 
   console.log(`Device ID: ${deviceWallet.address}`)
 
