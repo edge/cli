@@ -6,11 +6,15 @@ import tar from 'tar-stream'
 import Docker, { Container, VolumeInspectInfo } from 'dockerode'
 import { readFile, writeFile } from 'fs'
 
-export type Data = xe.wallet.Wallet & {
+export type Device = xe.wallet.Wallet & {
   network: string
 }
 
-export const createEmpty = (): Data => ({
+export const CleanupError = 'CleanupError'
+export const ReadError = 'ReadError'
+export const UninitializedError = 'UninitializedError'
+
+export const createEmpty = (): Device => ({
   address: '',
   publicKey: '',
   privateKey: '',
@@ -28,70 +32,91 @@ const createTransferContainer = (docker: Docker, volume: VolumeInspectInfo, path
     }
   })
 
-export const keys: (keyof Data)[] = ['address', 'network', 'privateKey', 'publicKey']
+export const keys: (keyof Device)[] = ['address', 'network', 'privateKey', 'publicKey']
 
-export const read = async (docker: Docker, volume: VolumeInspectInfo): Promise<Data> => {
+/**
+ * Read device data from a volume (typically the data volume).
+ */
+export const read = async (docker: Docker, volume: VolumeInspectInfo): Promise<Device> => {
   const p = normalizedPlatform()
   if (p === 'macos' || p === 'windows') return readThroughContainer(docker, volume)
   return readDirect(volume)
 }
 
-const readDirect = async (volume: VolumeInspectInfo) => new Promise<Data>((resolve, reject) => {
-  const data = createEmpty()
+/**
+ * Read device data directly from a volume path on disk.
+ *
+ * This is only usable on systems that share their filesystem with Docker, e.g. Linux.
+ */
+const readDirect = async (volume: VolumeInspectInfo) => new Promise<Device>((resolve, reject) => {
+  const device = createEmpty()
   let wait = keys.length
   keys.forEach(key => {
     const file = path.join(volume.Mountpoint, key)
     readFile(file, (err, txt) => {
       if (err !== null) return reject(err)
-      data[key] = txt.toString()
-      if (--wait === 0) return resolve(data as Data)
+      device[key] = txt.toString()
+      if (--wait === 0) return resolve(device as Device)
     })
   })
 })
 
-const readThroughContainer = async (docker: Docker, volume: VolumeInspectInfo): Promise<Data> => {
+/**
+ * Read device data from a volume (typically the data volume) using an intermediary container.
+ *
+ * This allows data to be read from virtualized systems (namely, Docker for Mac/Windows).
+ *
+ * API documentation: https://docs.docker.com/engine/api/v1.41/#operation/ContainerArchive
+ */
+const readThroughContainer = async (docker: Docker, volume: VolumeInspectInfo): Promise<Device> => {
   const path = '/device'
   const container = await createTransferContainer(docker, volume, path)
+
   await container.start()
+
+  let tmpArchive: NodeJS.ReadableStream
   try {
-    const tmp = await container.getArchive({ path })
-    return await new Promise<Data>((resolve, reject) => {
-      const data = createEmpty()
-      let wait = keys.length
-      const archive = tar.extract()
-      archive.on('entry', (h, s, next) => {
-        const name = h.name.replace(/^\/?device\//, '') as keyof Data
-        s.on('end', () => next())
-        if (keys.includes(name)) {
-          s.on('readable', () => {
-            const txt = s.read()
-            if (txt === null) return reject(`no data for ${name}`)
-            data[name] = (txt as Buffer).toString()
-            --wait
-          })
-        }
-        s.resume()
-      })
-      archive.on('finish', () => {
-        if (wait === 0) return resolve(data)
-        return reject('failed to read all wallet data')
-      })
-      tmp.pipe(archive)
-    })
+    tmpArchive = await container.getArchive({ path })
   }
   finally {
-    try {
-      await container.kill()
-      await container.remove()
-    }
-    catch (err) {
-      console.log(`There was a problem cleaning up containers while reading device data: ${err}`)
-      console.log([
-        'Please run \'docker ps\' and/or \'docker container ls -a\' to check whether there are dangling images or ',
-        'containers that may need to be cleaned up manually.'
-      ].join(''))
-    }
+    await container.kill()
+    await container.remove()
   }
+
+  return await new Promise<Device>((resolve, reject) => {
+    const device = createEmpty()
+    let wait = keys.length
+
+    const archive = tar.extract()
+    archive.on('entry', (h, s, next) => {
+      const name = h.name.replace(/^\/?device\//, '') as keyof Device
+      s.on('end', () => next())
+      if (keys.includes(name)) {
+        s.on('readable', () => {
+          const txt = s.read()
+          if (txt === null) return reject(new Error(`no data for ${name}`))
+          device[name] = (txt as Buffer).toString()
+          --wait
+        })
+      }
+      s.resume()
+    })
+
+    archive.on('finish', () => {
+      if (wait === 0) return resolve(device)
+      if (wait === keys.length) return reject(new Error('device is not initialized'))
+      return reject(new Error('incomplete data'))
+    })
+
+    tmpArchive.pipe(archive)
+  })
+}
+
+/**
+ * Remove a volume from Docker.
+ */
+export const remove = async (docker: Docker, volume: VolumeInspectInfo): Promise<void> => {
+  await docker.getVolume(volume.Name).remove()
 }
 
 /**
@@ -119,10 +144,10 @@ export const volume = async (docker: Docker, canCreate = true): Promise<VolumeIn
 /**
  * Write device data to a volume (typically the data volume).
  */
-export const write = async (docker: Docker, volume: VolumeInspectInfo, data: Data): Promise<void> => {
+export const write = async (docker: Docker, volume: VolumeInspectInfo, device: Device): Promise<void> => {
   const p = normalizedPlatform()
-  if (p === 'macos' || p === 'windows') return writeThroughContainer(docker, volume, data)
-  return writeDirect(volume, data)
+  if (p === 'macos' || p === 'windows') return writeThroughContainer(docker, volume, device)
+  return writeDirect(volume, device)
 }
 
 /**
@@ -130,13 +155,13 @@ export const write = async (docker: Docker, volume: VolumeInspectInfo, data: Dat
  *
  * This is only usable on systems that share their filesystem with Docker, e.g. Linux.
  */
-const writeDirect = async (volume: VolumeInspectInfo, data: Data) => new Promise<void>((resolve, reject) => {
+const writeDirect = async (volume: VolumeInspectInfo, device: Device) => new Promise<void>((resolve, reject) => {
   let wait = keys.length
   keys.forEach(key => {
     const file = path.join(volume.Mountpoint, key)
-    const value = data[key]
+    const value = device[key]
     writeFile(file, value, err => {
-      if (err !== null) return reject(err)
+      if (err !== null) return reject([err])
       if (--wait === 0) return resolve()
     })
   })
@@ -148,32 +173,31 @@ const writeDirect = async (volume: VolumeInspectInfo, data: Data) => new Promise
  *
  * This allows data to be written on virtualized systems (namely, Docker for Mac/Windows).
  *
- * API documentation: https://docs.docker.com/engine/api/v1.41/#operation/ContainerArchive
+ * API documentation: https://docs.docker.com/engine/api/v1.41/#operation/PutContainerArchive
  */
-const writeThroughContainer = async (docker: Docker, volume: VolumeInspectInfo, data: Data): Promise<void> => {
-  const archive = tar.pack()
-  keys.forEach(name => {
-    archive.entry({ name }, data[name])
-  })
-  archive.finalize()
-
+const writeThroughContainer = async (docker: Docker, volume: VolumeInspectInfo, device: Device): Promise<void> => {
   const path = '/device'
   const container = await createTransferContainer(docker, volume, path)
+
   await container.start()
+
   try {
+    const archive = tar.pack()
+    keys.forEach(name => {
+      archive.entry({ name }, device[name])
+    })
+    archive.finalize()
     await container.putArchive(archive, { path })
   }
   finally {
-    try {
-      await container.kill()
-      await container.remove()
-    }
-    catch (err) {
-      console.log(`There was a problem cleaning up containers while writing device data: ${err}`)
-      console.log([
-        'Please run \'docker ps\' and/or \'docker container ls -a\' to check whether there are dangling images or ',
-        'containers that may need to be cleaned up manually.'
-      ].join(''))
-    }
+    await container.kill()
+    await container.remove()
   }
 }
+
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+export const withVolume = (docker: Docker, volume: VolumeInspectInfo) => ({
+  read: () => read(docker, volume),
+  remove: () => remove(docker, volume),
+  write: (device: Device) => write(docker, volume, device)
+})

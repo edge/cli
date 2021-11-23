@@ -11,11 +11,11 @@ import { ask } from '../input'
 import { checkVersionHandler } from '../update/cli'
 import config from '../config'
 import { toUpperCaseFirst } from '../helpers'
+import { withFile } from '../wallet/storage'
 import { withNetwork as xeWithNetwork } from '../transaction/xe'
 import { Command, Option } from 'commander'
 import Docker, { DockerOptions } from 'dockerode'
 import { askToSignTx, handleCreateTxResult } from '../transaction'
-import { decryptFileWallet, readWallet } from '../wallet/storage'
 import { errorHandler, getVerboseOption } from '../edge/cli'
 
 // dummy value for testing docker interactions - replace with staking integration later
@@ -30,33 +30,31 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
       return { yes }
     })()
   }
-
+  const storage = withFile(opts.wallet)
   const docker = new Docker(getDockerOptions(addCmd))
-  const volume = await data.volume(docker)
 
-  const deviceWallet = await (async () => {
-    let w: data.Data | undefined = undefined
+  const dataVolume = data.withVolume(docker, await data.volume(docker))
+  const device = await (async () => {
+    let w: data.Device | undefined = undefined
     try {
       console.log('Reading device data...')
-      w = await data.read(docker, volume)
+      w = await dataVolume.read()
     }
     catch (err) {
       console.log(err)
       console.log('Initializing device data...')
       w = { ...xe.wallet.create(), network: network.name }
-      await data.write(docker, volume, w)
+      await dataVolume.write(w)
     }
-    return w as data.Data
+    return w as data.Device
   })()
 
-  const encWallet = await readWallet(opts.wallet)
-  const stakes = await xe.stake.stakes(network.blockchain.baseURL, encWallet.address)
-
+  const stakes = await xe.stake.stakes(network.blockchain.baseURL, await storage.address())
   // TODO interactive stake selection
   const stake = Object.values(stakes).find(s => s.hash === stakeHash)
   if (stake === undefined) throw new Error(`no stake with hash ${stakeHash}`)
 
-  const assigned = Object.values(stakes).find(s => s.device === deviceWallet.address)
+  const assigned = Object.values(stakes).find(s => s.device === device.address)
   if (assigned !== undefined) {
     if (assigned.id === stake.id) console.log('This device is already assigned to the requested stake.')
     else {
@@ -88,7 +86,8 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
   }
 
   await askToSignTx(opts)
-  const wallet = decryptFileWallet(encWallet, opts.passphrase as string)
+  const wallet = await storage.read(opts.passphrase as string)
+
   const api = xeWithNetwork(network)
   const onChainWallet = await api.walletWithNextNonce(wallet.address)
 
@@ -99,7 +98,7 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
     amount: 0,
     data: {
       action: 'assign_device',
-      device: deviceWallet.address,
+      device: device.address,
       memo: 'Assign device to stake',
       stake: stake.hash
     },
@@ -119,16 +118,14 @@ const removeAction = (parent: Command, removeCmd: Command, network: Network) => 
       return { yes }
     })()
   }
-
+  const storage = withFile(opts.wallet)
   const docker = new Docker(getDockerOptions(removeCmd))
-  const volume = await data.volume(docker, false)
 
-  const deviceWallet = await data.read(docker, volume)
+  const dataVolume = data.withVolume(docker, await data.volume(docker, false))
+  const device = await dataVolume.read()
 
-  const encWallet = await readWallet(opts.wallet)
-  const stakes = await xe.stake.stakes(network.blockchain.baseURL, encWallet.address)
-
-  const stake = Object.values(stakes).find(s => s.device === deviceWallet.address)
+  const stakes = await xe.stake.stakes(network.blockchain.baseURL, await storage.address())
+  const stake = Object.values(stakes).find(s => s.device === device.address)
 
   if (!opts.yes) {
     console.log('You are removing this device from the network.')
@@ -148,7 +145,7 @@ const removeAction = (parent: Command, removeCmd: Command, network: Network) => 
 
   if (stake !== undefined) {
     await askToSignTx(opts)
-    const wallet = decryptFileWallet(encWallet, opts.passphrase as string)
+    const wallet = await storage.read(opts.passphrase as string)
     const api = xeWithNetwork(network)
     const onChainWallet = await api.walletWithNextNonce(wallet.address)
 
@@ -180,9 +177,8 @@ const removeAction = (parent: Command, removeCmd: Command, network: Network) => 
     console.log('Stopped')
   }
 
-  const v = await docker.getVolume(volume.Name)
   console.log('Removing device...')
-  await v.remove()
+  await dataVolume.remove()
   console.log('This device has been removed from the network.')
 }
 
@@ -190,8 +186,8 @@ const restartAction = (parent: Command, restartCmd: Command) => async () => {
   const opts = {
     ...getVerboseOption(parent)
   }
-
   const docker = new Docker(getDockerOptions(restartCmd))
+
   const info = await service.info(docker, imageName)
   if (info === undefined) {
     console.log('Service is not running. Use `device start` instead')
@@ -212,8 +208,8 @@ const startAction = (parent: Command, startCmd: Command) => async () => {
   const opts = {
     ...getVerboseOption(parent)
   }
-
   const docker = new Docker(getDockerOptions(startCmd))
+
   let info = await service.info(docker, imageName)
   if (info !== undefined) {
     console.log('Service is already running')
@@ -246,8 +242,8 @@ const statusAction = (parent: Command, statusCmd: Command) => async () => {
   const opts = {
     ...getVerboseOption(parent)
   }
-
   const docker = new Docker(getDockerOptions(statusCmd))
+
   const info = await service.info(docker, imageName)
   if (info === undefined) console.log('Service is not running')
   else {
@@ -260,8 +256,8 @@ const stopAction = (parent: Command, stopCmd: Command) => async () => {
   const opts = {
     ...getVerboseOption(parent)
   }
-
   const docker = new Docker(getDockerOptions(stopCmd))
+
   const info = await service.info(docker, imageName)
   if (info === undefined) {
     console.log('Service is not running')

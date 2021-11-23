@@ -10,9 +10,9 @@ import { ask } from '../input'
 import { checkVersionHandler } from '../update/cli'
 import { errorHandler } from '../edge/cli'
 import { printData } from '../helpers'
+import { withFile } from '../wallet/storage'
 import { Command, Option } from 'commander'
 import { askToSignTx, handleCreateTxResult, withNetwork as indexWithNetwork } from './index'
-import { decryptFileWallet, readWallet } from '../wallet/storage'
 import { formatXE, parseAmount, withNetwork as xeWithNetwork } from './xe'
 
 const formatIndexTx = (address: string, tx: index.Tx): string => {
@@ -69,9 +69,9 @@ const listAction = (parent: Command, listCmd: Command, network: Network) => asyn
     ...getJsonOption(listCmd),
     ...getListOptions(listCmd)
   }
+  const address = await withFile(opts.wallet).address()
 
-  const wallet = await readWallet(opts.wallet)
-  const response = await indexWithNetwork(network).transactions(wallet.address, {
+  const response = await indexWithNetwork(network).transactions(address, {
     page: opts.page,
     limit: opts.limit
   })
@@ -91,7 +91,7 @@ const listAction = (parent: Command, listCmd: Command, network: Network) => asyn
   console.log()
 
   response.results
-    .map(tx => formatIndexTx(wallet.address, tx))
+    .map(tx => formatIndexTx(address, tx))
     .forEach(tx => {
       console.log(tx)
       console.log()
@@ -108,9 +108,9 @@ const listPendingAction = (parent: Command, listPendingCmd: Command, network: Ne
     ...walletCLI.getWalletOption(parent, network),
     ...getJsonOption(listPendingCmd)
   }
+  const address = await withFile(opts.wallet).address()
 
-  const wallet = await readWallet(opts.wallet)
-  const txs = await xeWithNetwork(network).pendingTransactions(wallet.address)
+  const txs = await xeWithNetwork(network).pendingTransactions(address)
 
   if (opts.json) {
     console.log(JSON.stringify(txs, undefined, 2))
@@ -122,7 +122,7 @@ const listPendingAction = (parent: Command, listPendingCmd: Command, network: Ne
     return
   }
 
-  txs.map(tx => formatTx(wallet.address, tx))
+  txs.map(tx => formatTx(address, tx))
     .forEach(tx => {
       console.log(tx)
       console.log()
@@ -148,10 +148,11 @@ const sendAction = (parent: Command, sendCmd: Command, network: Network) => asyn
   const amount = parseAmount(amountInput)
   if (!xe.wallet.validateAddress(recipient)) throw new Error('invalid recipient')
 
-  const encWallet = await readWallet(opts.wallet)
+  const storage = withFile(opts.wallet)
+  const address = await storage.address()
 
   const api = xeWithNetwork(network)
-  const onChainWallet = await api.walletWithNextNonce(encWallet.address)
+  const onChainWallet = await api.walletWithNextNonce(address)
   const resultBalance = onChainWallet.balance - amount
   // eslint-disable-next-line max-len
   if (resultBalance < 0) throw new Error(`insufficient balance: your wallet only contains ${formatXE(onChainWallet.balance)}`)
@@ -176,13 +177,13 @@ const sendAction = (parent: Command, sendCmd: Command, network: Network) => asyn
   }
 
   await askToSignTx(opts)
-  const wallet = decryptFileWallet(encWallet, opts.passphrase as string)
+  const wallet = await storage.read(opts.passphrase as string)
 
   const data: xe.tx.TxData = {}
   if (opts.memo) data.memo = opts.memo
   const tx = xe.tx.sign({
     timestamp: Date.now(),
-    sender: wallet.address,
+    sender: address,
     recipient,
     amount,
     data,

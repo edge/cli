@@ -7,9 +7,9 @@ import { Network } from '../main'
 import { checkVersionHandler } from '../update/cli'
 import { errorHandler } from '../edge/cli'
 import { formatXE } from '../transaction/xe'
+import { withFile } from './storage'
 import { Command, Option } from 'commander'
 import { ask, askSecure } from '../input'
-import { decryptFileWallet, readWallet, withFile } from './storage'
 import { readFileSync, unlink, writeFileSync } from 'fs'
 
 export type PassphraseOption = {
@@ -26,7 +26,7 @@ export type WalletOption = {
 
 const balanceAction = (parent: Command, network: Network) => async () => {
   const opts = getWalletOption(parent, network)
-  const { address } = await readWallet(opts.wallet)
+  const address = await withFile(opts.wallet).address()
 
   const { balance } = await xe.wallet.info(network.blockchain.baseURL, address)
 
@@ -46,10 +46,9 @@ const createAction = (parent: Command, createCmd: Command, network: Network) => 
       return { privateKeyFile, overwrite }
     })()
   }
+  const storage = withFile(opts.wallet)
 
-  const { check, write } = withFile(opts.wallet)
-
-  if (await check() && !opts.overwrite) {
+  if (await storage.check() && !opts.overwrite) {
     let confirm = ''
     const ynRegexp = /^[yn]$/
     while (confirm.length === 0) {
@@ -74,7 +73,7 @@ const createAction = (parent: Command, createCmd: Command, network: Network) => 
   }
 
   const wallet = xe.wallet.create()
-  await write(wallet, opts.passphrase)
+  await storage.write(wallet, opts.passphrase)
   console.log(`Wallet ${wallet.address} created.`)
   console.log()
 
@@ -131,14 +130,13 @@ const infoAction = (parent: Command, infoCmd: Command, network: Network) => asyn
     ...getWalletOption(parent, network),
     ...getPassphraseOption(infoCmd)
   }
-
-  const wallet = await readWallet(opts.wallet)
-  console.log(`Wallet address: ${wallet.address}`)
+  const storage = withFile(opts.wallet)
+  console.log(`Address: ${await storage.address()}`)
 
   if (opts.passphrase) {
     try {
-      const decrypted = decryptFileWallet(wallet, opts.passphrase)
-      console.log(`Private key: ${decrypted.privateKey}`)
+      const wallet = await storage.read(opts.passphrase)
+      console.log(`Private key: ${wallet.privateKey}`)
     }
     catch (err) {
       console.log(`Cannot display private key: ${(err as Error).message}`)
@@ -160,15 +158,13 @@ const forgetAction = (parent: Command, forgetCmd: Command, network: Network) => 
       return { yes }
     })()
   }
-
-  const { check } = withFile(opts.wallet)
-  if (!await check()) {
+  const storage = withFile(opts.wallet)
+  if (!await storage.check()) {
     console.log('No wallet found.')
     return
   }
 
-  const wallet = await readWallet(opts.wallet)
-  console.log(`Wallet address: ${wallet.address}`)
+  console.log(`Address: ${await storage.address()}`)
 
   if (!opts.yes) {
     console.log()
@@ -204,10 +200,9 @@ const restoreAction = (parent: Command, restoreCmd: Command, network: Network) =
     ...getPrivateKeyOption(restoreCmd),
     ...getPassphraseOption(restoreCmd)
   }
+  const storage = withFile(opts.wallet)
 
-  const { check, write } = withFile(opts.wallet)
-
-  if (await check() && !opts.overwrite) {
+  if (await storage.check() && !opts.overwrite) {
     let confirm = ''
     const ynRegexp = /^[yn]$/
     while (confirm.length === 0) {
@@ -240,7 +235,7 @@ const restoreAction = (parent: Command, restoreCmd: Command, network: Network) =
   }
 
   const wallet = xe.wallet.recover(opts.privateKey || '')
-  await write(wallet, opts.passphrase)
+  await storage.write(wallet, opts.passphrase)
   console.log(`Wallet ${wallet.address} restored.`)
 }
 

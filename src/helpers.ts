@@ -4,6 +4,12 @@
 
 import { platform } from 'os'
 
+export const namedError = (name: string) => (msg: string): Error => {
+  const err = new Error(msg)
+  err.name = name
+  return err
+}
+
 export const normalizedPlatform = (): string => {
   const p = platform()
   if (p === 'darwin') return 'macos'

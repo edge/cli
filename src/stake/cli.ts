@@ -9,8 +9,8 @@ import { Network } from '../main'
 import { ask } from '../input'
 import { checkVersionHandler } from '../update/cli'
 import { errorHandler } from '../edge/cli'
+import { withFile } from '../wallet/storage'
 import { askToSignTx, handleCreateTxResult } from '../transaction'
-import { decryptFileWallet, readWallet } from '../wallet/storage'
 import { formatXE, withNetwork as xeWithNetwork } from '../transaction/xe'
 import { printData, toDays, toUpperCaseFirst } from '../helpers'
 
@@ -67,14 +67,12 @@ const createAction = (parent: Command, createCmd: Command, network: Network) => 
       return { yes }
     })()
   }
-
-  const vars = await xe.vars(network.blockchain.baseURL)
-
-  const encWallet = await readWallet(opts.wallet)
+  const storage = withFile(opts.wallet)
 
   const api = xeWithNetwork(network)
-  const onChainWallet = await api.walletWithNextNonce(encWallet.address)
+  const onChainWallet = await api.walletWithNextNonce(await storage.address())
 
+  const vars = await xe.vars(network.blockchain.baseURL)
   // fallback 0 is just for typing - stakeType is checked at top of func, so it should never be used
   const amount =
     stakeType === 'host' ? vars.host_stake_amount :
@@ -105,7 +103,7 @@ const createAction = (parent: Command, createCmd: Command, network: Network) => 
   }
 
   await askToSignTx(opts)
-  const wallet = decryptFileWallet(encWallet, opts.passphrase as string)
+  const wallet = await storage.read(opts.passphrase as string)
 
   const tx = xe.tx.sign({
     timestamp: Date.now(),
@@ -150,21 +148,17 @@ const listAction = (parent: Command, listCmd: Command, network: Network) => asyn
     ...walletCLI.getWalletOption(parent, network),
     ...getJsonOption(listCmd)
   }
-
-  const encWallet = await readWallet(opts.wallet)
-  const stakes = await xe.stake.stakes(network.blockchain.baseURL, encWallet.address)
+  const storage = withFile(opts.wallet)
+  const stakes = await xe.stake.stakes(network.blockchain.baseURL, await storage.address())
 
   if (opts.json) {
     console.log(JSON.stringify(stakes, undefined, 2))
     return
   }
-
-  Object.values(stakes)
-    .map(stake => formatStake(stake))
-    .forEach(stake => {
-      console.log(stake)
-      console.log()
-    })
+  Object.values(stakes).forEach(stake => {
+    console.log(formatStake(stake))
+    console.log()
+  })
 }
 
 const releaseAction = (parent: Command, releaseCmd: Command, network: Network) => async (id: string) => {
@@ -176,9 +170,8 @@ const releaseAction = (parent: Command, releaseCmd: Command, network: Network) =
       return { express, yes }
     })()
   }
-
-  const encWallet = await readWallet(opts.wallet)
-  const stakes = await xe.stake.stakes(network.blockchain.baseURL, encWallet.address)
+  const storage = withFile(opts.wallet)
+  const stakes = await xe.stake.stakes(network.blockchain.baseURL, await storage.address())
 
   // find stake by hash, or by id as fallback
   const stake =
@@ -235,7 +228,8 @@ const releaseAction = (parent: Command, releaseCmd: Command, network: Network) =
   }
 
   await askToSignTx(opts)
-  const wallet = decryptFileWallet(encWallet, opts.passphrase as string)
+  const wallet = await storage.read(opts.passphrase as string)
+
   const api = xeWithNetwork(network)
   const onChainWallet = await api.walletWithNextNonce(wallet.address)
 
@@ -273,9 +267,8 @@ const unlockAction = (parent: Command, unlockCmd: Command, network: Network) => 
       return { yes }
     })()
   }
-
-  const encWallet = await readWallet(opts.wallet)
-  const stakes = await xe.stake.stakes(network.blockchain.baseURL, encWallet.address)
+  const storage = withFile(opts.wallet)
+  const stakes = await xe.stake.stakes(network.blockchain.baseURL, await storage.address())
 
   // find stake by hash, or by id as fallback
   const stake =
@@ -312,7 +305,8 @@ const unlockAction = (parent: Command, unlockCmd: Command, network: Network) => 
   }
 
   await askToSignTx(opts)
-  const wallet = decryptFileWallet(encWallet, opts.passphrase as string)
+  const wallet = await storage.read(opts.passphrase as string)
+
   const api = xeWithNetwork(network)
   const onChainWallet = await api.walletWithNextNonce(wallet.address)
 

@@ -78,8 +78,23 @@ export const writeWallet = async (file: string, wallet: FileWallet): Promise<voi
 }
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export const withFile = (file: string) => ({
-  check: () => checkFile(file),
-  read: async (passphrase: string) => decryptFileWallet(await readWallet(file), passphrase),
-  write: async (wallet: Wallet, passphrase: string) => writeWallet(file, createFileWallet(wallet, passphrase))
-})
+export const withFile = (file: string) => {
+  // stateful encrypted wallet to avoid re-reading from disk
+  let enc: FileWallet
+
+  const getEnc = async () => {
+    if (enc === undefined) enc = await readWallet(file)
+    return enc
+  }
+
+  return {
+    address: async () => (await getEnc()).address,
+    check: () => checkFile(file),
+    read: async (passphrase: string) => decryptFileWallet(await getEnc(), passphrase),
+    write: async (wallet: Wallet, passphrase: string) => {
+      const newEnc = createFileWallet(wallet, passphrase)
+      await writeWallet(file, newEnc)
+      enc = newEnc
+    }
+  }
+}
