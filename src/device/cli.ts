@@ -10,13 +10,13 @@ import { Network } from '../main'
 import { ask } from '../input'
 import { checkVersionHandler } from '../update/cli'
 import config from '../config'
-import { toUpperCaseFirst } from '../helpers'
 import { withFile } from '../wallet/storage'
 import { withNetwork as xeWithNetwork } from '../transaction/xe'
 import { Command, Option } from 'commander'
 import Docker, { DockerOptions } from 'dockerode'
 import { askToSignTx, handleCreateTxResult } from '../transaction'
 import { errorHandler, getVerboseOption } from '../edge/cli'
+import { printData, toUpperCaseFirst } from '../helpers'
 
 // dummy value for testing docker interactions - replace with staking integration later
 const imageName = 'registry.edge.network/library/nginx'
@@ -107,6 +107,37 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
 
   const result = await api.createTransaction(tx)
   if (!handleCreateTxResult(network, result)) process.exitCode = 1
+}
+
+const infoAction = (parent: Command, infoCmd: Command, network: Network) => async () => {
+  const opts = {
+    ...getVerboseOption(parent),
+    ...walletCLI.getWalletOption(parent, network)
+  }
+  const docker = new Docker(getDockerOptions(infoCmd))
+  const dataVolume = await data.withVolume(docker, await data.volume(docker, false))
+  const device = await dataVolume.read()
+
+  const toPrint: Record<string, string> = {
+    Network: toUpperCaseFirst(device.network),
+    'Device ID': device.address
+  }
+
+  try {
+    const address = await withFile(opts.wallet).address()
+    const stakes = await xe.stake.stakes(network.blockchain.baseURL, address)
+    const stake = Object.values(stakes).find(s => s.device === device.address)
+    if (stake !== undefined) {
+      toPrint.Type = toUpperCaseFirst(stake.type)
+      toPrint.Stake = stake.hash
+    }
+    else toPrint.Stake = 'Unassigned'
+  }
+  catch (err) {
+    toPrint.Stake = 'Unassigned (no wallet)'
+  }
+
+  console.log(printData(toPrint))
 }
 
 const removeAction = (parent: Command, removeCmd: Command, network: Network) => async () => {
@@ -303,6 +334,21 @@ export const withProgram = (parent: Command, network: Network): void => {
     )
   )
 
+  // edge device info
+  const info = new Command('info')
+    .description('display device/stake information')
+    .addOption(socketPathOption())
+  info.action(
+    errorHandler(
+      parent,
+      checkVersionHandler(
+        parent,
+        network,
+        infoAction(parent, info, network)
+      )
+    )
+  )
+
   // edge device remove
   const remove = new Command('remove')
     .description('remove this device from the network')
@@ -381,6 +427,7 @@ export const withProgram = (parent: Command, network: Network): void => {
 
   deviceCLI
     .addCommand(add)
+    .addCommand(info)
     .addCommand(remove)
     .addCommand(restart)
     .addCommand(start)
