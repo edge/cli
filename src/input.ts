@@ -3,13 +3,10 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import { Writable } from 'stream'
+import { namedError } from './helpers'
 import readline from 'readline'
 
-const inputError = (reason: string) => {
-  const err = new Error(reason)
-  err.name = 'InputError'
-  return err
-}
+const inputError = namedError('InputError')
 
 export const ask = (question: string): Promise<string> =>
   new Promise((resolve, reject) => {

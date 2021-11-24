@@ -10,10 +10,6 @@ export type Device = xe.wallet.Wallet & {
   network: string
 }
 
-export const CleanupError = 'CleanupError'
-export const ReadError = 'ReadError'
-export const UninitializedError = 'UninitializedError'
-
 export const createEmpty = (): Device => ({
   address: '',
   publicKey: '',

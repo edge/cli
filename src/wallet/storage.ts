@@ -3,6 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import { dirname } from 'path'
+import { namedError } from '../helpers'
 import { EncryptedWallet, Wallet, decryptWallet, encryptWallet } from './wallet'
 import { HashPair, compare, createSalt, hash } from './hash'
 import { mkdir, readFile, stat, writeFile } from 'fs'
@@ -10,6 +11,8 @@ import { mkdir, readFile, stat, writeFile } from 'fs'
 export type FileWallet = EncryptedWallet & {
   secret: HashPair
 }
+
+const notFoundError = namedError('NotFoundError')
 
 const checkFile = (file: string) => new Promise<boolean>((resolve, reject) => {
   stat(file, (err, info) => {
@@ -38,12 +41,6 @@ export const createFileWallet = (wallet: Wallet, passphrase: string): FileWallet
 export const decryptFileWallet = (wallet: FileWallet, passphrase: string): Wallet => {
   if (!compare(passphrase, wallet.secret)) throw new Error('invalid passphrase')
   return decryptWallet(wallet, passphrase)
-}
-
-const notFoundError = (msg: string) => {
-  const err = new Error(msg)
-  err.name = 'NotFoundError'
-  return err
 }
 
 export const readWallet = async (file: string): Promise<FileWallet> => {
