@@ -25,6 +25,9 @@ export type Network = {
   index: {
     baseURL: string
   }
+  registry: {
+    imageName: (app: string) => string
+  }
   wallet: {
     defaultFile: string
   }

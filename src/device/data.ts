@@ -122,10 +122,10 @@ export const remove = async (docker: Docker, volume: VolumeInspectInfo): Promise
 /**
  * Get information about the data volume.
  *
- * By default, if the volume does not exist, it will be created on the fly.
- * Pass canCreate=false to disable this behaviour.
+ * By default, if the volume does not exist, an error will be thrown.
+ * Pass `true` as a second argument to silence this error and create the volume on the fly instead.
  */
-export const volume = async (docker: Docker, canCreate = true): Promise<VolumeInspectInfo> => {
+export const volume = async (docker: Docker, canCreate?: boolean): Promise<VolumeInspectInfo> => {
   let volume = docker.getVolume(config.docker.dataVolume)
   try {
     return await volume.inspect()
