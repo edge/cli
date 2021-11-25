@@ -3,7 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as data from './data'
-import * as service from './service'
+import * as node from './node'
 import * as walletCLI from '../wallet/cli'
 import * as xe from '@edge/xe-utils'
 import { Network } from '../main'
@@ -64,11 +64,12 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
     return
   }
 
+  const nodeName = toUpperCaseFirst(stake.type)
   if (!opts.yes) {
     console.log('You are adding this device to the network.')
     console.log([
-      `This will assign the ${toUpperCaseFirst(stake.type)} stake ${stake.hash}, `,
-      `allowing this device to run a ${toUpperCaseFirst(stake.type)} node.`
+      `This will assign the ${nodeName} stake ${stake.hash}, `,
+      `allowing this device to be used as a ${nodeName} node.`
     ].join(''))
     console.log()
     let confirm = ''
@@ -155,9 +156,10 @@ const removeAction = (parent: Command, removeCmd: Command, network: Network) => 
   const stakes = await xe.stake.stakes(network.blockchain.baseURL, await storage.address())
   const stake = Object.values(stakes).find(s => s.device === device.address)
 
+  const nodeName = stake !== undefined ? toUpperCaseFirst(stake.type) : ''
   if (!opts.yes) {
     console.log('You are removing this device from the network.')
-    if (stake !== undefined) console.log(`This will unassign the ${toUpperCaseFirst(stake.type)} stake ${stake.hash}.`)
+    if (stake !== undefined) console.log(`This will unassign the ${nodeName} stake ${stake.hash}.`)
     else console.log('This device does not currently have a stake assigned.')
     console.log()
     let confirm = ''
@@ -199,11 +201,11 @@ const removeAction = (parent: Command, removeCmd: Command, network: Network) => 
   }
 
   if (stake !== undefined) {
-    const info = await service.info(docker, network.registry.imageName(stake.type))
+    const info = await node.containerByImage(docker, network.registry.imageName(stake.type))
     if (info !== undefined) {
-      console.log('Stopping service...')
-      await service.stop(docker, info)
-      console.log('Stopped')
+      console.log(`Stopping ${nodeName}...`)
+      await node.stop(docker, info)
+      console.log(`Stopped ${nodeName}`)
     }
   }
 
@@ -217,17 +219,12 @@ const restartAction = (parent: Command, restartCmd: Command, network: Network) =
     ...getVerboseOption(parent),
     ...walletCLI.getWalletOption(parent, network)
   }
-  const address = await withFile(opts.wallet).address()
   const docker = new Docker(getDockerOptions(restartCmd))
-  const dataVolumeInfo = await data.volume(docker)
-  const device = await data.read(docker, dataVolumeInfo)
-  const stakes = await xe.stake.stakes(network.blockchain.baseURL, address)
-  const stake = Object.values(stakes).find(stake => stake.device === device.address)
-  if (stake === undefined) throw new Error('This device is not assigned to a stake.')
+  const nodeInfo = await node.withAddress(docker, network, await withFile(opts.wallet).address())
 
-  const info = await service.info(docker, network.registry.imageName(stake.type))
+  const info = await nodeInfo.container()
   if (info === undefined) {
-    console.log(`${toUpperCaseFirst(stake.type)} is not running`)
+    console.log(`${nodeInfo.name} is not running`)
     return
   }
 
@@ -237,7 +234,7 @@ const restartAction = (parent: Command, restartCmd: Command, network: Network) =
     return resolve(result)
   }))
 
-  console.log(`${toUpperCaseFirst(stake.type)} restarted`)
+  console.log(`${nodeInfo.name} restarted`)
   if (opts.verbose) console.log(info.Id)
 }
 
@@ -246,24 +243,18 @@ const startAction = (parent: Command, startCmd: Command, network: Network) => as
     ...getVerboseOption(parent),
     ...walletCLI.getWalletOption(parent, network)
   }
-  const address = await withFile(opts.wallet).address()
   const docker = new Docker(getDockerOptions(startCmd))
-  const dataVolumeInfo = await data.volume(docker)
-  const device = await data.read(docker, dataVolumeInfo)
-  const stakes = await xe.stake.stakes(network.blockchain.baseURL, address)
-  const stake = Object.values(stakes).find(stake => stake.device === device.address)
-  if (stake === undefined) throw new Error('This device is not assigned to a stake.')
-  const imageName = network.registry.imageName(stake.type)
+  const nodeInfo = await node.withAddress(docker, network, await withFile(opts.wallet).address())
 
-  let info = await service.info(docker, imageName)
+  let info = await nodeInfo.container()
   if (info !== undefined) {
-    console.log(`${toUpperCaseFirst(stake.type)} is already running`)
+    console.log(`${nodeInfo.name} is already running`)
     if (opts.verbose) console.log(info.Id)
     return
   }
 
   const container = await docker.createContainer({
-    Image: imageName,
+    Image: nodeInfo.image,
     AttachStdin: false,
     AttachStdout: false,
     AttachStderr: false,
@@ -271,7 +262,7 @@ const startAction = (parent: Command, startCmd: Command, network: Network) => as
     OpenStdin: false,
     StdinOnce: false,
     HostConfig: {
-      Binds: [`${dataVolumeInfo.Name}:/device`]
+      Binds: [`${nodeInfo.dataVolume.Name}:/device`]
     }
   })
 
@@ -280,10 +271,9 @@ const startAction = (parent: Command, startCmd: Command, network: Network) => as
     return resolve(result)
   }))
 
-  info = await service.info(docker, imageName)
-  if (info === undefined) throw new Error(`${toUpperCaseFirst(stake.type)} failed to start`)
-  console.log(`${toUpperCaseFirst(stake.type)} started`)
-  if (opts.verbose) console.log(info.Id)
+  info = await nodeInfo.container()
+  if (info === undefined) throw new Error(`${nodeInfo.name} failed to start`)
+  console.log(`${nodeInfo.name} started`)
 }
 
 const statusAction = (parent: Command, statusCmd: Command, network: Network) => async () => {
@@ -291,18 +281,13 @@ const statusAction = (parent: Command, statusCmd: Command, network: Network) => 
     ...getVerboseOption(parent),
     ...walletCLI.getWalletOption(parent, network)
   }
-  const address = await withFile(opts.wallet).address()
   const docker = new Docker(getDockerOptions(statusCmd))
-  const dataVolumeInfo = await data.volume(docker)
-  const device = await data.read(docker, dataVolumeInfo)
-  const stakes = await xe.stake.stakes(network.blockchain.baseURL, address)
-  const stake = Object.values(stakes).find(stake => stake.device === device.address)
-  if (stake === undefined) throw new Error('This device is not assigned to a stake.')
+  const nodeInfo = await node.withAddress(docker, network, await withFile(opts.wallet).address())
 
-  const info = await service.info(docker, network.registry.imageName(stake.type))
-  if (info === undefined) console.log(`${toUpperCaseFirst(stake.type)} is not running`)
+  const info = await nodeInfo.container()
+  if (info === undefined) console.log(`${nodeInfo.name} is not running`)
   else {
-    console.log(`${toUpperCaseFirst(stake.type)} is running`)
+    console.log(`${nodeInfo.name} is running`)
     if (opts.verbose) console.log(info.Id)
   }
 }
@@ -312,22 +297,17 @@ const stopAction = (parent: Command, stopCmd: Command, network: Network) => asyn
     ...getVerboseOption(parent),
     ...walletCLI.getWalletOption(parent, network)
   }
-  const address = await withFile(opts.wallet).address()
   const docker = new Docker(getDockerOptions(stopCmd))
-  const dataVolumeInfo = await data.volume(docker)
-  const device = await data.read(docker, dataVolumeInfo)
-  const stakes = await xe.stake.stakes(network.blockchain.baseURL, address)
-  const stake = Object.values(stakes).find(stake => stake.device === device.address)
-  if (stake === undefined) throw new Error('This device is not assigned to a stake.')
+  const nodeInfo = await node.withAddress(docker, network, await withFile(opts.wallet).address())
 
-  const info = await service.info(docker, network.registry.imageName(stake.type))
+  const info = await nodeInfo.container()
   if (info === undefined) {
-    console.log(`${toUpperCaseFirst(stake.type)} is not running`)
+    console.log(`${nodeInfo.name} is not running`)
     return
   }
 
-  await service.stop(docker, info)
-  console.log(`${toUpperCaseFirst(stake.type)} stopped`)
+  await node.stop(docker, info)
+  console.log(`${nodeInfo.name} stopped`)
   if (opts.verbose) console.log(info.Id)
 }
 
@@ -398,7 +378,7 @@ export const withProgram = (parent: Command, network: Network): void => {
 
   // edge device restart
   const restart = new Command('restart')
-    .description('restart services')
+    .description('restart nodes')
     .addOption(socketPathOption())
   restart.action(
     errorHandler(
@@ -413,7 +393,7 @@ export const withProgram = (parent: Command, network: Network): void => {
 
   // edge device start
   const start = new Command('start')
-    .description('start services')
+    .description('start nodes')
     .addOption(socketPathOption())
   start.action(
     errorHandler(
@@ -428,7 +408,7 @@ export const withProgram = (parent: Command, network: Network): void => {
 
   // edge device status
   const status = new Command('status')
-    .description('display services status')
+    .description('display nodes status')
     .addOption(socketPathOption())
   status.action(
     errorHandler(
@@ -443,7 +423,7 @@ export const withProgram = (parent: Command, network: Network): void => {
 
   // edge device stop
   const stop = new Command('stop')
-    .description('stop services')
+    .description('stop nodes')
     .addOption(socketPathOption())
   stop.action(
     errorHandler(
