@@ -201,10 +201,13 @@ const removeAction = (parent: Command, removeCmd: Command, network: Network) => 
   }
 
   if (stake !== undefined) {
-    const info = await node.containerByImage(docker, network.registry.imageName(stake.type))
+    const imageName = network.registry.imageName(stake.type)
+    const info = (await docker.listContainers()).find(c => c.Image === imageName)
     if (info !== undefined) {
+      const container = docker.getContainer(info.Id)
       console.log(`Stopping ${nodeName}...`)
-      await node.stop(docker, info)
+      await container.stop()
+      await container.remove()
       console.log(`Stopped ${nodeName}`)
     }
   }
@@ -228,14 +231,8 @@ const restartAction = (parent: Command, restartCmd: Command, network: Network) =
     return
   }
 
-  const container = docker.getContainer(info.Id)
-  await new Promise<unknown>((resolve, reject) => container.restart((err, result) => {
-    if (err !== null) return reject(err)
-    return resolve(result)
-  }))
-
+  await docker.getContainer(info.Id).restart()
   console.log(`${nodeInfo.name} restarted`)
-  if (opts.verbose) console.log(info.Id)
 }
 
 const startAction = (parent: Command, startCmd: Command, network: Network) => async () => {
@@ -249,7 +246,6 @@ const startAction = (parent: Command, startCmd: Command, network: Network) => as
   let info = await nodeInfo.container()
   if (info !== undefined) {
     console.log(`${nodeInfo.name} is already running`)
-    if (opts.verbose) console.log(info.Id)
     return
   }
 
@@ -262,14 +258,11 @@ const startAction = (parent: Command, startCmd: Command, network: Network) => as
     OpenStdin: false,
     StdinOnce: false,
     HostConfig: {
-      Binds: [`${nodeInfo.dataVolume.Name}:/device`]
+      Binds: [`${nodeInfo.dataVolume.Name}:/device`],
+      RestartPolicy: { Name: 'unless-stopped' }
     }
   })
-
-  await new Promise<unknown>((resolve, reject) => container.start((err, result) => {
-    if (err !== null) return reject(err)
-    return resolve(result)
-  }))
+  await container.start()
 
   info = await nodeInfo.container()
   if (info === undefined) throw new Error(`${nodeInfo.name} failed to start`)
@@ -286,10 +279,7 @@ const statusAction = (parent: Command, statusCmd: Command, network: Network) => 
 
   const info = await nodeInfo.container()
   if (info === undefined) console.log(`${nodeInfo.name} is not running`)
-  else {
-    console.log(`${nodeInfo.name} is running`)
-    if (opts.verbose) console.log(info.Id)
-  }
+  else console.log(`${nodeInfo.name} is running`)
 }
 
 const stopAction = (parent: Command, stopCmd: Command, network: Network) => async () => {
@@ -306,9 +296,10 @@ const stopAction = (parent: Command, stopCmd: Command, network: Network) => asyn
     return
   }
 
-  await node.stop(docker, info)
+  const container = docker.getContainer(info.Id)
+  await container.stop()
+  await container.remove()
   console.log(`${nodeInfo.name} stopped`)
-  if (opts.verbose) console.log(info.Id)
 }
 
 const getDockerOptions = (cmd: Command): DockerOptions => {

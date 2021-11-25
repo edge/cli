@@ -1,34 +1,8 @@
 import * as data from './data'
 import * as xe from '@edge/xe-utils'
+import Docker from 'dockerode'
 import { Network } from '../main'
 import { toUpperCaseFirst } from '../helpers'
-import Docker, { ContainerInfo } from 'dockerode'
-
-/**
- * Get information about the (first found) container using a specific image.
- */
-export const containerByImage = async (docker: Docker, image: string): Promise<ContainerInfo|undefined> => {
-  const containers = await new Promise<ContainerInfo[]>((resolve, reject) => docker.listContainers((err, result) => {
-    if (err !== null) return reject(err)
-    resolve(result || [])
-  }))
-  return containers.find(c => c.Image === image)
-}
-
-/**
- * Stop and remove a container.
- */
-export const stop = async (docker: Docker, info: ContainerInfo): Promise<void> => {
-  const container = docker.getContainer(info.Id)
-  await new Promise<unknown>((resolve, reject) => container.stop((err, result) => {
-    if (err !== null) return reject(err)
-    return resolve(result)
-  }))
-  await new Promise<unknown>((resolve, reject) => container.remove((err, result) => {
-    if (err !== null) return reject(err)
-    return resolve(result)
-  }))
-}
 
 /**
  * Get information about the device, node, and stake.
@@ -51,7 +25,7 @@ export const withAddress = async (docker: Docker, network: Network, address: str
   return {
     device,
     image,
-    container: () => containerByImage(docker, image),
+    container: async () => (await docker.listContainers()).find(c => c.Image === image),
     name,
     stake,
     dataVolume
