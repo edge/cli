@@ -11,10 +11,9 @@ import { checkVersionHandler } from '../update/cli'
 import { errorHandler } from '../edge/cli'
 import { withFile } from '../wallet/storage'
 import { askToSignTx, handleCreateTxResult } from '../transaction'
+import { findOne, types } from '.'
 import { formatXE, withNetwork as xeWithNetwork } from '../transaction/xe'
-import { printData, toDays, toUpperCaseFirst } from '../helpers'
-
-const stakeTypes = ['host', 'gateway', 'stargate']
+import { printData, printTrunc, toDays, toUpperCaseFirst } from '../helpers'
 
 const formatTime = (t: number): string => {
   const d = new Date(t)
@@ -29,35 +28,8 @@ const formatTime = (t: number): string => {
   return `${yyyy}-${mm}-${dd} ${h}:${m}:${s}`
 }
 
-const formatStake = (stake: xe.stake.Stake): string => {
-  const data: Record<string, string> = {
-    ID: stake.id,
-    Hash: stake.hash,
-    Tx: stake.transaction,
-    Created: formatTime(stake.created),
-    ...(() => {
-      if (stake.device !== undefined) {
-        return {
-          Device: stake.device,
-          Assigned: formatTime(stake.deviceAssigned as number)
-        }
-      }
-    })(),
-    Amount: formatXE(stake.amount),
-    Type: toUpperCaseFirst(stake.type)
-  }
-  if (stake.released !== undefined) data.Status = 'Released'
-  else if (stake.unlockRequested !== undefined) {
-    const unlockAt = stake.unlockRequested + stake.unlockPeriod
-    if (unlockAt > Date.now()) data.Status = `Unlocking (unlocks at ${formatTime(unlockAt)})`
-    else data.Status = 'Unlocked'
-  }
-  else data.Status = 'Active'
-  return printData(data)
-}
-
-const createAction = (parent: Command, createCmd: Command, network: Network) => async (stakeType: string) => {
-  if (!stakeTypes.includes(stakeType)) throw new Error(`invalid stake type "${stakeType}"`)
+const createAction = (parent: Command, createCmd: Command, network: Network) => async (nodeType: string) => {
+  if (!types.includes(nodeType)) throw new Error(`invalid node type "${nodeType}"`)
 
   const opts = {
     ...walletCLI.getWalletOption(parent, network),
@@ -73,19 +45,19 @@ const createAction = (parent: Command, createCmd: Command, network: Network) => 
   const onChainWallet = await api.walletWithNextNonce(await storage.address())
 
   const vars = await xe.vars(network.blockchain.baseURL)
-  // fallback 0 is just for typing - stakeType is checked at top of func, so it should never be used
+  // fallback 0 is just for typing - nodeType is checked at top of func, so it should never be used
   const amount =
-    stakeType === 'host' ? vars.host_stake_amount :
-      stakeType === 'gateway' ? vars.gateway_stake_amount :
-        stakeType === 'stargate' ? vars.stargate_stake_amount : 0
+    nodeType === 'host' ? vars.host_stake_amount :
+      nodeType === 'gateway' ? vars.gateway_stake_amount :
+        nodeType === 'stargate' ? vars.stargate_stake_amount : 0
 
   const resultBalance = onChainWallet.balance - amount
   // eslint-disable-next-line max-len
-  if (resultBalance < 0) throw new Error(`insufficient balance to stake ${stakeType}: your wallet only contains ${formatXE(onChainWallet.balance)} (${formatXE(amount)} required)`)
+  if (resultBalance < 0) throw new Error(`insufficient balance to stake ${nodeType}: your wallet only contains ${formatXE(onChainWallet.balance)} (${formatXE(amount)} required)`)
 
   if (!opts.yes) {
     // eslint-disable-next-line max-len
-    console.log(`You are staking ${formatXE(amount)} to run a ${toUpperCaseFirst(stakeType)}.`)
+    console.log(`You are staking ${formatXE(amount)} to run a ${toUpperCaseFirst(nodeType)}.`)
     console.log(
       `${formatXE(amount)} will be deducted from your available balance.`,
       `You will have ${formatXE(resultBalance)} remaining.`
@@ -112,7 +84,7 @@ const createAction = (parent: Command, createCmd: Command, network: Network) => 
     amount,
     data: {
       action: 'create_stake',
-      memo: `Create ${toUpperCaseFirst(stakeType)} Stake`
+      memo: `Create ${toUpperCaseFirst(nodeType)} Stake`
     },
     nonce: onChainWallet.nonce
   }, wallet.privateKey)
@@ -138,16 +110,22 @@ const infoAction = (infoCmd: Command, network: Network) => async () => {
   const [hostAmt, gatewayAmt, stargateAmt] = amounts.map(a => a.padStart(longest, ' '))
 
   console.log('Current staking amounts:')
-  console.log(`  Host:     ${hostAmt}`)
-  console.log(`  Gateway:  ${gatewayAmt}`)
   console.log(`  Stargate: ${stargateAmt}`)
+  console.log(`  Gateway:  ${gatewayAmt}`)
+  console.log(`  Host:     ${hostAmt}`)
 }
 
 const listAction = (parent: Command, listCmd: Command, network: Network) => async () => {
   const opts = {
     ...walletCLI.getWalletOption(parent, network),
-    ...getJsonOption(listCmd)
+    ...getJsonOption(listCmd),
+    ...(() => {
+      const { fullIds } = listCmd.opts<{ fullIds: boolean }>()
+      return { fullIds }
+    })()
   }
+  const printID = printTrunc(!opts.fullIds, 8)
+
   const storage = withFile(opts.wallet)
   const stakes = await xe.stake.stakes(network.blockchain.baseURL, await storage.address())
 
@@ -156,7 +134,32 @@ const listAction = (parent: Command, listCmd: Command, network: Network) => asyn
     return
   }
   Object.values(stakes).forEach(stake => {
-    console.log(formatStake(stake))
+    const data: Record<string, string> = {
+      ID: printID(stake.id),
+      Hash: printID(stake.hash),
+      Tx: stake.transaction,
+      Created: formatTime(stake.created),
+      ...(() => {
+        if (stake.device !== undefined) {
+          return {
+            Device: stake.device,
+            Assigned: formatTime(stake.deviceAssigned as number)
+          }
+        }
+      })(),
+      Amount: formatXE(stake.amount),
+      Type: toUpperCaseFirst(stake.type)
+    }
+
+    if (stake.released !== undefined) data.Status = 'Released'
+    else if (stake.unlockRequested !== undefined) {
+      const unlockAt = stake.unlockRequested + stake.unlockPeriod
+      if (unlockAt > Date.now()) data.Status = `Unlocking (unlocks at ${formatTime(unlockAt)})`
+      else data.Status = 'Unlocked'
+    }
+    else data.Status = 'Active'
+
+    console.log(printData(data))
     console.log()
   })
 }
@@ -172,12 +175,7 @@ const releaseAction = (parent: Command, releaseCmd: Command, network: Network) =
   }
   const storage = withFile(opts.wallet)
   const stakes = await xe.stake.stakes(network.blockchain.baseURL, await storage.address())
-
-  // find stake by hash, or by id as fallback
-  const stake =
-    Object.values(stakes).find(stake => stake.hash === id)
-    || Object.values(stakes).find(stake => stake.id === id)
-  if (!stake) throw new Error(`unrecognized stake "${id}"`)
+  const stake = findOne(stakes, id)
 
   if (stake.released !== undefined) {
     console.log('This stake has already been released.')
@@ -269,12 +267,7 @@ const unlockAction = (parent: Command, unlockCmd: Command, network: Network) => 
   }
   const storage = withFile(opts.wallet)
   const stakes = await xe.stake.stakes(network.blockchain.baseURL, await storage.address())
-
-  // find stake by hash, or by id as fallback
-  const stake =
-    Object.values(stakes).find(stake => stake.hash === id)
-    || Object.values(stakes).find(stake => stake.id === id)
-  if (!stake) throw new Error(`unrecognized stake "${id}"`)
+  const stake = findOne(stakes, id)
 
   if (stake.unlockRequested !== undefined) {
     if (stake.unlockRequested + stake.unlockPeriod > Date.now()) {
@@ -339,7 +332,7 @@ export const withProgram = (parent: Command, network: Network): void => {
 
   // edge stake create
   const create = new Command('create')
-    .argument('<type>', `type of stake (${stakeTypes.join('|')})`)
+    .argument('<type>', `node type (${types.join('|')})`)
     .description('create a new stake')
     .addOption(walletCLI.passphraseOption())
     .addOption(walletCLI.passphraseFileOption())
@@ -374,6 +367,7 @@ export const withProgram = (parent: Command, network: Network): void => {
   const list = new Command('list')
     .alias('ls')
     .description('list all stakes')
+    .option('-D, --full-ids', 'display full-length IDs (ignored if --json)')
     .option('--json', 'display stakes as json')
   list.action(
     errorHandler(
@@ -408,7 +402,7 @@ export const withProgram = (parent: Command, network: Network): void => {
 
   // edge stake unlock
   const unlock = new Command('unlock')
-    .argument('<id>', 'stake ID or hash')
+    .argument('<id>', 'stake ID')
     .description('unlock a stake')
     .addOption(walletCLI.passphraseOption())
     .addOption(walletCLI.passphraseFileOption())
