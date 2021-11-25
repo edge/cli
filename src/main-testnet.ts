@@ -7,6 +7,7 @@ import main from './main'
 import { sep } from 'path'
 
 main(process.argv, {
+  appName: 'edgetest',
   name: 'testnet',
   blockchain: {
     baseURL: 'https://xe1.test.network'

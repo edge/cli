@@ -129,7 +129,8 @@ export const volume = async (docker: Docker, canCreate?: boolean): Promise<Volum
   catch (err) {
     // if allowed to create volume, ignore no volume error
     const isNoVolume = err instanceof Error && err.message.match('no such volume')
-    if (!isNoVolume || !canCreate) throw err
+    if (!isNoVolume) throw err
+    if (!canCreate) throw new Error('device has not been initialized')
   }
   volume = await docker.createVolume({
     Name: config.docker.dataVolume

@@ -16,25 +16,28 @@ import { Command, Option } from 'commander'
 import Docker, { DockerOptions } from 'dockerode'
 import { askToSignTx, handleCreateTxResult } from '../transaction'
 import { errorHandler, getVerboseOption } from '../edge/cli'
-import { printData, shortDigest, toUpperCaseFirst } from '../helpers'
+import { printData, printTrunc, toUpperCaseFirst } from '../helpers'
 
 const stakeTypeOrder = ['stargate', 'gateway', 'host'].reduce((o, v, i) => {
   o[v] = i
   return o
 }, {} as Record<string, number>)
 
-const addAction = (parent: Command, addCmd: Command, network: Network) => async (stakeHash: string) => {
+const addAction = (parent: Command, addCmd: Command, network: Network) => async (hash: string) => {
   const opts = {
     ...walletCLI.getWalletOption(parent, network),
     ...walletCLI.getPassphraseOption(addCmd),
     ...(() => {
-      const { yes } = addCmd.opts<{ yes: boolean }>()
-      return { yes }
+      const { fullDigests, yes } = addCmd.opts<{ fullDigests: boolean, yes: boolean }>()
+      return { fullDigests, yes }
     })()
   }
+  const digest = printTrunc(!opts.fullDigests, 8)
+
   const storage = withFile(opts.wallet)
   const docker = new Docker(getDockerOptions(addCmd))
 
+  // get device data. if none, initialize device on the fly
   const dataVolume = data.withVolume(docker, await data.volume(docker, true))
   const device = await (async () => {
     let w: data.Device | undefined = undefined
@@ -45,16 +48,43 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
       console.log('Initializing device...')
       w = { ...xe.wallet.create(), network: network.name }
       await dataVolume.write(w)
+      console.log()
     }
     return w as data.Device
   })()
 
+  // get user stakes, check whether device already assigned
   const stakes = await xe.stake.stakes(network.blockchain.baseURL, await storage.address())
   if (Object.keys(stakes).length === 0) throw new Error('no stakes')
+  const assigned = Object.values(stakes).find(s => s.device === device.address)
+  if (assigned !== undefined) {
+    console.log([
+      `This device is already assigned to stake ${digest(assigned.hash)} `,
+      `(${toUpperCaseFirst(assigned.type)}) on Edge ${toUpperCaseFirst(network.name)}.`
+    ].join(''))
+    console.log()
+    console.log([
+      `To reassign this device, run '${network.appName} device remove' first to remove it from the network, `,
+      `then run '${network.appName} device add' again to add it back.`
+    ].join(''))
+    process.exitCode = 1
+    return
+  }
+
+  // identify stake to assign device to
   const stake = await (async () => {
-    if (stakeHash) {
-      const s = Object.values(stakes).find(s => s.hash === stakeHash)
-      if (s === undefined) throw new Error(`stake ${stakeHash} does not exist`)
+    if (hash) {
+      if (hash.length < 3) throw new Error('input hash must be at least 3 characters')
+      const ss = Object.values(stakes).filter(s => s.hash.slice(0, hash.length) === hash)
+      if (ss.length === 0) throw new Error(`stake ${hash} does not exist`)
+      if (ss.length > 1) {
+        console.log(`The hash ${hash} matches more than one stake:`)
+        ss.forEach(s => console.log(`  ${digest(s.hash)}`))
+        console.log()
+        console.log('Please add more characters to disambiguate.')
+        throw new Error('ambiguous hash')
+      }
+      return ss[0]
     }
 
     console.log('Select a stake to assign this device to:')
@@ -65,7 +95,7 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
         return posDiff !== 0 ? posDiff : a.created - b.created
       })
     numberedStakes.forEach((stake, n) => console.log(
-      `${n+1}. ${shortDigest(stake.hash)} (${toUpperCaseFirst(stake.type)})`
+      `${n+1}. ${digest(stake.hash)} (${toUpperCaseFirst(stake.type)})`
     ))
     console.log()
     let sel = 0
@@ -75,34 +105,24 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
       if (tmpsel > 0 && tmpsel <= numberedStakes.length) sel = tmpsel
       else console.log(`Please enter a number between 1 and ${numberedStakes.length}.`)
     }
+    console.log()
     return numberedStakes[sel-1]
   })()
 
-  const assigned = Object.values(stakes).find(s => s.device === device.address)
-  if (assigned !== undefined) {
-    if (assigned.id === stake.id) console.log('This device is already assigned to the requested stake.')
-    else {
-      console.log(`This device is already assigned to a ${toUpperCaseFirst(assigned.type)} stake: ${assigned.hash}`)
-      console.log([
-        'To reassign this device, run \'edge device remove\' first to remove it from the network, then run ',
-        '\'edge device add\' again to add it back.'
-      ].join(''))
-    }
-    return
-  }
-
+  // confirm user intent
   const nodeName = toUpperCaseFirst(stake.type)
   if (!opts.yes) {
-    console.log('You are adding this device to the network.')
+    console.log(`You are adding this device to Edge ${toUpperCaseFirst(network.name)}.`)
+    console.log()
     console.log([
-      `This will assign the ${nodeName} stake ${stake.hash}, `,
-      `allowing this device to be used as a ${nodeName} node.`
+      `This device will be assigned to stake ${digest(stake.hash)}, `,
+      `allowing this device to operate a ${nodeName} node.`
     ].join(''))
     console.log()
     let confirm = ''
     const ynRegexp = /^[yn]$/
     while (confirm.length === 0) {
-      const input = await ask('Proceed with assignment? [yn] ')
+      const input = await ask('Add this device? [yn] ')
       if (ynRegexp.test(input)) confirm = input
       else console.log('Please enter y or n.')
     }
@@ -110,6 +130,7 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
     console.log()
   }
 
+  // create assignment tx
   await askToSignTx(opts)
   const wallet = await storage.read(opts.passphrase as string)
 
@@ -132,13 +153,28 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
 
   const result = await api.createTransaction(tx)
   if (!handleCreateTxResult(network, result)) process.exitCode = 1
+
+  // next steps advice
+  console.log()
+  console.log([
+    `You may run '${network.appName} tx lsp' to check progress of your pending transaction. `,
+    'When your stake transaction has been processed it will no longer be listed as pending.'
+  ].join(''))
+  console.log()
+  console.log(`You can then run '${network.appName} device start' to start a ${nodeName} node on this device.`)
 }
 
 const infoAction = (parent: Command, infoCmd: Command, network: Network) => async () => {
   const opts = {
     ...getVerboseOption(parent),
-    ...walletCLI.getWalletOption(parent, network)
+    ...walletCLI.getWalletOption(parent, network),
+    ...(() => {
+      const { fullDigests } = infoCmd.opts<{ fullDigests: boolean }>()
+      return { fullDigests }
+    })()
   }
+  const digest = printTrunc(!opts.fullDigests, 8)
+
   const docker = new Docker(getDockerOptions(infoCmd))
   const dataVolume = data.withVolume(docker, await data.volume(docker))
   const device = await dataVolume.read()
@@ -154,7 +190,7 @@ const infoAction = (parent: Command, infoCmd: Command, network: Network) => asyn
     const stake = Object.values(stakes).find(s => s.device === device.address)
     if (stake !== undefined) {
       toPrint.Type = toUpperCaseFirst(stake.type)
-      toPrint.Stake = stake.hash
+      toPrint.Stake = digest(stake.hash)
     }
     else toPrint.Stake = 'Unassigned'
   }
@@ -170,10 +206,12 @@ const removeAction = (parent: Command, removeCmd: Command, network: Network) => 
     ...walletCLI.getWalletOption(parent, network),
     ...walletCLI.getPassphraseOption(removeCmd),
     ...(() => {
-      const { yes } = removeCmd.opts<{ yes: boolean }>()
-      return { yes }
+      const { fullDigests, yes } = removeCmd.opts<{ fullDigests: boolean, yes: boolean }>()
+      return { fullDigests, yes }
     })()
   }
+  const digest = printTrunc(!opts.fullDigests, 8)
+
   const storage = withFile(opts.wallet)
   const docker = new Docker(getDockerOptions(removeCmd))
 
@@ -182,17 +220,19 @@ const removeAction = (parent: Command, removeCmd: Command, network: Network) => 
 
   const stakes = await xe.stake.stakes(network.blockchain.baseURL, await storage.address())
   const stake = Object.values(stakes).find(s => s.device === device.address)
-
   const nodeName = stake !== undefined ? toUpperCaseFirst(stake.type) : ''
+
+  // confirm user intent
   if (!opts.yes) {
-    console.log('You are removing this device from the network.')
-    if (stake !== undefined) console.log(`This will unassign the ${nodeName} stake ${stake.hash}.`)
-    else console.log('This device does not currently have a stake assigned.')
+    console.log(`You are removing this device from Edge ${toUpperCaseFirst(network.name)}.`)
+    console.log()
+    if (stake === undefined) console.log('This device is not assigned to any stake.')
+    else console.log(`This will remove this device's assignment to stake ${digest(stake.hash)} (${nodeName}).`)
     console.log()
     let confirm = ''
     const ynRegexp = /^[yn]$/
     while (confirm.length === 0) {
-      const input = await ask('Proceed with removal? [yn] ')
+      const input = await ask('Remove this device? [yn] ')
       if (ynRegexp.test(input)) confirm = input
       else console.log('Please enter y or n.')
     }
@@ -201,6 +241,7 @@ const removeAction = (parent: Command, removeCmd: Command, network: Network) => 
   }
 
   if (stake !== undefined) {
+    // if required, create unassignment tx
     await askToSignTx(opts)
     const wallet = await storage.read(opts.passphrase as string)
     const api = xeWithNetwork(network)
@@ -220,14 +261,15 @@ const removeAction = (parent: Command, removeCmd: Command, network: Network) => 
     }, wallet.privateKey)
 
     console.log('Unassigning stake...')
+    console.log()
     const result = await api.createTransaction(tx)
     if (!handleCreateTxResult(network, result)) {
       process.exitCode = 1
       return
     }
-  }
+    console.log()
 
-  if (stake !== undefined) {
+    // if node is running, stop it
     const imageName = network.registry.imageName(stake.type)
     const info = (await docker.listContainers()).find(c => c.Image === imageName)
     if (info !== undefined) {
@@ -235,13 +277,15 @@ const removeAction = (parent: Command, removeCmd: Command, network: Network) => 
       console.log(`Stopping ${nodeName}...`)
       await container.stop()
       await container.remove()
-      console.log(`Stopped ${nodeName}`)
+      console.log()
     }
   }
 
   console.log('Removing device...')
   await dataVolume.remove()
-  console.log('This device has been removed from the network.')
+  console.log()
+
+  console.log(`This device has been removed from Edge ${toUpperCaseFirst(network.name)}.`)
 }
 
 const restartAction = (parent: Command, restartCmd: Command, network: Network) => async () => {
@@ -351,6 +395,7 @@ export const withProgram = (parent: Command, network: Network): void => {
     .argument('[hash]', 'stake hash')
     .description('add this device to the network')
     .addOption(socketPathOption())
+    .option('-D, --full-digests', 'display full digest strings')
     .option('-y, --yes', 'do not ask for confirmation')
   add.action(
     errorHandler(
@@ -367,6 +412,7 @@ export const withProgram = (parent: Command, network: Network): void => {
   const info = new Command('info')
     .description('display device/stake information')
     .addOption(socketPathOption())
+    .option('-D, --full-digests', 'display full digest strings')
   info.action(
     errorHandler(
       parent,
@@ -382,6 +428,7 @@ export const withProgram = (parent: Command, network: Network): void => {
   const remove = new Command('remove')
     .description('remove this device from the network')
     .addOption(socketPathOption())
+    .option('-D, --full-digests', 'display full digest strings')
     .option('-y, --yes', 'do not ask for confirmation')
   remove.action(
     errorHandler(

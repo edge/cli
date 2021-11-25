@@ -25,7 +25,12 @@ export const printData = (data: Record<string, string>, sep = ':'): string => {
   }).join('\n')
 }
 
-export const shortDigest = (d: string): string => d.slice(0, 8)
+/**
+ * This convenience function returns a function that truncates a given string to a specific length if a `short` flag
+ * is true. This is useful for dense formatting of long hashes and digests, where an option may be provided to display
+ * them in full.
+ */
+export const printTrunc = (short: boolean, n: number) => (d: string): string => short ? d.slice(0, n) : d
 
 const msDay = 1000 * 60 * 60 * 24
 export const toDays = (t: number): number => Math.ceil(t / msDay)

@@ -10,6 +10,7 @@ import * as walletCLI from './wallet/cli'
 import { create as createCLI } from './edge/cli'
 
 export type Network = {
+  appName: string
   name: string
   blockchain: {
     baseURL: string
