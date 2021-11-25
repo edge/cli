@@ -152,6 +152,19 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
   console.log(`You can then run '${network.appName} device start' to start a ${nodeName} node on this device.`)
 }
 
+const addHelp = (network: Network) => [
+  '\n',
+  'This command will add this device to the network, allowing it to operate as a node.\n\n',
+  'Adding a device will:\n',
+  '  - Initialize its identity if needed\n',
+  '  - Assign it to a stake\n\n',
+  'Stake assignment requires a blockchain transaction. After the transaction has been processed, this device can ',
+  'run a node of the staked type.\n\n',
+  'Before you run this command, ensure Docker is running and that you have an unassigned stake to assign this ',
+  'device to.\n\n',
+  `If you do not already have a stake, you can run '${network.appName} stake create' to get one.`
+].join('')
+
 const infoAction = (parent: Command, infoCmd: Command, network: Network) => async () => {
   const opts = {
     ...getVerboseOption(parent),
@@ -188,6 +201,11 @@ const infoAction = (parent: Command, infoCmd: Command, network: Network) => asyn
 
   console.log(printData(toPrint))
 }
+
+const infoHelp = [
+  '\n',
+  'This command displays information about your device and the stake it is assigned to.'
+].join('')
 
 const removeAction = (parent: Command, removeCmd: Command, network: Network) => async () => {
   const opts = {
@@ -276,6 +294,15 @@ const removeAction = (parent: Command, removeCmd: Command, network: Network) => 
   console.log(`This device has been removed from Edge ${toUpperCaseFirst(network.name)}.`)
 }
 
+const removeHelp = [
+  '\n',
+  'This command removes this device from the network.\n\n',
+  'Removing a device will:\n',
+  '  - Unassign it from its stake\n',
+  '  - Stop the node (if it is running)\n',
+  '  - Destroy the device\'s identity\n'
+].join('')
+
 const restartAction = (parent: Command, restartCmd: Command, network: Network) => async () => {
   const opts = {
     ...getVerboseOption(parent),
@@ -293,6 +320,8 @@ const restartAction = (parent: Command, restartCmd: Command, network: Network) =
   await docker.getContainer(info.Id).restart()
   console.log(`${nodeInfo.name} restarted`)
 }
+
+const restartHelp = '\nRestart the node, if it is running.'
 
 const startAction = (parent: Command, startCmd: Command, network: Network) => async () => {
   const opts = {
@@ -328,6 +357,12 @@ const startAction = (parent: Command, startCmd: Command, network: Network) => as
   console.log(`${nodeInfo.name} started`)
 }
 
+const startHelp = (network: Network) => [
+  '\n',
+  'Start the node. Your device must be added to the network first. ',
+  `Run '${network.appName} device add --help' for more information.`
+].join('')
+
 const statusAction = (parent: Command, statusCmd: Command, network: Network) => async () => {
   const opts = {
     ...getVerboseOption(parent),
@@ -340,6 +375,8 @@ const statusAction = (parent: Command, statusCmd: Command, network: Network) => 
   if (info === undefined) console.log(`${nodeInfo.name} is not running`)
   else console.log(`${nodeInfo.name} is running`)
 }
+
+const statusHelp = '\nDisplay the status of the node (whether it is running or not).'
 
 const stopAction = (parent: Command, stopCmd: Command, network: Network) => async () => {
   const opts = {
@@ -361,6 +398,8 @@ const stopAction = (parent: Command, stopCmd: Command, network: Network) => asyn
   console.log(`${nodeInfo.name} stopped`)
 }
 
+const stopHelp = '\nStop the node, if it is running.'
+
 const getDockerOptions = (cmd: Command): DockerOptions => {
   type Input = {
     dockerSocketPath?: string
@@ -381,6 +420,7 @@ export const withProgram = (parent: Command, network: Network): void => {
   // edge device add
   const add = new Command('add')
     .description('add this device to the network')
+    .addHelpText('after', addHelp(network))
     .addOption(socketPathOption())
     .option('-D, --full-ids', 'display full-length IDs')
     .option('-s, --stake', 'stake ID')
@@ -399,6 +439,7 @@ export const withProgram = (parent: Command, network: Network): void => {
   // edge device info
   const info = new Command('info')
     .description('display device/stake information')
+    .addHelpText('after', infoHelp)
     .addOption(socketPathOption())
     .option('-D, --full-ids', 'display full-length IDs')
   info.action(
@@ -415,6 +456,7 @@ export const withProgram = (parent: Command, network: Network): void => {
   // edge device remove
   const remove = new Command('remove')
     .description('remove this device from the network')
+    .addHelpText('after', removeHelp)
     .addOption(socketPathOption())
     .option('-D, --full-ids', 'display full-length IDs')
     .option('-y, --yes', 'do not ask for confirmation')
@@ -431,7 +473,8 @@ export const withProgram = (parent: Command, network: Network): void => {
 
   // edge device restart
   const restart = new Command('restart')
-    .description('restart nodes')
+    .description('restart node')
+    .addHelpText('after', restartHelp)
     .addOption(socketPathOption())
   restart.action(
     errorHandler(
@@ -446,7 +489,8 @@ export const withProgram = (parent: Command, network: Network): void => {
 
   // edge device start
   const start = new Command('start')
-    .description('start nodes')
+    .description('start node')
+    .addHelpText('after', startHelp(network))
     .addOption(socketPathOption())
   start.action(
     errorHandler(
@@ -461,7 +505,8 @@ export const withProgram = (parent: Command, network: Network): void => {
 
   // edge device status
   const status = new Command('status')
-    .description('display nodes status')
+    .description('display node status')
+    .addHelpText('after', statusHelp)
     .addOption(socketPathOption())
   status.action(
     errorHandler(
@@ -476,7 +521,8 @@ export const withProgram = (parent: Command, network: Network): void => {
 
   // edge device stop
   const stop = new Command('stop')
-    .description('stop nodes')
+    .description('stop node')
+    .addHelpText('after', stopHelp)
     .addOption(socketPathOption())
   stop.action(
     errorHandler(

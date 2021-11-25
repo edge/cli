@@ -93,11 +93,23 @@ const createAction = (parent: Command, createCmd: Command, network: Network) => 
   if (!handleCreateTxResult(network, result)) process.exitCode = 1
 }
 
+const createHelp = (network: Network) => [
+  '\n',
+  'This command will create a stake in the blockchain.\n\n',
+  'A stake enables your device to participate as a node in the network, providing capacity in exchange for XE.\n\n',
+  `Run '${network.appName} device add --help' for more information.`
+].join('')
+
 const infoAction = (infoCmd: Command, network: Network) => async () => {
   const opts = getJsonOption(infoCmd)
   const vars = await xe.vars(network.blockchain.baseURL)
   if (opts.json) {
-    console.log(JSON.stringify(vars, undefined, 2))
+    const someVars = {
+      host_stake_amount: vars.host_stake_amount,
+      gateway_stake_amount: vars.gateway_stake_amount,
+      stargate_stake_amount: vars.stargate_stake_amount
+    }
+    console.log(JSON.stringify(someVars, undefined, 2))
     return
   }
 
@@ -114,6 +126,8 @@ const infoAction = (infoCmd: Command, network: Network) => async () => {
   console.log(`  Gateway:  ${gatewayAmt}`)
   console.log(`  Host:     ${hostAmt}`)
 }
+
+const infoHelp = '\nDisplays current staking amounts.'
 
 const listAction = (parent: Command, listCmd: Command, network: Network) => async () => {
   const opts = {
@@ -163,6 +177,12 @@ const listAction = (parent: Command, listCmd: Command, network: Network) => asyn
     console.log()
   })
 }
+
+const listHelp = [
+  '\n',
+  'Displays all stakes associated with your wallet.\n\n',
+  'The default output is simplified for legibility. Provide the --json option to display full detail.'
+].join('')
 
 const releaseAction = (parent: Command, releaseCmd: Command, network: Network) => async (id: string) => {
   const opts = {
@@ -252,6 +272,7 @@ const releaseAction = (parent: Command, releaseCmd: Command, network: Network) =
 
 const releaseHelp = [
   '\n',
+  'Release a stake.\n\n',
   'The --express option instructs the blockchain to take a portion of your stake in return for an immediate ',
   'release of funds, rather than waiting for the unlock period to conclude.'
 ].join('')
@@ -320,6 +341,11 @@ const unlockAction = (parent: Command, unlockCmd: Command, network: Network) => 
   if (!handleCreateTxResult(network, result)) process.exitCode = 1
 }
 
+const unlockHelp = [
+  '\n',
+  'Unlock a stake.'
+].join('')
+
 const getJsonOption = (cmd: Command) => {
   type JsonOption = { json: boolean }
   const { json } = cmd.opts<JsonOption>()
@@ -334,6 +360,7 @@ export const withProgram = (parent: Command, network: Network): void => {
   const create = new Command('create')
     .argument('<type>', `node type (${types.join('|')})`)
     .description('create a new stake')
+    .addHelpText('after', createHelp(network))
     .addOption(walletCLI.passphraseOption())
     .addOption(walletCLI.passphraseFileOption())
     .option('-y, --yes', 'do not ask for confirmation')
@@ -351,6 +378,7 @@ export const withProgram = (parent: Command, network: Network): void => {
   // edge stake info
   const info = new Command('info')
     .description('get on-chain staking information')
+    .addHelpText('after', infoHelp)
     .option('--json', 'display info as json')
   info.action(
     errorHandler(
@@ -367,6 +395,7 @@ export const withProgram = (parent: Command, network: Network): void => {
   const list = new Command('list')
     .alias('ls')
     .description('list all stakes')
+    .addHelpText('after', listHelp)
     .option('-D, --full-ids', 'display full-length IDs (ignored if --json)')
     .option('--json', 'display stakes as json')
   list.action(
@@ -384,11 +413,11 @@ export const withProgram = (parent: Command, network: Network): void => {
   const release = new Command('release')
     .argument('<id>', 'stake ID')
     .description('release a stake')
+    .addHelpText('after', releaseHelp)
     .option('-e, --express', 'express release')
     .addOption(walletCLI.passphraseOption())
     .addOption(walletCLI.passphraseFileOption())
     .option('-y, --yes', 'do not ask for confirmation')
-    .addHelpText('after', releaseHelp)
   release.action(
     errorHandler(
       parent,
@@ -404,6 +433,7 @@ export const withProgram = (parent: Command, network: Network): void => {
   const unlock = new Command('unlock')
     .argument('<id>', 'stake ID')
     .description('unlock a stake')
+    .addHelpText('after', unlockHelp)
     .addOption(walletCLI.passphraseOption())
     .addOption(walletCLI.passphraseFileOption())
     .option('-y, --yes', 'do not ask for confirmation')
