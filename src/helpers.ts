@@ -25,6 +25,8 @@ export const printData = (data: Record<string, string>, sep = ':'): string => {
   }).join('\n')
 }
 
+export const shortDigest = (d: string): string => d.slice(0, 8)
+
 const msDay = 1000 * 60 * 60 * 24
 export const toDays = (t: number): number => Math.ceil(t / msDay)
 

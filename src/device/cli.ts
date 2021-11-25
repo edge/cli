@@ -16,7 +16,12 @@ import { Command, Option } from 'commander'
 import Docker, { DockerOptions } from 'dockerode'
 import { askToSignTx, handleCreateTxResult } from '../transaction'
 import { errorHandler, getVerboseOption } from '../edge/cli'
-import { printData, toUpperCaseFirst } from '../helpers'
+import { printData, shortDigest, toUpperCaseFirst } from '../helpers'
+
+const stakeTypeOrder = ['stargate', 'gateway', 'host'].reduce((o, v, i) => {
+  o[v] = i
+  return o
+}, {} as Record<string, number>)
 
 const addAction = (parent: Command, addCmd: Command, network: Network) => async (stakeHash: string) => {
   const opts = {
@@ -34,12 +39,10 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
   const device = await (async () => {
     let w: data.Device | undefined = undefined
     try {
-      console.log('Reading device data...')
       w = await dataVolume.read()
     }
     catch (err) {
-      console.log(err)
-      console.log('Initializing device data...')
+      console.log('Initializing device...')
       w = { ...xe.wallet.create(), network: network.name }
       await dataVolume.write(w)
     }
@@ -47,9 +50,33 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
   })()
 
   const stakes = await xe.stake.stakes(network.blockchain.baseURL, await storage.address())
-  // TODO interactive stake selection
-  const stake = Object.values(stakes).find(s => s.hash === stakeHash)
-  if (stake === undefined) throw new Error(`no stake with hash ${stakeHash}`)
+  if (Object.keys(stakes).length === 0) throw new Error('no stakes')
+  const stake = await (async () => {
+    if (stakeHash) {
+      const s = Object.values(stakes).find(s => s.hash === stakeHash)
+      if (s === undefined) throw new Error(`stake ${stakeHash} does not exist`)
+    }
+
+    console.log('Select a stake to assign this device to:')
+    console.log()
+    const numberedStakes = Object.values(stakes)
+      .sort((a, b) => {
+        const posDiff = stakeTypeOrder[a.type] - stakeTypeOrder[b.type]
+        return posDiff !== 0 ? posDiff : a.created - b.created
+      })
+    numberedStakes.forEach((stake, n) => console.log(
+      `${n+1}. ${shortDigest(stake.hash)} (${toUpperCaseFirst(stake.type)})`
+    ))
+    console.log()
+    let sel = 0
+    while (sel === 0) {
+      const selstr = await ask(`Enter a number: (1-${numberedStakes.length}) `)
+      const tmpsel = parseInt(selstr)
+      if (tmpsel > 0 && tmpsel <= numberedStakes.length) sel = tmpsel
+      else console.log(`Please enter a number between 1 and ${numberedStakes.length}.`)
+    }
+    return numberedStakes[sel-1]
+  })()
 
   const assigned = Object.values(stakes).find(s => s.device === device.address)
   if (assigned !== undefined) {
