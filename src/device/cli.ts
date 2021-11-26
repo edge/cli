@@ -133,7 +133,7 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
     data: {
       action: 'assign_device',
       device: device.address,
-      memo: 'Assign device to stake',
+      memo: 'Assign Device',
       stake: stake.hash
     },
     nonce: onChainWallet.nonce
@@ -159,7 +159,7 @@ const addHelp = (network: Network) => [
   '  - Initialize its identity if needed\n',
   '  - Assign it to a stake\n\n',
   'Stake assignment requires a blockchain transaction. After the transaction has been processed, this device can ',
-  'run a node of the staked type.\n\n',
+  'run a node corresponding to the stake type.\n\n',
   'Before you run this command, ensure Docker is running and that you have an unassigned stake to assign this ',
   'device to.\n\n',
   `If you do not already have a stake, you can run '${network.appName} stake create' to get one.`
@@ -260,7 +260,7 @@ const removeAction = (parent: Command, removeCmd: Command, network: Network) => 
       amount: 0,
       data: {
         action: 'unassign_device',
-        memo: 'Unassign device from stake',
+        memo: 'Unassign Device',
         stake: stake.hash
       },
       nonce: onChainWallet.nonce

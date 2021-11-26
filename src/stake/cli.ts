@@ -95,7 +95,7 @@ const createAction = (parent: Command, createCmd: Command, network: Network) => 
 
 const createHelp = (network: Network) => [
   '\n',
-  'This command will create a stake in the blockchain.\n\n',
+  'This command will create a stake on the blockchain.\n\n',
   'A stake enables your device to participate as a node in the network, providing capacity in exchange for XE.\n\n',
   `Run '${network.appName} device add --help' for more information.`
 ].join('')
