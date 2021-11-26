@@ -8,9 +8,9 @@ import { Command } from 'commander'
 import { Network } from '../main'
 import { ask } from '../input'
 import { checkVersionHandler } from '../update/cli'
-import { errorHandler } from '../edge/cli'
 import { withFile } from '../wallet/storage'
 import { askToSignTx, handleCreateTxResult } from '../transaction'
+import { errorHandler, getVerboseOption } from '../edge/cli'
 import { findOne, types } from '.'
 import { formatXE, withNetwork as xeWithNetwork } from '../transaction/xe'
 import { printData, printTrunc, toDays, toUpperCaseFirst } from '../helpers'
@@ -28,10 +28,22 @@ const formatTime = (t: number): string => {
   return `${yyyy}-${mm}-${dd} ${h}:${m}:${s}`
 }
 
+// wrapper for xe.vars; returns the original error in --verbose CLI, otherwise generic error message
+const onChainVars = async (verbose: boolean, host: string) => {
+  try {
+    return await xe.vars(host)
+  }
+  catch (err) {
+    if (verbose) throw err
+    throw new Error('staking is currently unavailable. Please try again later.')
+  }
+}
+
 const createAction = (parent: Command, createCmd: Command, network: Network) => async (nodeType: string) => {
   if (!types.includes(nodeType)) throw new Error(`invalid node type "${nodeType}"`)
 
   const opts = {
+    ...getVerboseOption(parent),
     ...walletCLI.getWalletOption(parent, network),
     ...walletCLI.getPassphraseOption(createCmd),
     ...(() => {
@@ -44,7 +56,7 @@ const createAction = (parent: Command, createCmd: Command, network: Network) => 
   const api = xeWithNetwork(network)
   const onChainWallet = await api.walletWithNextNonce(await storage.address())
 
-  const vars = await xe.vars(network.blockchain.baseURL)
+  const vars = await onChainVars(opts.verbose, network.blockchain.baseURL)
   // fallback 0 is just for typing - nodeType is checked at top of func, so it should never be used
   const amount =
     nodeType === 'host' ? vars.host_stake_amount :
@@ -100,9 +112,12 @@ const createHelp = (network: Network) => [
   `Run '${network.appName} device add --help' for more information.`
 ].join('')
 
-const infoAction = (infoCmd: Command, network: Network) => async () => {
-  const opts = getJsonOption(infoCmd)
-  const vars = await xe.vars(network.blockchain.baseURL)
+const infoAction = (parent: Command, infoCmd: Command, network: Network) => async () => {
+  const opts = {
+    ...getVerboseOption(parent),
+    ...getJsonOption(infoCmd)
+  }
+  const vars = await onChainVars(opts.verbose, network.blockchain.baseURL)
   if (opts.json) {
     const someVars = {
       host_stake_amount: vars.host_stake_amount,
@@ -186,6 +201,7 @@ const listHelp = [
 
 const releaseAction = (parent: Command, releaseCmd: Command, network: Network) => async (id: string) => {
   const opts = {
+    ...getVerboseOption(parent),
     ...walletCLI.getWalletOption(parent, network),
     ...walletCLI.getPassphraseOption(releaseCmd),
     ...(() => {
@@ -210,7 +226,7 @@ const releaseAction = (parent: Command, releaseCmd: Command, network: Network) =
   const unlockAt = stake.unlockRequested + stake.unlockPeriod
   const needUnlock = unlockAt > Date.now()
   if (needUnlock && !opts.express) {
-    const { stake_express_release_fee } = await xe.vars(network.blockchain.baseURL)
+    const { stake_express_release_fee } = await onChainVars(opts.verbose, network.blockchain.baseURL)
     const releaseFee = stake_express_release_fee * stake.amount
     const releasePc = stake_express_release_fee * 100
     console.log(`This stake has not unlocked yet. It unlocks at ${formatTime(unlockAt)}.`)
@@ -224,7 +240,7 @@ const releaseAction = (parent: Command, releaseCmd: Command, network: Network) =
     // eslint-disable-next-line max-len
     console.log(`You are releasing a ${toUpperCaseFirst(stake.type)} stake.`)
     if (needUnlock) {
-      const { stake_express_release_fee } = await xe.vars(network.blockchain.baseURL)
+      const { stake_express_release_fee } = await onChainVars(opts.verbose, network.blockchain.baseURL)
       const releaseFee = stake_express_release_fee * stake.amount
       const releasePc = stake_express_release_fee * 100
       console.log([
@@ -386,7 +402,7 @@ export const withProgram = (parent: Command, network: Network): void => {
       checkVersionHandler(
         parent,
         network,
-        infoAction(info, network)
+        infoAction(parent, info, network)
       )
     )
   )
