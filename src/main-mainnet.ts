@@ -7,6 +7,7 @@ import main from './main'
 import { sep } from 'path'
 
 main(process.argv, {
+  appName: 'edge',
   name: 'mainnet',
   blockchain: {
     baseURL: 'https://api.xe.network'
@@ -21,6 +22,9 @@ main(process.argv, {
   },
   index: {
     baseURL: 'https://index.xe.network'
+  },
+  registry: {
+    imageName: app => `registry.edge.network/mainnet/${app}`
   },
   wallet: {
     defaultFile: `${homedir}${sep}.edge${sep}wallet${sep}mainnet.json`

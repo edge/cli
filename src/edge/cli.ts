@@ -10,11 +10,10 @@ import pkg from '../../package.json'
 import { toUpperCaseFirst } from '../helpers'
 
 export const create = (network: Network): Command => {
-  const name = network.name === 'testnet' ? 'edgetest' : 'edge'
   const version = `Edge CLI v${pkg.version} (${toUpperCaseFirst(network.name)})`
   const desc = `Edge CLI (${toUpperCaseFirst(network.name)})`
 
-  const cli = new Command(name)
+  const cli = new Command(network.appName)
     .version(version)
     .description(desc)
     .enablePositionalOptions(true)
