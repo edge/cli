@@ -142,4 +142,23 @@ pipeline {
       }
     }
   }
+  post {
+    success {
+      script {
+        if (imagesPushed != '') {
+          discordSend title: JOB_NAME, description: "${env.JOB_NAME} (#${env.BUILD_NUMBER}) has completed successfully", result: "SUCCESS", webhookURL: DISCORD_BUILD_WEBHOOK
+        }
+      }
+    }
+    failure {
+      script {
+        discordSend title: JOB_NAME, description: "${env.JOB_NAME} (#${env.BUILD_NUMBER}) has failed", result: "FAILURE", webhookURL: DISCORD_BUILD_WEBHOOK
+      }
+    }
+    aborted {
+      script {
+        discordSend title: JOB_NAME, description: "${env.JOB_NAME} (#${env.BUILD_NUMBER}) was aborted", result: "ABORTED", webhookURL: DISCORD_BUILD_WEBHOOK
+      }
+    }
+  }
 }
