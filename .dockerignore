@@ -1,5 +1,4 @@
 .build/
-.eslint*
 .github/
 .gitignore
 *.md
