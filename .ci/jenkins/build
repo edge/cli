@@ -145,9 +145,7 @@ pipeline {
   post {
     success {
       script {
-        if (imagesPushed != '') {
-          discordSend title: JOB_NAME, description: "${env.JOB_NAME} (#${env.BUILD_NUMBER}) has completed successfully", result: "SUCCESS", webhookURL: DISCORD_BUILD_WEBHOOK
-        }
+        discordSend title: JOB_NAME, description: "${env.JOB_NAME} (#${env.BUILD_NUMBER}) has completed successfully", result: "SUCCESS", webhookURL: DISCORD_BUILD_WEBHOOK
       }
     }
     failure {
