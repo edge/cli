@@ -15,7 +15,7 @@ import { Command, Option } from 'commander'
 import { askToSignTx, handleCreateTxResult, withNetwork as indexWithNetwork } from './index'
 import { formatXE, parseAmount, withNetwork as xeWithNetwork } from './xe'
 
-const formatIndexTx = (address: string, tx: index.Tx): string => {
+const formatIndexTx = (address: string, tx: index.tx.Tx): string => {
   const data: Record<string, string> = {
     Tx: tx.hash,
     Nonce: tx.nonce.toString(),
