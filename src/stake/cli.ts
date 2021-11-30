@@ -157,7 +157,7 @@ const listAction = (parent: Command, listCmd: Command, network: Network) => asyn
   const printID = printTrunc(!opts.fullIds, 8)
 
   const storage = withFile(opts.wallet)
-  const { results: stakes } = await index.stake.stakes(network.index.baseURL, await storage.address())
+  const { results: stakes } = await index.stake.stakes(network.index.baseURL, await storage.address(), { limit: 999 })
 
   if (opts.json) {
     console.log(JSON.stringify(stakes, undefined, 2))
@@ -211,7 +211,7 @@ const releaseAction = (parent: Command, releaseCmd: Command, network: Network) =
     })()
   }
   const storage = withFile(opts.wallet)
-  const { results: stakes } = await index.stake.stakes(network.index.baseURL, await storage.address())
+  const { results: stakes } = await index.stake.stakes(network.index.baseURL, await storage.address(), { limit: 999 })
   const stake = findOne(stakes, id)
 
   if (stake.released !== undefined) {
@@ -304,7 +304,7 @@ const unlockAction = (parent: Command, unlockCmd: Command, network: Network) => 
     })()
   }
   const storage = withFile(opts.wallet)
-  const { results: stakes } = await index.stake.stakes(network.index.baseURL, await storage.address())
+  const { results: stakes } = await index.stake.stakes(network.index.baseURL, await storage.address(), { limit: 999 })
   const stake = findOne(stakes, id)
 
   if (stake.unlockRequested !== undefined) {
