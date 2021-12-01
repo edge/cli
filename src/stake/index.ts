@@ -2,12 +2,12 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-import * as xe from '@edge/xe-utils'
+import * as index from '@edge/index-utils'
 import { namedError } from '../helpers'
 
 export const ambiguousIDError = namedError('AmbiguousIDError')
 
-export const findOne = (stakes: xe.stake.Stakes, id: string): xe.stake.Stake => {
+export const findOne = (stakes: index.stake.AddressedStake[], id: string): index.stake.AddressedStake => {
   if (id.length < 3) throw new Error('stake ID must be at least 3 characters')
   const ss = Object.values(stakes).filter(s => s.id.slice(0, id.length) === id)
   if (ss.length === 0) throw new Error(`stake ${id} not found`)

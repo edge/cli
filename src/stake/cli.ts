@@ -2,6 +2,7 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+import * as index from '@edge/index-utils'
 import * as walletCLI from '../wallet/cli'
 import * as xe from '@edge/xe-utils'
 import { Command } from 'commander'
@@ -156,7 +157,7 @@ const listAction = (parent: Command, listCmd: Command, network: Network) => asyn
   const printID = printTrunc(!opts.fullIds, 8)
 
   const storage = withFile(opts.wallet)
-  const stakes = await xe.stake.stakes(network.blockchain.baseURL, await storage.address())
+  const { results: stakes } = await index.stake.stakes(network.index.baseURL, await storage.address(), { limit: 999 })
 
   if (opts.json) {
     console.log(JSON.stringify(stakes, undefined, 2))
@@ -210,7 +211,7 @@ const releaseAction = (parent: Command, releaseCmd: Command, network: Network) =
     })()
   }
   const storage = withFile(opts.wallet)
-  const stakes = await xe.stake.stakes(network.blockchain.baseURL, await storage.address())
+  const { results: stakes } = await index.stake.stakes(network.index.baseURL, await storage.address(), { limit: 999 })
   const stake = findOne(stakes, id)
 
   if (stake.released !== undefined) {
@@ -303,7 +304,7 @@ const unlockAction = (parent: Command, unlockCmd: Command, network: Network) => 
     })()
   }
   const storage = withFile(opts.wallet)
-  const stakes = await xe.stake.stakes(network.blockchain.baseURL, await storage.address())
+  const { results: stakes } = await index.stake.stakes(network.index.baseURL, await storage.address(), { limit: 999 })
   const stake = findOne(stakes, id)
 
   if (stake.unlockRequested !== undefined) {

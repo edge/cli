@@ -3,6 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as data from './data'
+import * as index from '@edge/index-utils'
 import * as node from './node'
 import * as walletCLI from '../wallet/cli'
 import * as xe from '@edge/xe-utils'
@@ -54,7 +55,7 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
   })()
 
   // get user stakes, check whether device already assigned
-  const stakes = await xe.stake.stakes(network.blockchain.baseURL, await storage.address())
+  const { results: stakes } = await index.stake.stakes(network.index.baseURL, await storage.address(), { limit: 999 })
   if (Object.keys(stakes).length === 0) throw new Error('no stakes')
   const assigned = Object.values(stakes).find(s => s.device === device.address)
   if (assigned !== undefined) {

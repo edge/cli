@@ -42,6 +42,6 @@ export const handleCreateTxResult = (network: Network, result: xe.tx.CreateRespo
 export const withNetwork = (network: Network) => {
   const host = network.index.baseURL
   return {
-    transactions: (address: string, params?: index.TxsParams) => index.transactions(host, address, params)
+    transactions: (address: string, params?: index.tx.TxsParams) => index.tx.transactions(host, address, params)
   }
 }
