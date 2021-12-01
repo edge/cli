@@ -113,6 +113,31 @@ const createHelp = (network: Network) => [
   `Run '${network.appName} device add --help' for more information.`
 ].join('')
 
+const historyAction = (parent: Command, historyCmd: Command, network: Network) => async (id: string) => {
+  const opts = {
+    ...walletCLI.getWalletOption(parent, network),
+    ...getJsonOption(historyCmd)
+  }
+  const storage = withFile(opts.wallet)
+  const { results: stakes } = await index.stake.stakes(network.index.baseURL, await storage.address(), { limit: 999 })
+  const stake = findOne(stakes, id)
+  const data = await index.stake.history(network.index.baseURL, stake.id)
+
+  if (opts.json) {
+    console.log(JSON.stringify(data, undefined, 2))
+    return
+  }
+
+  console.log('WIP')
+  console.log(JSON.stringify(data, undefined, 2))
+  // data.results.forEach()
+}
+
+const historyHelp = [
+  '\n',
+  'Display a stake\'s history of actions.'
+].join('')
+
 const infoAction = (parent: Command, infoCmd: Command, network: Network) => async () => {
   const opts = {
     ...getVerboseOption(parent),
@@ -392,6 +417,22 @@ export const withProgram = (parent: Command, network: Network): void => {
     )
   )
 
+  const history = new Command('history')
+    .argument('<id>', 'stake ID')
+    .description('display stake history')
+    .addHelpText('after', historyHelp)
+    .option('--json', 'display history as json')
+  history.action(
+    errorHandler(
+      parent,
+      checkVersionHandler(
+        parent,
+        network,
+        historyAction(parent, history, network)
+      )
+    )
+  )
+
   // edge stake info
   const info = new Command('info')
     .description('get on-chain staking information')
@@ -467,6 +508,7 @@ export const withProgram = (parent: Command, network: Network): void => {
 
   stakeCLI
     .addCommand(create)
+    .addCommand(history)
     .addCommand(info)
     .addCommand(list)
     .addCommand(release)
