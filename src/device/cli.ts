@@ -148,7 +148,10 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
   }, wallet.privateKey)
 
   const result = await api.createTransaction(tx)
-  if (!handleCreateTxResult(network, result)) process.exitCode = 1
+  if (!handleCreateTxResult(network, result)) {
+    process.exitCode = 1
+    return
+  }
 
   // next steps advice
   console.log()
