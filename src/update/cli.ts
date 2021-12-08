@@ -17,9 +17,9 @@ import { errorHandler, getNoColorOption } from '../edge/cli'
 const checkAction = (network: Network) => async (): Promise<void> => {
   const { current, latest, requireUpdate } = await status(network)
   if (requireUpdate) {
-    console.log(`Current Edge CLI version: ${current}`)
+    console.log(`Current Edge CLI version: v${current}`)
     console.log()
-    console.log(`A new version of Edge CLI is available (${latest}).`)
+    console.log(`A new version of Edge CLI is available (v${latest}).`)
     console.log(`Run '${network.appName} update' to update to the latest version.`)
   }
   else console.log('Edge CLI is up to date.')
@@ -83,7 +83,7 @@ export const checkVersionHandler =
         if (current === null) throw new Error('Edge CLI version is invalid. Please update manually.')
         if (current.compare(vinfo.latest) < 0) {
           let msgs = [
-            `A new version of Edge CLI is available (${vinfo.latest}).`,
+            `A new version of Edge CLI is available (v${vinfo.latest}).`,
             'Please run \'update\' to update to the latest version.'
           ]
           if (!noColor) msgs = msgs.map(l => color.info(l))
