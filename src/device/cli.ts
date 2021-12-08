@@ -424,7 +424,7 @@ export const withProgram = (parent: Command, network: Network): void => {
     .addHelpText('after', addHelp(network))
     .addOption(socketPathOption())
     .option('-D, --full-ids', 'display full-length IDs')
-    .option('-s, --stake', 'stake ID')
+    .option('-s, --stake <id>', 'stake ID')
     .option('-y, --yes', 'do not ask for confirmation')
   add.action(
     errorHandler(
