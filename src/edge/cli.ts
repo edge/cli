@@ -16,7 +16,6 @@ export const create = (network: Network): Command => {
   const cli = new Command(network.appName)
     .version(version)
     .description(desc)
-    .enablePositionalOptions(true)
     .option('--no-color', 'disable terminal text colors')
     .option('-v, --verbose', 'enable verbose error reporting')
 
