@@ -84,7 +84,7 @@ export const checkVersionHandler =
         if (current.compare(vinfo.latest) < 0) {
           let msgs = [
             `A new version of Edge CLI is available (v${vinfo.latest}).`,
-            'Please run \'update\' to update to the latest version.'
+            `Please run '${network.appName} update' to update to the latest version.`
           ]
           if (!noColor) msgs = msgs.map(l => color.info(l))
           msgs.forEach(l => console.log(l))
