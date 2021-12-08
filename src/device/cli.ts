@@ -16,8 +16,8 @@ import { withNetwork as xeWithNetwork } from '../transaction/xe'
 import { Command, Option } from 'commander'
 import Docker, { DockerOptions } from 'dockerode'
 import { askToSignTx, handleCreateTxResult } from '../transaction'
+import { canAssign, findOne, precedence as nodeTypePrecedence } from '../stake'
 import { errorHandler, getVerboseOption } from '../edge/cli'
-import { findOne, precedence as nodeTypePrecedence } from '../stake'
 import { printData, printTrunc, toUpperCaseFirst } from '../helpers'
 
 const addAction = (parent: Command, addCmd: Command, network: Network) => async () => {
@@ -79,6 +79,7 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
     console.log('Select a stake to assign this device to:')
     console.log()
     const numberedStakes = Object.values(stakes)
+      .filter(canAssign)
       .sort((a, b) => {
         const posDiff = nodeTypePrecedence[a.type] - nodeTypePrecedence[b.type]
         return posDiff !== 0 ? posDiff : a.created - b.created
@@ -97,6 +98,12 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
     console.log()
     return numberedStakes[sel-1]
   })()
+
+  if (!canAssign(stake)) {
+    if (stake.released) throw new Error('this stake has been released')
+    if (stake.unlockRequested) throw new Error('this stake is unlocked/unlocking and cannot be assigned')
+    if (stake.device) throw new Error('this stake is already assigned')
+  }
 
   // confirm user intent
   const nodeName = toUpperCaseFirst(stake.type)
