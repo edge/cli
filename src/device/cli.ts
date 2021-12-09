@@ -7,25 +7,25 @@ import * as index from '@edge/index-utils'
 import * as node from './node'
 import * as walletCLI from '../wallet/cli'
 import * as xe from '@edge/xe-utils'
-import { Network } from '../main'
 import { ask } from '../input'
 import { checkVersionHandler } from '../update/cli'
 import config from '../config'
 import { withFile } from '../wallet/storage'
 import { withNetwork as xeWithNetwork } from '../transaction/xe'
 import { Command, Option } from 'commander'
+import { CommandContext, Context, Network } from '../main'
 import Docker, { DockerOptions } from 'dockerode'
 import { askToSignTx, handleCreateTxResult } from '../transaction'
 import { canAssign, findOne, precedence as nodeTypePrecedence } from '../stake'
 import { errorHandler, getVerboseOption } from '../edge/cli'
 import { printData, printTrunc, toUpperCaseFirst } from '../helpers'
 
-const addAction = (parent: Command, addCmd: Command, network: Network) => async () => {
+const addAction = ({ parent, cmd, network }: CommandContext) => async () => {
   const opts = {
     ...walletCLI.getWalletOption(parent, network),
-    ...walletCLI.getPassphraseOption(addCmd),
+    ...walletCLI.getPassphraseOption(cmd),
     ...(() => {
-      const { fullIds, stake, yes } = addCmd.opts<{
+      const { fullIds, stake, yes } = cmd.opts<{
         fullIds: boolean
         stake: string | undefined
         yes: boolean
@@ -36,7 +36,7 @@ const addAction = (parent: Command, addCmd: Command, network: Network) => async 
   const printID = printTrunc(!opts.fullIds, 8)
 
   const storage = withFile(opts.wallet)
-  const docker = new Docker(getDockerOptions(addCmd))
+  const docker = new Docker(getDockerOptions(cmd))
 
   // get device data. if none, initialize device on the fly
   const dataVolume = data.withVolume(docker, await data.volume(docker, true))
@@ -176,18 +176,18 @@ const addHelp = (network: Network) => [
   `If you do not already have a stake, you can run '${network.appName} stake create' to get one.`
 ].join('')
 
-const infoAction = (parent: Command, infoCmd: Command, network: Network) => async () => {
+const infoAction = ({ parent, cmd, network }: CommandContext) => async () => {
   const opts = {
     ...getVerboseOption(parent),
     ...walletCLI.getWalletOption(parent, network),
     ...(() => {
-      const { fullIds } = infoCmd.opts<{ fullIds: boolean }>()
+      const { fullIds } = cmd.opts<{ fullIds: boolean }>()
       return { fullIds }
     })()
   }
   const printID = printTrunc(!opts.fullIds, 8)
 
-  const docker = new Docker(getDockerOptions(infoCmd))
+  const docker = new Docker(getDockerOptions(cmd))
   const dataVolume = data.withVolume(docker, await data.volume(docker))
   const device = await dataVolume.read()
 
@@ -218,19 +218,19 @@ const infoHelp = [
   'This command displays information about your device and the stake it is assigned to.'
 ].join('')
 
-const removeAction = (parent: Command, removeCmd: Command, network: Network) => async () => {
+const removeAction = ({ parent, cmd, network }: CommandContext) => async () => {
   const opts = {
     ...walletCLI.getWalletOption(parent, network),
-    ...walletCLI.getPassphraseOption(removeCmd),
+    ...walletCLI.getPassphraseOption(cmd),
     ...(() => {
-      const { fullIds, yes } = removeCmd.opts<{ fullIds: boolean, yes: boolean }>()
+      const { fullIds, yes } = cmd.opts<{ fullIds: boolean, yes: boolean }>()
       return { fullIds, yes }
     })()
   }
   const printID = printTrunc(!opts.fullIds, 8)
 
   const storage = withFile(opts.wallet)
-  const docker = new Docker(getDockerOptions(removeCmd))
+  const docker = new Docker(getDockerOptions(cmd))
 
   const dataVolume = data.withVolume(docker, await data.volume(docker))
   const device = await dataVolume.read()
@@ -314,12 +314,12 @@ const removeHelp = [
   '  - Destroy the device\'s identity\n'
 ].join('')
 
-const restartAction = (parent: Command, restartCmd: Command, network: Network) => async () => {
+const restartAction = ({ parent, cmd, network }: CommandContext) => async () => {
   const opts = {
     ...getVerboseOption(parent),
     ...walletCLI.getWalletOption(parent, network)
   }
-  const docker = new Docker(getDockerOptions(restartCmd))
+  const docker = new Docker(getDockerOptions(cmd))
   const nodeInfo = await node.withAddress(docker, network, await withFile(opts.wallet).address())
 
   const info = await nodeInfo.container()
@@ -334,12 +334,12 @@ const restartAction = (parent: Command, restartCmd: Command, network: Network) =
 
 const restartHelp = '\nRestart the node, if it is running.'
 
-const startAction = (parent: Command, startCmd: Command, network: Network) => async () => {
+const startAction = ({ parent, cmd, network }: CommandContext) => async () => {
   const opts = {
     ...getVerboseOption(parent),
     ...walletCLI.getWalletOption(parent, network)
   }
-  const docker = new Docker(getDockerOptions(startCmd))
+  const docker = new Docker(getDockerOptions(cmd))
   const nodeInfo = await node.withAddress(docker, network, await withFile(opts.wallet).address())
 
   let info = await nodeInfo.container()
@@ -374,12 +374,12 @@ const startHelp = (network: Network) => [
   `Run '${network.appName} device add --help' for more information.`
 ].join('')
 
-const statusAction = (parent: Command, statusCmd: Command, network: Network) => async () => {
+const statusAction = ({ parent, cmd, network }: CommandContext) => async () => {
   const opts = {
     ...getVerboseOption(parent),
     ...walletCLI.getWalletOption(parent, network)
   }
-  const docker = new Docker(getDockerOptions(statusCmd))
+  const docker = new Docker(getDockerOptions(cmd))
   const nodeInfo = await node.withAddress(docker, network, await withFile(opts.wallet).address())
 
   const info = await nodeInfo.container()
@@ -389,12 +389,12 @@ const statusAction = (parent: Command, statusCmd: Command, network: Network) => 
 
 const statusHelp = '\nDisplay the status of the node (whether it is running or not).'
 
-const stopAction = (parent: Command, stopCmd: Command, network: Network) => async () => {
+const stopAction = ({ parent, cmd, network }: CommandContext) => async () => {
   const opts = {
     ...getVerboseOption(parent),
     ...walletCLI.getWalletOption(parent, network)
   }
-  const docker = new Docker(getDockerOptions(stopCmd))
+  const docker = new Docker(getDockerOptions(cmd))
   const nodeInfo = await node.withAddress(docker, network, await withFile(opts.wallet).address())
 
   const info = await nodeInfo.container()
@@ -424,28 +424,19 @@ const getDockerOptions = (cmd: Command): DockerOptions => {
 
 const socketPathOption = () => new Option('--docker-socket-path', 'Docker socket path')
 
-export const withProgram = (parent: Command, network: Network): void => {
+export const withContext = (ctx: Context): Command => {
   const deviceCLI = new Command('device')
     .description('manage device')
 
   // edge device add
   const add = new Command('add')
     .description('add this device to the network')
-    .addHelpText('after', addHelp(network))
+    .addHelpText('after', addHelp(ctx.network))
     .addOption(socketPathOption())
     .option('-D, --full-ids', 'display full-length IDs')
     .option('-s, --stake <id>', 'stake ID')
     .option('-y, --yes', 'do not ask for confirmation')
-  add.action(
-    errorHandler(
-      parent,
-      checkVersionHandler(
-        parent,
-        network,
-        addAction(parent, add, network)
-      )
-    )
-  )
+  add.action(errorHandler(ctx, checkVersionHandler(ctx, addAction({ ...ctx, cmd: add }))))
 
   // edge device info
   const info = new Command('info')
@@ -453,16 +444,7 @@ export const withProgram = (parent: Command, network: Network): void => {
     .addHelpText('after', infoHelp)
     .addOption(socketPathOption())
     .option('-D, --full-ids', 'display full-length IDs')
-  info.action(
-    errorHandler(
-      parent,
-      checkVersionHandler(
-        parent,
-        network,
-        infoAction(parent, info, network)
-      )
-    )
-  )
+  info.action(errorHandler(ctx, checkVersionHandler(ctx, infoAction({ ...ctx, cmd: info }))))
 
   // edge device remove
   const remove = new Command('remove')
@@ -471,80 +453,35 @@ export const withProgram = (parent: Command, network: Network): void => {
     .addOption(socketPathOption())
     .option('-D, --full-ids', 'display full-length IDs')
     .option('-y, --yes', 'do not ask for confirmation')
-  remove.action(
-    errorHandler(
-      parent,
-      checkVersionHandler(
-        parent,
-        network,
-        removeAction(parent, remove, network)
-      )
-    )
-  )
+  remove.action(errorHandler(ctx, checkVersionHandler(ctx, removeAction({ ...ctx, cmd: remove }))))
 
   // edge device restart
   const restart = new Command('restart')
     .description('restart node')
     .addHelpText('after', restartHelp)
     .addOption(socketPathOption())
-  restart.action(
-    errorHandler(
-      parent,
-      checkVersionHandler(
-        parent,
-        network,
-        restartAction(parent, restart, network)
-      )
-    )
-  )
+  restart.action(errorHandler(ctx, checkVersionHandler(ctx, restartAction({ ...ctx, cmd: restart }))))
 
   // edge device start
   const start = new Command('start')
     .description('start node')
-    .addHelpText('after', startHelp(network))
+    .addHelpText('after', startHelp(ctx.network))
     .addOption(socketPathOption())
-  start.action(
-    errorHandler(
-      parent,
-      checkVersionHandler(
-        parent,
-        network,
-        startAction(parent, start, network)
-      )
-    )
-  )
+  start.action(errorHandler(ctx, checkVersionHandler(ctx, startAction({ ...ctx, cmd: start }))))
 
   // edge device status
   const status = new Command('status')
     .description('display node status')
     .addHelpText('after', statusHelp)
     .addOption(socketPathOption())
-  status.action(
-    errorHandler(
-      parent,
-      checkVersionHandler(
-        parent,
-        network,
-        statusAction(parent, status, network)
-      )
-    )
-  )
+  status.action(errorHandler(ctx, checkVersionHandler(ctx, statusAction({ ...ctx, cmd: status }))))
 
   // edge device stop
   const stop = new Command('stop')
     .description('stop node')
     .addHelpText('after', stopHelp)
     .addOption(socketPathOption())
-  stop.action(
-    errorHandler(
-      parent,
-      checkVersionHandler(
-        parent,
-        network,
-        stopAction(parent, stop, network)
-      )
-    )
-  )
+  stop.action(errorHandler(ctx, checkVersionHandler(ctx, stopAction({ ...ctx, cmd: stop }))))
 
   deviceCLI
     .addCommand(add)
@@ -555,5 +492,5 @@ export const withProgram = (parent: Command, network: Network): void => {
     .addCommand(status)
     .addCommand(stop)
 
-  parent.addCommand(deviceCLI)
+  return deviceCLI
 }

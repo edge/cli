@@ -7,7 +7,17 @@ import * as stakeCLI from './stake/cli'
 import * as transactionCLI from './transaction/cli'
 import * as updateCLI from './update/cli'
 import * as walletCLI from './wallet/cli'
+import { Command } from 'commander'
 import { create as createCLI } from './edge/cli'
+
+export type CommandContext = Context & {
+  cmd: Command
+}
+
+export type Context = {
+  parent: Command
+  network: Network
+}
 
 export type Network = {
   appName: string
@@ -37,11 +47,16 @@ export type Network = {
 
 const main = (argv: string[], network: Network): void => {
   const cli = createCLI(network)
-  if (network.flags.onboarding) deviceCLI.withProgram(cli, network)
-  stakeCLI.withProgram(cli, network)
-  transactionCLI.withProgram(cli, network)
-  updateCLI.withProgram(cli, network, argv)
-  walletCLI.withProgram(cli, network)
+  const ctx = { parent: cli, network }
+
+  if (network.flags.onboarding) cli.addCommand(deviceCLI.withContext(ctx))
+
+  cli.addCommand(stakeCLI.withContext(ctx))
+  cli.addCommand(transactionCLI.withContext(ctx))
+  cli.addCommand(updateCLI.withContext(ctx, argv))
+
+  const [walletCmd, walletOption] = walletCLI.withContext(ctx)
+  cli.addCommand(walletCmd).addOption(walletOption)
 
   cli.parse(argv)
 }

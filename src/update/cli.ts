@@ -3,18 +3,18 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import { Command } from 'commander'
-import { Network } from '../main'
 import { SemVer } from 'semver'
 import color from '../edge/color'
 import path from 'path'
 import pkg from '../../package.json'
 import semver from 'semver'
 import { tmpdir } from 'os'
+import { Context, Network } from '../main'
 import { VersionStatus, download, status } from '.'
 import { chmodSync, copyFileSync, readFileSync, renameSync, stat, unlinkSync, writeFileSync } from 'fs'
 import { errorHandler, getNoColorOption } from '../edge/cli'
 
-const checkAction = (network: Network) => async (): Promise<void> => {
+const checkAction = ({ network }: Context) => async (): Promise<void> => {
   const { current, latest, requireUpdate } = await status(network)
   if (requireUpdate) {
     console.log(`Current Edge CLI version: v${current}`)
@@ -34,11 +34,11 @@ const checkVersionCacheTimeout = 1000 * 60 * 60
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const checkVersionHandler =
-  <T>(cli: Command, network: Network, f: (...args: any[]) => Promise<T>) =>
+  <T>({ parent, network }: Context, f: (...args: any[]) => Promise<T>) =>
     async (...args: any[]): Promise<T|undefined> => {
       const fresult = await f(...args)
 
-      const { noColor } = getNoColorOption(cli)
+      const { noColor } = getNoColorOption(parent)
 
       // check for locally cached version data
       const cacheFile = tmpdir() + path.sep + '.edge-cli-version-check'
@@ -94,7 +94,7 @@ export const checkVersionHandler =
       return fresult
     }
 
-const updateAction = (network: Network, argv: string[]) => async (): Promise<void> => {
+const updateAction = ({ network }: Context, argv: string[]) => async (): Promise<void> => {
   const { latest, requireUpdate } = await status(network)
   if (!requireUpdate) {
     console.log(`Edge CLI v${latest} is the latest version`)
@@ -134,19 +134,19 @@ const updateHelp = (network: Network) => [
   `To check for a new version without updating Edge CLI, use '${network.appName} update check' instead.`
 ].join('')
 
-export const withProgram = (parent: Command, network: Network, argv: string[]): void => {
+export const withContext = (ctx: Context, argv: string[]): Command => {
   const updateCLI = new Command('update')
     .description('update Edge CLI')
-    .addHelpText('after', updateHelp(network))
-    .action(errorHandler(parent, updateAction(network, argv)))
+    .addHelpText('after', updateHelp(ctx.network))
+    .action(errorHandler(ctx, updateAction(ctx, argv)))
 
   const check = new Command('check')
     .description('check for updates')
     .addHelpText('after', checkHelp)
-    .action(errorHandler(parent, checkAction(network)))
+    .action(errorHandler(ctx, checkAction(ctx)))
 
   updateCLI
     .addCommand(check)
 
-  parent.addCommand(updateCLI)
+  return updateCLI
 }

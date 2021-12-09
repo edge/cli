@@ -3,12 +3,12 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as xe from '@edge/xe-utils'
-import { Network } from '../main'
 import { checkVersionHandler } from '../update/cli'
 import { errorHandler } from '../edge/cli'
 import { formatXE } from '../transaction/xe'
 import { withFile } from './storage'
 import { Command, Option } from 'commander'
+import { CommandContext, Context, Network } from '../main'
 import { ask, askSecure } from '../input'
 import { readFileSync, unlink, writeFileSync } from 'fs'
 
@@ -24,7 +24,7 @@ export type WalletOption = {
   wallet: string
 }
 
-const balanceAction = (parent: Command, network: Network) => async () => {
+const balanceAction = ({ parent, network }: Context) => async () => {
   const opts = getWalletOption(parent, network)
   const address = await withFile(opts.wallet).address()
 
@@ -34,12 +34,12 @@ const balanceAction = (parent: Command, network: Network) => async () => {
   console.log(`Balance: ${formatXE(balance)}`)
 }
 
-const createAction = (parent: Command, createCmd: Command, network: Network) => async () => {
+const createAction = ({ parent, cmd, network }: CommandContext) => async () => {
   const opts = {
     ...getWalletOption(parent, network),
-    ...getPassphraseOption(createCmd),
+    ...getPassphraseOption(cmd),
     ...(() => {
-      const { privateKeyFile, overwrite } = createCmd.opts<{
+      const { privateKeyFile, overwrite } = cmd.opts<{
         privateKeyFile: string | undefined
         overwrite: boolean
       }>()
@@ -125,10 +125,10 @@ const createHelp = [
   'This should be copied to a secure location and kept secret.'
 ].join('')
 
-const infoAction = (parent: Command, infoCmd: Command, network: Network) => async () => {
+const infoAction = ({ parent, cmd, network }: CommandContext) => async () => {
   const opts = {
     ...getWalletOption(parent, network),
-    ...getPassphraseOption(infoCmd)
+    ...getPassphraseOption(cmd)
   }
   const storage = withFile(opts.wallet)
   console.log(`Address: ${await storage.address()}`)
@@ -150,11 +150,11 @@ const infoHelp = [
   'If a passphrase is provided, this command will also decrypt and display your private key.'
 ].join('')
 
-const forgetAction = (parent: Command, forgetCmd: Command, network: Network) => async () => {
+const forgetAction = ({ parent, cmd, network }: CommandContext) => async () => {
   const opts = {
     ...getWalletOption(parent, network),
     ...(() => {
-      const { yes } = forgetCmd.opts<{ yes: boolean }>()
+      const { yes } = cmd.opts<{ yes: boolean }>()
       return { yes }
     })()
   }
@@ -190,15 +190,15 @@ const forgetHelp = [
   'This command deletes your wallet from disk.'
 ].join('')
 
-const restoreAction = (parent: Command, restoreCmd: Command, network: Network) => async () => {
+const restoreAction = ({ parent, cmd, network }: CommandContext) => async () => {
   const opts = {
     ...getWalletOption(parent, network),
     ...(() => {
-      const { overwrite } = restoreCmd.opts<{ overwrite: boolean }>()
+      const { overwrite } = cmd.opts<{ overwrite: boolean }>()
       return { overwrite }
     })(),
-    ...getPrivateKeyOption(restoreCmd),
-    ...getPassphraseOption(restoreCmd)
+    ...getPrivateKeyOption(cmd),
+    ...getPassphraseOption(cmd)
   }
   const storage = withFile(opts.wallet)
 
@@ -289,23 +289,14 @@ export const passphraseFileOption = (): Option => new Option(
   'file containing wallet passphrase'
 )
 
-export const withProgram = (parent: Command, network: Network): void => {
+export const withContext = (ctx: Context): [Command, Option] => {
   const walletCLI = new Command('wallet')
     .description('manage wallet')
 
   // edge wallet balance
   const balance = new Command('balance')
     .description('check balance')
-  balance.action(
-    errorHandler(
-      parent,
-      checkVersionHandler(
-        parent,
-        network,
-        balanceAction(parent, network)
-      )
-    )
-  )
+  balance.action(errorHandler(ctx, checkVersionHandler(ctx, balanceAction(ctx))))
 
   // edge wallet create
   const create = new Command('create')
@@ -315,32 +306,14 @@ export const withProgram = (parent: Command, network: Network): void => {
     .addOption(passphraseOption())
     .addOption(passphraseFileOption())
     .addOption(privateKeyFileOption())
-  create.action(
-    errorHandler(
-      parent,
-      checkVersionHandler(
-        parent,
-        network,
-        createAction(parent, create, network)
-      )
-    )
-  )
+  create.action(errorHandler(ctx, checkVersionHandler(ctx, createAction({ ...ctx, cmd: create }))))
 
   // edge wallet forget
   const forget = new Command('forget')
     .description('forget saved wallet')
     .addHelpText('after', forgetHelp)
     .option('-y, --yes', 'do not ask for confirmation')
-  forget.action(
-    errorHandler(
-      parent,
-      checkVersionHandler(
-        parent,
-        network,
-        forgetAction(parent, forget, network)
-      )
-    )
-  )
+  forget.action(errorHandler(ctx, checkVersionHandler(ctx, forgetAction({ ...ctx, cmd: forget }))))
 
   // edge wallet info
   const info = new Command('info')
@@ -348,16 +321,7 @@ export const withProgram = (parent: Command, network: Network): void => {
     .addHelpText('after', infoHelp)
     .addOption(passphraseOption())
     .addOption(passphraseFileOption())
-  info.action(
-    errorHandler(
-      parent,
-      checkVersionHandler(
-        parent,
-        network,
-        infoAction(parent, info, network)
-      )
-    )
-  )
+  info.action(errorHandler(ctx, checkVersionHandler(ctx, infoAction({ ...ctx, cmd: info }))))
 
   // edge wallet restore
   const restore = new Command('restore')
@@ -368,16 +332,7 @@ export const withProgram = (parent: Command, network: Network): void => {
     .addOption(privateKeyFileOption())
     .addOption(passphraseOption())
     .addOption(passphraseFileOption())
-  restore.action(
-    errorHandler(
-      parent,
-      checkVersionHandler(
-        parent,
-        network,
-        restoreAction(parent, restore, network)
-      )
-    )
-  )
+  restore.action(errorHandler(ctx, checkVersionHandler(ctx, restoreAction({ ...ctx, cmd: restore }))))
 
   walletCLI
     .addCommand(balance)
@@ -386,7 +341,5 @@ export const withProgram = (parent: Command, network: Network): void => {
     .addCommand(info)
     .addCommand(restore)
 
-  parent
-    .option('-w, --wallet <file>', 'wallet file path')
-    .addCommand(walletCLI)
+  return [walletCLI, new Option('-w, --wallet <file>', 'wallet file path')]
 }

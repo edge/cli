@@ -4,10 +4,10 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Command } from 'commander'
-import { Network } from '../main'
 import color from './color'
 import pkg from '../../package.json'
 import { toUpperCaseFirst } from '../helpers'
+import { Context, Network } from '../main'
 
 export const create = (network: Network): Command => {
   const version = `Edge CLI v${pkg.version} (${toUpperCaseFirst(network.name)})`
@@ -23,15 +23,15 @@ export const create = (network: Network): Command => {
 }
 
 export const errorHandler =
-  <T>(cli: Command, f: (...args: any[]) => Promise<T>) =>
+  <T>({ parent }: Context, f: (...args: any[]) => Promise<T>) =>
     async (...args: any[]): Promise<T|undefined> => {
       try {
         return await f(...args)
       }
       catch (err) {
         const { noColor, verbose } = {
-          ...getNoColorOption(cli),
-          ...getVerboseOption(cli)
+          ...getNoColorOption(parent),
+          ...getVerboseOption(parent)
         }
         if (verbose) console.error(err)
         else if (!noColor) console.error(color.error(`${err}`))
