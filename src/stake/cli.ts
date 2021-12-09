@@ -6,10 +6,10 @@ import * as index from '@edge/index-utils'
 import * as walletCLI from '../wallet/cli'
 import * as xe from '@edge/xe-utils'
 import { Command } from 'commander'
-import { Network } from '../main'
 import { ask } from '../input'
 import { checkVersionHandler } from '../update/cli'
 import { withFile } from '../wallet/storage'
+import { CommandContext, Context, Network } from '../main'
 import { askToSignTx, handleCreateTxResult } from '../transaction'
 import { errorHandler, getVerboseOption } from '../edge/cli'
 import { findOne, types } from '.'
@@ -40,15 +40,15 @@ const onChainVars = async (verbose: boolean, host: string) => {
   }
 }
 
-const createAction = (parent: Command, createCmd: Command, network: Network) => async (nodeType: string) => {
+const createAction = ({ parent, cmd, network }: CommandContext) => async (nodeType: string) => {
   if (!types.includes(nodeType)) throw new Error(`invalid node type "${nodeType}"`)
 
   const opts = {
     ...getVerboseOption(parent),
     ...walletCLI.getWalletOption(parent, network),
-    ...walletCLI.getPassphraseOption(createCmd),
+    ...walletCLI.getPassphraseOption(cmd),
     ...(() => {
-      const { yes } = createCmd.opts<{ yes: boolean }>()
+      const { yes } = cmd.opts<{ yes: boolean }>()
       return { yes }
     })()
   }
@@ -113,10 +113,10 @@ const createHelp = (network: Network) => [
   `Run '${network.appName} device add --help' for more information.`
 ].join('')
 
-const infoAction = (parent: Command, infoCmd: Command, network: Network) => async () => {
+const infoAction = ({ parent, cmd, network }: CommandContext) => async () => {
   const opts = {
     ...getVerboseOption(parent),
-    ...getJsonOption(infoCmd)
+    ...getJsonOption(cmd)
   }
   const vars = await onChainVars(opts.verbose, network.blockchain.baseURL)
   if (opts.json) {
@@ -145,12 +145,12 @@ const infoAction = (parent: Command, infoCmd: Command, network: Network) => asyn
 
 const infoHelp = '\nDisplays current staking amounts.'
 
-const listAction = (parent: Command, listCmd: Command, network: Network) => async () => {
+const listAction = ({ parent, cmd, network }: CommandContext) => async () => {
   const opts = {
     ...walletCLI.getWalletOption(parent, network),
-    ...getJsonOption(listCmd),
+    ...getJsonOption(cmd),
     ...(() => {
-      const { fullIds } = listCmd.opts<{ fullIds: boolean }>()
+      const { fullIds } = cmd.opts<{ fullIds: boolean }>()
       return { fullIds }
     })()
   }
@@ -200,13 +200,13 @@ const listHelp = [
   'The default output is simplified for legibility. Provide the --json option to display full detail.'
 ].join('')
 
-const releaseAction = (parent: Command, releaseCmd: Command, network: Network) => async (id: string) => {
+const releaseAction = ({ parent, cmd, network }: CommandContext) => async (id: string) => {
   const opts = {
     ...getVerboseOption(parent),
     ...walletCLI.getWalletOption(parent, network),
-    ...walletCLI.getPassphraseOption(releaseCmd),
+    ...walletCLI.getPassphraseOption(cmd),
     ...(() => {
-      const { express, yes } = releaseCmd.opts<{ express: boolean, yes: boolean }>()
+      const { express, yes } = cmd.opts<{ express: boolean, yes: boolean }>()
       return { express, yes }
     })()
   }
@@ -294,12 +294,12 @@ const releaseHelp = [
   'release of funds, rather than waiting for the unlock period to conclude.'
 ].join('')
 
-const unlockAction = (parent: Command, unlockCmd: Command, network: Network) => async (id: string) => {
+const unlockAction = ({ parent, cmd, network }: CommandContext) => async (id: string) => {
   const opts = {
     ...walletCLI.getWalletOption(parent, network),
-    ...walletCLI.getPassphraseOption(unlockCmd),
+    ...walletCLI.getPassphraseOption(cmd),
     ...(() => {
-      const { yes } = unlockCmd.opts<{ yes: boolean }>()
+      const { yes } = cmd.opts<{ yes: boolean }>()
       return { yes }
     })()
   }
@@ -369,7 +369,7 @@ const getJsonOption = (cmd: Command) => {
   return <JsonOption>{ json }
 }
 
-export const withProgram = (parent: Command, network: Network): void => {
+export const withContext = (ctx: Context): Command => {
   const stakeCLI = new Command('stake')
     .description('manage stakes')
 
@@ -377,36 +377,18 @@ export const withProgram = (parent: Command, network: Network): void => {
   const create = new Command('create')
     .argument('<type>', `node type (${types.join('|')})`)
     .description('create a new stake')
-    .addHelpText('after', createHelp(network))
+    .addHelpText('after', createHelp(ctx.network))
     .addOption(walletCLI.passphraseOption())
     .addOption(walletCLI.passphraseFileOption())
     .option('-y, --yes', 'do not ask for confirmation')
-  create.action(
-    errorHandler(
-      parent,
-      checkVersionHandler(
-        parent,
-        network,
-        createAction(parent, create, network)
-      )
-    )
-  )
+  create.action(errorHandler(ctx, checkVersionHandler(ctx, createAction({ ...ctx, cmd: create }))))
 
   // edge stake info
   const info = new Command('info')
     .description('get on-chain staking information')
     .addHelpText('after', infoHelp)
     .option('--json', 'display info as json')
-  info.action(
-    errorHandler(
-      parent,
-      checkVersionHandler(
-        parent,
-        network,
-        infoAction(parent, info, network)
-      )
-    )
-  )
+  info.action(errorHandler(ctx, checkVersionHandler(ctx, infoAction({ ...ctx, cmd: info }))))
 
   // edge stake ls
   const list = new Command('list')
@@ -415,16 +397,7 @@ export const withProgram = (parent: Command, network: Network): void => {
     .addHelpText('after', listHelp)
     .option('-D, --full-ids', 'display full-length IDs (ignored if --json)')
     .option('--json', 'display stakes as json')
-  list.action(
-    errorHandler(
-      parent,
-      checkVersionHandler(
-        parent,
-        network,
-        listAction(parent, list, network)
-      )
-    )
-  )
+  list.action(errorHandler(ctx, checkVersionHandler(ctx, listAction({ ...ctx, cmd: list }))))
 
   // edge stake release
   const release = new Command('release')
@@ -435,16 +408,7 @@ export const withProgram = (parent: Command, network: Network): void => {
     .addOption(walletCLI.passphraseOption())
     .addOption(walletCLI.passphraseFileOption())
     .option('-y, --yes', 'do not ask for confirmation')
-  release.action(
-    errorHandler(
-      parent,
-      checkVersionHandler(
-        parent,
-        network,
-        releaseAction(parent, release, network)
-      )
-    )
-  )
+  release.action(errorHandler(ctx, checkVersionHandler(ctx, releaseAction({ ...ctx, cmd: release }))))
 
   // edge stake unlock
   const unlock = new Command('unlock')
@@ -454,16 +418,7 @@ export const withProgram = (parent: Command, network: Network): void => {
     .addOption(walletCLI.passphraseOption())
     .addOption(walletCLI.passphraseFileOption())
     .option('-y, --yes', 'do not ask for confirmation')
-  unlock.action(
-    errorHandler(
-      parent,
-      checkVersionHandler(
-        parent,
-        network,
-        unlockAction(parent, unlock, network)
-      )
-    )
-  )
+  unlock.action(errorHandler(ctx, checkVersionHandler(ctx, unlockAction({ ...ctx, cmd: unlock }))))
 
   stakeCLI
     .addCommand(create)
@@ -472,5 +427,5 @@ export const withProgram = (parent: Command, network: Network): void => {
     .addCommand(release)
     .addCommand(unlock)
 
-  parent.addCommand(stakeCLI)
+  return stakeCLI
 }
