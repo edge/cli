@@ -11,7 +11,7 @@ import { ask } from '../input'
 import { checkVersionHandler } from '../update/cli'
 import config from '../config'
 import { withFile } from '../wallet/storage'
-import { withNetwork as xeWithNetwork } from '../transaction/xe'
+import { withContext as xeWithContext } from '../transaction/xe'
 import { Command, Option } from 'commander'
 import { CommandContext, Context, Network } from '../main'
 import Docker, { DockerOptions } from 'dockerode'
@@ -20,7 +20,8 @@ import { canAssign, findOne, precedence as nodeTypePrecedence } from '../stake'
 import { errorHandler, getVerboseOption } from '../edge/cli'
 import { printData, printTrunc, toUpperCaseFirst } from '../helpers'
 
-const addAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async () => {
+const addAction = (ctx: CommandContext) => async () => {
+  const { parent, cmd, network } = ctx
   const log = ctx.logger()
 
   const opts = {
@@ -144,7 +145,7 @@ const addAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async ()
   log.info('Decrypting wallet', { file: opts.wallet })
   const wallet = await storage.read(opts.passphrase as string)
 
-  const api = xeWithNetwork(network)
+  const api = xeWithContext(ctx)
   const onChainWallet = await api.walletWithNextNonce(wallet.address)
 
   const tx = xe.tx.sign({
@@ -161,9 +162,7 @@ const addAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async ()
     nonce: onChainWallet.nonce
   }, wallet.privateKey)
 
-  log.info('Creating transaction', { tx })
   const result = await api.createTransaction(tx)
-  log.debug('Response', { ...result })
   if (!handleCreateTxResult(network, result)) {
     process.exitCode = 1
     return
@@ -240,7 +239,8 @@ const infoHelp = [
   'This command displays information about your device and the stake it is assigned to.'
 ].join('')
 
-const removeAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async () => {
+const removeAction = (ctx: CommandContext) => async () => {
+  const { parent, cmd, network } = ctx
   const log = ctx.logger()
 
   const opts = {
@@ -295,7 +295,7 @@ const removeAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async
     await askToSignTx(opts)
     log.info('Decrypting wallet', { file: opts.wallet })
     const wallet = await storage.read(opts.passphrase as string)
-    const api = xeWithNetwork(network)
+    const api = xeWithContext(ctx)
     const onChainWallet = await api.walletWithNextNonce(wallet.address)
 
     const tx = xe.tx.sign({
@@ -313,9 +313,7 @@ const removeAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async
 
     console.log('Unassigning stake...')
     console.log()
-    log.info('Creating transaction', { tx })
     const result = await api.createTransaction(tx)
-    log.debug('Response', { ...result })
     if (!handleCreateTxResult(network, result)) {
       process.exitCode = 1
       return

@@ -13,7 +13,7 @@ import { CommandContext, Context, Network } from '../main'
 import { askToSignTx, handleCreateTxResult } from '../transaction'
 import { errorHandler, getDebugOption, getVerboseOption } from '../edge/cli'
 import { findOne, types } from '.'
-import { formatXE, withNetwork as xeWithNetwork } from '../transaction/xe'
+import { formatXE, withContext as xeWithContext } from '../transaction/xe'
 import { printData, printTrunc, toDays, toUpperCaseFirst } from '../helpers'
 
 const formatTime = (t: number): string => {
@@ -40,8 +40,9 @@ const onChainVars = async (debug: boolean, host: string) => {
   }
 }
 
-const createAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async (nodeType: string) => {
+const createAction = (ctx: CommandContext) => async (nodeType: string) => {
   if (!types.includes(nodeType)) throw new Error(`invalid node type "${nodeType}"`)
+  const { parent, cmd, network } = ctx
   const log = ctx.logger()
 
   const opts = {
@@ -58,10 +59,8 @@ const createAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async
   const storage = withFile(opts.wallet)
   const address = await storage.address()
 
-  const api = xeWithNetwork(network)
-  log.info('Getting wallet info', { host: network.blockchain.baseURL, address })
+  const api = xeWithContext(ctx)
   const onChainWallet = await api.walletWithNextNonce(address)
-  log.debug('Wallet info', onChainWallet)
 
   log.info('Getting on-chain variables', { host: network.blockchain.baseURL })
   const vars = await onChainVars(opts.debug, network.blockchain.baseURL)
@@ -111,9 +110,7 @@ const createAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async
     nonce: onChainWallet.nonce
   }, wallet.privateKey)
 
-  log.info('Creating transaction', { tx })
   const result = await api.createTransaction(tx)
-  log.debug('Response', { ...result })
   if (!handleCreateTxResult(network, result)) process.exitCode = 1
 }
 
@@ -200,7 +197,10 @@ const listAction = ({ parent, network, ...ctx }: CommandContext) => async () => 
 
 const listHelp = '\nDisplays all stakes associated with your wallet.'
 
-const releaseAction = ({ parent, cmd, network }: CommandContext) => async (id: string) => {
+const releaseAction = (ctx: CommandContext) => async (id: string) => {
+  const { parent, cmd, network } = ctx
+  const log = ctx.logger()
+
   const opts = {
     ...getDebugOption(parent),
     ...walletCLI.getWalletOption(parent, network),
@@ -210,6 +210,8 @@ const releaseAction = ({ parent, cmd, network }: CommandContext) => async (id: s
       return { express, yes }
     })()
   }
+  log.debug('Options', opts)
+
   const storage = withFile(opts.wallet)
   const { results: stakes } = await index.stake.stakes(network.index.baseURL, await storage.address(), { limit: 999 })
   const stake = findOne(stakes, id)
@@ -263,9 +265,10 @@ const releaseAction = ({ parent, cmd, network }: CommandContext) => async (id: s
   }
 
   await askToSignTx(opts)
+  log.info('Decrypting wallet', { file: opts.wallet })
   const wallet = await storage.read(opts.passphrase as string)
 
-  const api = xeWithNetwork(network)
+  const api = xeWithContext(ctx)
   const onChainWallet = await api.walletWithNextNonce(wallet.address)
 
   const data: xe.tx.TxData = {
@@ -294,7 +297,10 @@ const releaseHelp = [
   'release of funds, rather than waiting for the unlock period to conclude.'
 ].join('')
 
-const unlockAction = ({ parent, cmd, network }: CommandContext) => async (id: string) => {
+const unlockAction = (ctx: CommandContext) => async (id: string) => {
+  const { parent, cmd, network } = ctx
+  const log = ctx.logger()
+
   const opts = {
     ...walletCLI.getWalletOption(parent, network),
     ...walletCLI.getPassphraseOption(cmd),
@@ -303,6 +309,8 @@ const unlockAction = ({ parent, cmd, network }: CommandContext) => async (id: st
       return { yes }
     })()
   }
+  log.debug('Options', opts)
+
   const storage = withFile(opts.wallet)
   const { results: stakes } = await index.stake.stakes(network.index.baseURL, await storage.address(), { limit: 999 })
   const stake = findOne(stakes, id)
@@ -336,9 +344,10 @@ const unlockAction = ({ parent, cmd, network }: CommandContext) => async (id: st
   }
 
   await askToSignTx(opts)
+  log.info('Decrypting wallet', { file: opts.wallet })
   const wallet = await storage.read(opts.passphrase as string)
 
-  const api = xeWithNetwork(network)
+  const api = xeWithContext(ctx)
   const onChainWallet = await api.walletWithNextNonce(wallet.address)
 
   const tx = xe.tx.sign({

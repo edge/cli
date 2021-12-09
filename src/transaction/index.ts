@@ -4,8 +4,8 @@
 
 import * as index from '@edge/index-utils'
 import * as xe from '@edge/xe-utils'
-import { Network } from '../main'
 import { askSecure } from '../input'
+import { Context, Network } from '../main'
 
 export const askToSignTx = async (opts: { passphrase?: string }): Promise<void> => {
   if (!opts.passphrase) {
@@ -38,9 +38,16 @@ export const handleCreateTxResult = (network: Network, result: xe.tx.CreateRespo
 }
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export const withNetwork = (network: Network) => {
-  const host = network.index.baseURL
-  return {
-    transactions: (address: string, params?: index.tx.TxsParams) => index.tx.transactions(host, address, params)
+export const withContext = (ctx: Context) => {
+  const host = ctx.network.index.baseURL
+  const log = ctx.logger('index')
+
+  const transactions = async (address: string, params?: index.tx.TxsParams) => {
+    log.info('Getting transactions', { host, address, params })
+    const data = await index.tx.transactions(host, address, params)
+    log.debug('Response', { data })
+    return data
   }
+
+  return { transactions }
 }

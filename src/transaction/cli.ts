@@ -12,8 +12,8 @@ import { errorHandler } from '../edge/cli'
 import { printData } from '../helpers'
 import { withFile } from '../wallet/storage'
 import { CommandContext, Context } from '../main'
-import { askToSignTx, handleCreateTxResult, withNetwork as indexWithNetwork } from './index'
-import { formatXE, parseAmount, withNetwork as xeWithNetwork } from './xe'
+import { askToSignTx, handleCreateTxResult, withContext as indexWithContext } from './index'
+import { formatXE, parseAmount, withContext as xeWithContext } from './xe'
 
 const formatIndexTx = (address: string, tx: index.tx.Tx): string => {
   const data: Record<string, string> = {
@@ -63,7 +63,8 @@ const getListOptions = (cmd: Command) => {
   }
 }
 
-const listAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async () => {
+const listAction = (ctx: CommandContext) => async () => {
+  const { parent, cmd, network } = ctx
   const log = ctx.logger()
 
   const opts = {
@@ -78,10 +79,7 @@ const listAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async (
     limit: opts.limit
   }
 
-  log.info('Getting transactions', { host: network.index.baseURL, address, params })
-  const response = await indexWithNetwork(network).transactions(address, params)
-  log.debug('Response', { ...response })
-
+  const response = await indexWithContext(ctx).transactions(address, params)
   if (response.results.length === 0) {
     console.log('No transactions')
     return
@@ -104,7 +102,8 @@ const listHelp = [
   'This command queries the index and displays your transactions.'
 ].join('')
 
-const listPendingAction = ({ parent, network, ...ctx }: CommandContext) => async () => {
+const listPendingAction = (ctx: CommandContext) => async () => {
+  const { parent, network } = ctx
   const log = ctx.logger()
 
   const opts = {
@@ -115,7 +114,7 @@ const listPendingAction = ({ parent, network, ...ctx }: CommandContext) => async
   const address = await withFile(opts.wallet).address()
 
   log.info('Getting pending transactions', { address })
-  const txs = await xeWithNetwork(network).pendingTransactions(address)
+  const txs = await xeWithContext(ctx).pendingTransactions(address)
   log.debug('Transactions', { txs })
 
   if (txs.length === 0) {
@@ -136,7 +135,8 @@ const listPendingHelp = [
 ].join('')
 
 // eslint-disable-next-line max-len
-const sendAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async (amountInput: string, recipient: string) => {
+const sendAction = (ctx: CommandContext) => async (amountInput: string, recipient: string) => {
+  const { parent, cmd, network } = ctx
   const log = ctx.logger()
 
   const opts = {
@@ -155,10 +155,8 @@ const sendAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async (
   const storage = withFile(opts.wallet)
   const address = await storage.address()
 
-  const api = xeWithNetwork(network)
-  log.info('Getting wallet info', { host: network.blockchain.baseURL, address })
+  const api = xeWithContext(ctx)
   const onChainWallet = await api.walletWithNextNonce(address)
-  log.debug('Wallet info', onChainWallet)
 
   const resultBalance = onChainWallet.balance - amount
   // eslint-disable-next-line max-len
@@ -198,9 +196,7 @@ const sendAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async (
     nonce: onChainWallet.nonce
   }, wallet.privateKey)
 
-  log.info('Creating transaction', { tx })
   const result = await api.createTransaction(tx)
-  log.debug('Response', { ...result })
   if (!handleCreateTxResult(network, result)) process.exitCode = 1
 }
 
