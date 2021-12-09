@@ -2,17 +2,16 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-import * as walletCLI from '../wallet/cli'
 import { Command } from 'commander'
 import { ask } from '../input'
 import { checkVersionHandler } from '../update/cli'
 import { errorHandler } from '../edge/cli'
 import { tx as indexTx } from '@edge/index-utils'
 import { printData } from '../helpers'
-import { withFile } from '../wallet/storage'
 import { CommandContext, Context } from '..'
 import { askToSignTx, handleCreateTxResult } from './index'
 import { formatXE, parseAmount } from './xe'
+import { getPassphraseOption, passphraseFileOption, passphraseOption } from '../wallet/cli'
 import { tx as xeTx, wallet as xeWallet } from '@edge/xe-utils'
 
 const formatIndexTx = (address: string, tx: indexTx.Tx): string => {
@@ -63,16 +62,15 @@ const getListOptions = (cmd: Command) => {
   }
 }
 
-const listAction = ({ index, logger, ...ctx }: CommandContext) => async () => {
+const listAction = ({ index, logger, wallet, ...ctx }: CommandContext) => async () => {
   const log = logger()
 
   const opts = {
-    ...walletCLI.getWalletOption(ctx.parent, ctx.network),
     list: getListOptions(ctx.cmd)
   }
   log.debug('options', opts)
 
-  const address = await withFile(opts.wallet).address()
+  const address = await wallet().address()
   const { results, metadata } = await index().transactions(address, opts.list)
   if (results.length === 0) {
     console.log('No transactions')
@@ -94,16 +92,8 @@ const listHelp = [
   'This command queries the index and displays your transactions.'
 ].join('')
 
-const listPendingAction = ({ logger, xe, ...ctx }: CommandContext) => async () => {
-  const { parent, network } = ctx
-  const log = logger()
-
-  const opts = {
-    ...walletCLI.getWalletOption(parent, network)
-  }
-  log.debug('options', opts)
-
-  const address = await withFile(opts.wallet).address()
+const listPendingAction = ({ wallet, xe }: CommandContext) => async () => {
+  const address = await wallet().address()
 
   const txs = await xe().pendingTransactions(address)
   if (txs.length === 0) {
@@ -124,15 +114,13 @@ const listPendingHelp = [
 ].join('')
 
 // eslint-disable-next-line max-len
-const sendAction = ({ logger, xe, ...ctx }: CommandContext) => async (amountInput: string, recipient: string) => {
-  const { parent, cmd, network } = ctx
+const sendAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (amountInput: string, recipient: string) => {
   const log = logger()
 
   const opts = {
-    ...walletCLI.getWalletOption(parent, network),
-    ...walletCLI.getPassphraseOption(cmd),
+    ...await getPassphraseOption(ctx.cmd),
     ...(() => {
-      const { memo, yes } = cmd.opts<{ memo?: string, yes: boolean }>()
+      const { memo, yes } = ctx.cmd.opts<{ memo?: string, yes: boolean }>()
       return { memo, yes }
     })()
   }
@@ -141,7 +129,7 @@ const sendAction = ({ logger, xe, ...ctx }: CommandContext) => async (amountInpu
   const amount = parseAmount(amountInput)
   if (!xeWallet.validateAddress(recipient)) throw new Error('invalid recipient')
 
-  const storage = withFile(opts.wallet)
+  const storage = wallet()
   const address = await storage.address()
 
   const xeClient = xe()
@@ -171,8 +159,7 @@ const sendAction = ({ logger, xe, ...ctx }: CommandContext) => async (amountInpu
   }
 
   await askToSignTx(opts)
-  log.debug('Decrypting wallet', { file: opts.wallet })
-  const wallet = await storage.read(opts.passphrase as string)
+  const userWallet = await storage.read(opts.passphrase as string)
 
   const data: xeTx.TxData = {}
   if (opts.memo) data.memo = opts.memo
@@ -183,10 +170,10 @@ const sendAction = ({ logger, xe, ...ctx }: CommandContext) => async (amountInpu
     amount,
     data,
     nonce: onChainWallet.nonce
-  }, wallet.privateKey)
+  }, userWallet.privateKey)
 
   const result = await xeClient.createTransaction(tx)
-  if (!handleCreateTxResult(network, result)) process.exitCode = 1
+  if (!handleCreateTxResult(ctx.network, result)) process.exitCode = 1
 }
 
 const sendHelp = [
@@ -227,8 +214,8 @@ export const withContext = (ctx: Context): Command => {
     .description('send XE to another wallet')
     .addHelpText('after', sendHelp)
     .option('-m, --memo <text>', 'attach a memo to the transaction')
-    .addOption(walletCLI.passphraseOption())
-    .addOption(walletCLI.passphraseFileOption())
+    .addOption(passphraseOption())
+    .addOption(passphraseFileOption())
     .option('-y, --yes', 'do not ask for confirmation')
   send.action(errorHandler(ctx, checkVersionHandler(ctx, sendAction({ ...ctx, cmd: send }))))
 

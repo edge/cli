@@ -5,6 +5,7 @@
 import { Command } from 'commander'
 import { Log } from '@edge/log'
 import indexClient from './api'
+import { wallet } from './wallet'
 import xeClient from './api/xe'
 
 export type CommandContext = Context & {
@@ -49,7 +50,10 @@ export type Network = {
 export type Providers = {
   index: IndexClientProvider
   logger: LoggerProvider
+  wallet: WalletProvider
   xe: XEClientProvider
 }
+
+export type WalletProvider = () => ReturnType<typeof wallet>
 
 export type XEClientProvider = (name?: string) => ReturnType<typeof xeClient>
