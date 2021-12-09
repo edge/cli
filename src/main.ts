@@ -10,7 +10,7 @@ import { wallet } from './wallet'
 import xeClient from './api/xe'
 import { Context, Network } from '.'
 
-const initContext = (ctx: Pick<Context, 'parent' | 'network'>): Context => {
+const addProviders = (ctx: Pick<Context, 'parent' | 'network'>): Context => {
   const ctx2 = ctx as Context
   ctx2.index = (name?: string) => indexClient(ctx2, name)
   ctx2.logger = (name?: string) => logger(ctx2, name)
@@ -21,7 +21,7 @@ const initContext = (ctx: Pick<Context, 'parent' | 'network'>): Context => {
 
 const main = (argv: string[], network: Network): void => {
   const parent = createCLI(network)
-  const ctx = initContext({ parent, network })
+  const ctx = addProviders({ parent, network })
 
   if (network.flags.onboarding) parent.addCommand(deviceCLI.withContext(ctx))
 
