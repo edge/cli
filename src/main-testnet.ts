@@ -7,6 +7,7 @@ import main from './main'
 import { sep } from 'path'
 
 main(process.argv, {
+  appName: 'edgetest',
   name: 'testnet',
   blockchain: {
     baseURL: 'https://xe1.test.network'
@@ -19,8 +20,14 @@ main(process.argv, {
     latestChecksumURL: (os, arch) => `https://files.edge.network/cli/testnet/${os}/${arch}/latest/checksum`,
     latestVersionURL: (os, arch) => `https://files.edge.network/cli/testnet/${os}/${arch}/latest/version`
   },
+  flags: {
+    onboarding: true
+  },
   index: {
     baseURL: 'https://index.test.network'
+  },
+  registry: {
+    imageName: app => `registry.edge.network/testnet/${app}`
   },
   wallet: {
     defaultFile: `${homedir}${sep}.edge${sep}wallet${sep}testnet.json`

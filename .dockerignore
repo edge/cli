@@ -1,0 +1,7 @@
+.build/
+.github/
+.gitignore
+*.md
+bin/
+node_modules/
+out/

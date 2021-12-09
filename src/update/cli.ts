@@ -17,10 +17,10 @@ import { errorHandler, getNoColorOption } from '../edge/cli'
 const checkAction = (network: Network) => async (): Promise<void> => {
   const { current, latest, requireUpdate } = await status(network)
   if (requireUpdate) {
-    console.log(`Current Edge CLI version: ${current}`)
+    console.log(`Current Edge CLI version: v${current}`)
     console.log()
-    console.log(`A new version of Edge CLI is available (${latest}).`)
-    console.log('Run \'edge update\' to update to the latest version.')
+    console.log(`A new version of Edge CLI is available (v${latest}).`)
+    console.log(`Run '${network.appName} update' to update to the latest version.`)
   }
   else console.log('Edge CLI is up to date.')
 }
@@ -83,8 +83,8 @@ export const checkVersionHandler =
         if (current === null) throw new Error('Edge CLI version is invalid. Please update manually.')
         if (current.compare(vinfo.latest) < 0) {
           let msgs = [
-            `A new version of Edge CLI is available (${vinfo.latest}).`,
-            'Please run \'edge update\' to update to the latest version.'
+            `A new version of Edge CLI is available (v${vinfo.latest}).`,
+            `Please run '${network.appName} update' to update to the latest version.`
           ]
           if (!noColor) msgs = msgs.map(l => color.info(l))
           msgs.forEach(l => console.log(l))
@@ -128,16 +128,16 @@ const updateAction = (network: Network, argv: string[]) => async (): Promise<voi
   console.log(`Updated Edge CLI to v${latest}`)
 }
 
-const updateHelp = [
+const updateHelp = (network: Network) => [
   '\n',
   'Update Edge CLI to the latest version.\n\n',
-  'To check for a new version without updating Edge CLI, use \'edge update check\' instead.'
+  `To check for a new version without updating Edge CLI, use '${network.appName} update check' instead.`
 ].join('')
 
 export const withProgram = (parent: Command, network: Network, argv: string[]): void => {
   const updateCLI = new Command('update')
     .description('update Edge CLI')
-    .addHelpText('after', updateHelp)
+    .addHelpText('after', updateHelp(network))
     .action(errorHandler(parent, updateAction(network, argv)))
 
   const check = new Command('check')

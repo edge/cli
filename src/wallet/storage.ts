@@ -3,6 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import { dirname } from 'path'
+import { namedError } from '../helpers'
 import { EncryptedWallet, Wallet, decryptWallet, encryptWallet } from './wallet'
 import { HashPair, compare, createSalt, hash } from './hash'
 import { mkdir, readFile, stat, writeFile } from 'fs'
@@ -10,6 +11,8 @@ import { mkdir, readFile, stat, writeFile } from 'fs'
 export type FileWallet = EncryptedWallet & {
   secret: HashPair
 }
+
+const notFoundError = namedError('NotFoundError')
 
 const checkFile = (file: string) => new Promise<boolean>((resolve, reject) => {
   stat(file, (err, info) => {
@@ -38,12 +41,6 @@ export const createFileWallet = (wallet: Wallet, passphrase: string): FileWallet
 export const decryptFileWallet = (wallet: FileWallet, passphrase: string): Wallet => {
   if (!compare(passphrase, wallet.secret)) throw new Error('invalid passphrase')
   return decryptWallet(wallet, passphrase)
-}
-
-const notFoundError = (msg: string) => {
-  const err = new Error(msg)
-  err.name = 'NotFoundError'
-  return err
 }
 
 export const readWallet = async (file: string): Promise<FileWallet> => {
@@ -78,8 +75,23 @@ export const writeWallet = async (file: string, wallet: FileWallet): Promise<voi
 }
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export const withFile = (file: string) => ({
-  check: () => checkFile(file),
-  read: async (passphrase: string) => decryptFileWallet(await readWallet(file), passphrase),
-  write: async (wallet: Wallet, passphrase: string) => writeWallet(file, createFileWallet(wallet, passphrase))
-})
+export const withFile = (file: string) => {
+  // stateful encrypted wallet to avoid re-reading from disk
+  let enc: FileWallet
+
+  const getEnc = async () => {
+    if (enc === undefined) enc = await readWallet(file)
+    return enc
+  }
+
+  return {
+    address: async () => (await getEnc()).address,
+    check: () => checkFile(file),
+    read: async (passphrase: string) => decryptFileWallet(await getEnc(), passphrase),
+    write: async (wallet: Wallet, passphrase: string) => {
+      const newEnc = createFileWallet(wallet, passphrase)
+      await writeWallet(file, newEnc)
+      enc = newEnc
+    }
+  }
+}

@@ -9,28 +9,25 @@ import { Network } from '../main'
 import { ask } from '../input'
 import { checkVersionHandler } from '../update/cli'
 import { errorHandler } from '../edge/cli'
+import { printData } from '../helpers'
+import { withFile } from '../wallet/storage'
 import { Command, Option } from 'commander'
-import { askToSignTx, withNetwork as indexWithNetwork } from './index'
-import { decryptFileWallet, readWallet } from '../wallet/storage'
+import { askToSignTx, handleCreateTxResult, withNetwork as indexWithNetwork } from './index'
 import { formatXE, parseAmount, withNetwork as xeWithNetwork } from './xe'
 
-const formatIndexTx = (address: string, tx: index.Tx): string => {
-  const lines: string[] = [
-    `Tx: ${tx.hash}`,
-    `Nonce: ${tx.nonce} Block: ${tx.block.height} At: ` + formatTimestamp(new Date(tx.timestamp))
-  ]
-  if (tx.sender === address) lines.push(`To: ${tx.recipient}`)
-  else lines.push(`From: ${tx.sender}`)
-  lines.push(`Amount: ${formatXE(tx.amount)}`)
-  const dataKeys = Object.keys(tx.data) as (keyof index.TxData)[]
-  if (dataKeys.length) {
-    lines.push('Data:')
-    dataKeys.forEach(key => {
-      lines.push(`  ${key}: ${tx.data[key]}`)
-    })
+const formatIndexTx = (address: string, tx: index.tx.Tx): string => {
+  const data: Record<string, string> = {
+    Tx: tx.hash,
+    Nonce: tx.nonce.toString(),
+    Block: tx.block.height.toString(),
+    At: formatTimestamp(new Date(tx.timestamp))
   }
-  lines.push(`Signature: ${tx.signature}`)
-  return lines.join('\n')
+  if (tx.sender === address) data.To = tx.recipient
+  else data.From = tx.sender
+  data.Amount = formatXE(tx.amount)
+  if (tx.data.memo !== undefined) data.Memo = tx.data.memo
+  data.Signature = tx.signature
+  return printData(data)
 }
 
 const formatTimestamp = (d: Date): string => {
@@ -44,22 +41,17 @@ const formatTimestamp = (d: Date): string => {
 }
 
 const formatTx = (address: string, tx: xe.tx.Tx): string => {
-  const lines: string[] = [
-    `Tx: ${tx.hash}`,
-    `Nonce: ${tx.nonce} At: ` + formatTimestamp(new Date(tx.timestamp))
-  ]
-  if (tx.sender === address) lines.push(`To: ${tx.recipient}`)
-  else lines.push(`From: ${tx.sender}`)
-  lines.push(`Amount: ${formatXE(tx.amount)}`)
-  const dataKeys = Object.keys(tx.data) as (keyof index.TxData)[]
-  if (dataKeys.length) {
-    lines.push('Data:')
-    dataKeys.forEach(key => {
-      lines.push(`  ${key}: ${tx.data[key]}`)
-    })
+  const data: Record<string, string> = {
+    Tx: tx.hash,
+    Nonce: tx.nonce.toString(),
+    At: formatTimestamp(new Date(tx.timestamp))
   }
-  lines.push(`Signature: ${tx.signature}`)
-  return lines.join('\n')
+  if (tx.sender === address) data.To = tx.recipient
+  else data.From = tx.sender
+  data.Amount = formatXE(tx.amount)
+  if (tx.data.memo !== undefined) data.Memo = tx.data.memo
+  data.Signature = tx.signature
+  return printData(data)
 }
 
 const getListOptions = (listCmd: Command) => {
@@ -77,9 +69,9 @@ const listAction = (parent: Command, listCmd: Command, network: Network) => asyn
     ...getJsonOption(listCmd),
     ...getListOptions(listCmd)
   }
+  const address = await withFile(opts.wallet).address()
 
-  const wallet = await readWallet(opts.wallet)
-  const response = await indexWithNetwork(network).transactions(wallet.address, {
+  const response = await indexWithNetwork(network).transactions(address, {
     page: opts.page,
     limit: opts.limit
   })
@@ -99,7 +91,7 @@ const listAction = (parent: Command, listCmd: Command, network: Network) => asyn
   console.log()
 
   response.results
-    .map(tx => formatIndexTx(wallet.address, tx))
+    .map(tx => formatIndexTx(address, tx))
     .forEach(tx => {
       console.log(tx)
       console.log()
@@ -116,9 +108,9 @@ const listPendingAction = (parent: Command, listPendingCmd: Command, network: Ne
     ...walletCLI.getWalletOption(parent, network),
     ...getJsonOption(listPendingCmd)
   }
+  const address = await withFile(opts.wallet).address()
 
-  const wallet = await readWallet(opts.wallet)
-  const txs = await xeWithNetwork(network).pendingTransactions(wallet.address)
+  const txs = await xeWithNetwork(network).pendingTransactions(address)
 
   if (opts.json) {
     console.log(JSON.stringify(txs, undefined, 2))
@@ -130,7 +122,7 @@ const listPendingAction = (parent: Command, listPendingCmd: Command, network: Ne
     return
   }
 
-  txs.map(tx => formatTx(wallet.address, tx))
+  txs.map(tx => formatTx(address, tx))
     .forEach(tx => {
       console.log(tx)
       console.log()
@@ -156,10 +148,11 @@ const sendAction = (parent: Command, sendCmd: Command, network: Network) => asyn
   const amount = parseAmount(amountInput)
   if (!xe.wallet.validateAddress(recipient)) throw new Error('invalid recipient')
 
-  const encWallet = await readWallet(opts.wallet)
+  const storage = withFile(opts.wallet)
+  const address = await storage.address()
 
   const api = xeWithNetwork(network)
-  const onChainWallet = await api.walletWithNextNonce(encWallet.address)
+  const onChainWallet = await api.walletWithNextNonce(address)
   const resultBalance = onChainWallet.balance - amount
   // eslint-disable-next-line max-len
   if (resultBalance < 0) throw new Error(`insufficient balance: your wallet only contains ${formatXE(onChainWallet.balance)}`)
@@ -184,13 +177,13 @@ const sendAction = (parent: Command, sendCmd: Command, network: Network) => asyn
   }
 
   await askToSignTx(opts)
-  const wallet = decryptFileWallet(encWallet, opts.passphrase as string)
+  const wallet = await storage.read(opts.passphrase as string)
 
   const data: xe.tx.TxData = {}
   if (opts.memo) data.memo = opts.memo
   const tx = xe.tx.sign({
     timestamp: Date.now(),
-    sender: wallet.address,
+    sender: address,
     recipient,
     amount,
     data,
@@ -198,17 +191,7 @@ const sendAction = (parent: Command, sendCmd: Command, network: Network) => asyn
   }, wallet.privateKey)
 
   const result = await api.createTransaction(tx)
-  if (result.metadata.accepted !== 1) {
-    console.log('There was a problem creating your transaction. The response from the blockchain is shown below:')
-    console.log()
-    console.log(JSON.stringify(result, undefined, 2))
-    process.exitCode = 1
-  }
-  else {
-    console.log('Your transaction has been submitted and will appear in the explorer shortly.')
-    console.log()
-    console.log(`${network.explorer.baseURL}/transaction/${result.results[0].hash}`)
-  }
+  if (!handleCreateTxResult(network, result)) process.exitCode = 1
 }
 
 const sendHelp = [
