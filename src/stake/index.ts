@@ -7,6 +7,13 @@ import { namedError } from '../helpers'
 
 export const ambiguousIDError = namedError('AmbiguousIDError')
 
+export const canAssign = (stake: index.stake.AddressedStake): boolean => {
+  if (stake.released) return false
+  if (stake.unlockRequested) return false
+  if (stake.device) return false
+  return true
+}
+
 export const findOne = (stakes: index.stake.AddressedStake[], id: string): index.stake.AddressedStake => {
   if (id.length < 3) throw new Error('stake ID must be at least 3 characters')
   const ss = Object.values(stakes).filter(s => s.id.slice(0, id.length) === id)
