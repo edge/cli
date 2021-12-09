@@ -2,18 +2,17 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-import * as index from '@edge/index-utils'
 import * as walletCLI from '../wallet/cli'
-import * as xe from '@edge/xe-utils'
 import { Command } from 'commander'
 import { ask } from '../input'
 import { checkVersionHandler } from '../update/cli'
+import { formatXE } from '../transaction/xe'
 import { withFile } from '../wallet/storage'
-import { CommandContext, Context, Network } from '../main'
+import { tx as xeTx } from '@edge/xe-utils'
+import { CommandContext, Context, Network, XEClientProvider } from '..'
 import { askToSignTx, handleCreateTxResult } from '../transaction'
 import { errorHandler, getDebugOption, getVerboseOption } from '../edge/cli'
 import { findOne, types } from '.'
-import { formatXE, withContext as xeWithContext } from '../transaction/xe'
 import { printData, printTrunc, toDays, toUpperCaseFirst } from '../helpers'
 
 const formatTime = (t: number): string => {
@@ -30,9 +29,9 @@ const formatTime = (t: number): string => {
 }
 
 // wrapper for xe.vars; returns the original error in --debug CLI, otherwise generic error message
-const onChainVars = async (debug: boolean, host: string) => {
+const xeVars = async (xe: XEClientProvider, debug: boolean) => {
   try {
-    return await xe.vars(host)
+    return await xe().vars()
   }
   catch (err) {
     if (debug) throw err
@@ -40,10 +39,10 @@ const onChainVars = async (debug: boolean, host: string) => {
   }
 }
 
-const createAction = (ctx: CommandContext) => async (nodeType: string) => {
+const createAction = ({ logger, xe, ...ctx }: CommandContext) => async (nodeType: string) => {
   if (!types.includes(nodeType)) throw new Error(`invalid node type "${nodeType}"`)
   const { parent, cmd, network } = ctx
-  const log = ctx.logger()
+  const log = logger()
 
   const opts = {
     ...getDebugOption(parent),
@@ -54,17 +53,15 @@ const createAction = (ctx: CommandContext) => async (nodeType: string) => {
       return { yes }
     })()
   }
-  log.debug('Options', opts)
+  log.debug('options', opts)
 
   const storage = withFile(opts.wallet)
   const address = await storage.address()
 
-  const api = xeWithContext(ctx)
-  const onChainWallet = await api.walletWithNextNonce(address)
+  const xeClient = xe()
+  const onChainWallet = await xeClient.walletWithNextNonce(address)
 
-  log.info('Getting on-chain variables', { host: network.blockchain.baseURL })
-  const vars = await onChainVars(opts.debug, network.blockchain.baseURL)
-  log.debug('Response', { vars })
+  const vars = await xeVars(xe, opts.debug)
   // fallback 0 is just for typing - nodeType is checked at top of func, so it should never be used
   const amount =
     nodeType === 'host' ? vars.host_stake_amount :
@@ -95,10 +92,10 @@ const createAction = (ctx: CommandContext) => async (nodeType: string) => {
   }
 
   await askToSignTx(opts)
-  log.info('Decrypting wallet', { file: opts.wallet })
+  log.debug('Decrypting wallet', { file: opts.wallet })
   const wallet = await storage.read(opts.passphrase as string)
 
-  const tx = xe.tx.sign({
+  const tx = xeTx.sign({
     timestamp: Date.now(),
     sender: wallet.address,
     recipient: wallet.address,
@@ -110,7 +107,7 @@ const createAction = (ctx: CommandContext) => async (nodeType: string) => {
     nonce: onChainWallet.nonce
   }, wallet.privateKey)
 
-  const result = await api.createTransaction(tx)
+  const result = await xeClient.createTransaction(tx)
   if (!handleCreateTxResult(network, result)) process.exitCode = 1
 }
 
@@ -121,15 +118,13 @@ const createHelp = (network: Network) => [
   `Run '${network.appName} device add --help' for more information.`
 ].join('')
 
-const infoAction = ({ parent, network, ...ctx }: CommandContext) => async () => {
-  const log = ctx.logger()
+const infoAction = ({ logger, xe, ...ctx }: CommandContext) => async () => {
+  const log = logger()
 
-  const opts = getDebugOption(parent)
-  log.debug('Options', opts)
+  const opts = getDebugOption(ctx.parent)
+  log.debug('options', opts)
 
-  log.info('Getting on-chain variables', { host: network.blockchain.baseURL })
-  const vars = await onChainVars(opts.debug, network.blockchain.baseURL)
-  log.debug('Response', { vars })
+  const vars = await xeVars(xe, opts.debug)
 
   const amounts = [
     vars.host_stake_amount,
@@ -147,22 +142,20 @@ const infoAction = ({ parent, network, ...ctx }: CommandContext) => async () => 
 
 const infoHelp = '\nDisplays current staking amounts.'
 
-const listAction = ({ parent, network, ...ctx }: CommandContext) => async () => {
-  const log = ctx.logger()
+const listAction = ({ index, logger, ...ctx }: CommandContext) => async () => {
+  const log = logger()
 
   const opts = {
-    ...getVerboseOption(parent),
-    ...walletCLI.getWalletOption(parent, network)
+    ...getVerboseOption(ctx.parent),
+    ...walletCLI.getWalletOption(ctx.parent, ctx.network)
   }
-  log.debug('Options', opts)
+  log.debug('options', opts)
 
   const printID = printTrunc(!opts.verbose, 8)
 
   const storage = withFile(opts.wallet)
   const address = await storage.address()
-  log.info('Getting stakes', { host: network.blockchain.baseURL, address })
-  const { results: stakes } = await index.stake.stakes(network.index.baseURL, address, { limit: 999 })
-  log.debug('Stakes', { stakes })
+  const { results: stakes } = await index().stakes(address, { limit: 999 })
 
   Object.values(stakes).forEach(stake => {
     const data: Record<string, string> = {
@@ -197,23 +190,22 @@ const listAction = ({ parent, network, ...ctx }: CommandContext) => async () => 
 
 const listHelp = '\nDisplays all stakes associated with your wallet.'
 
-const releaseAction = (ctx: CommandContext) => async (id: string) => {
-  const { parent, cmd, network } = ctx
-  const log = ctx.logger()
+const releaseAction = ({ index, logger, xe, ...ctx }: CommandContext) => async (id: string) => {
+  const log = logger()
 
   const opts = {
-    ...getDebugOption(parent),
-    ...walletCLI.getWalletOption(parent, network),
-    ...walletCLI.getPassphraseOption(cmd),
+    ...getDebugOption(ctx.parent),
+    ...walletCLI.getWalletOption(ctx.parent, ctx.network),
+    ...walletCLI.getPassphraseOption(ctx.cmd),
     ...(() => {
-      const { express, yes } = cmd.opts<{ express: boolean, yes: boolean }>()
+      const { express, yes } = ctx.cmd.opts<{ express: boolean, yes: boolean }>()
       return { express, yes }
     })()
   }
-  log.debug('Options', opts)
+  log.debug('options', opts)
 
   const storage = withFile(opts.wallet)
-  const { results: stakes } = await index.stake.stakes(network.index.baseURL, await storage.address(), { limit: 999 })
+  const { results: stakes } = await index().stakes(await storage.address(), { limit: 999 })
   const stake = findOne(stakes, id)
 
   if (stake.released !== undefined) {
@@ -229,7 +221,7 @@ const releaseAction = (ctx: CommandContext) => async (id: string) => {
   const unlockAt = stake.unlockRequested + stake.unlockPeriod
   const needUnlock = unlockAt > Date.now()
   if (needUnlock && !opts.express) {
-    const { stake_express_release_fee } = await onChainVars(opts.debug, network.blockchain.baseURL)
+    const { stake_express_release_fee } = await xeVars(xe, opts.debug)
     const releaseFee = stake_express_release_fee * stake.amount
     const releasePc = stake_express_release_fee * 100
     console.log(`This stake has not unlocked yet. It unlocks at ${formatTime(unlockAt)}.`)
@@ -243,7 +235,7 @@ const releaseAction = (ctx: CommandContext) => async (id: string) => {
     // eslint-disable-next-line max-len
     console.log(`You are releasing a ${toUpperCaseFirst(stake.type)} stake.`)
     if (needUnlock) {
-      const { stake_express_release_fee } = await onChainVars(opts.debug, network.blockchain.baseURL)
+      const { stake_express_release_fee } = await xeVars(xe, opts.debug)
       const releaseFee = stake_express_release_fee * stake.amount
       const releasePc = stake_express_release_fee * 100
       console.log([
@@ -265,19 +257,19 @@ const releaseAction = (ctx: CommandContext) => async (id: string) => {
   }
 
   await askToSignTx(opts)
-  log.info('Decrypting wallet', { file: opts.wallet })
+  log.debug('Decrypting wallet', { file: opts.wallet })
   const wallet = await storage.read(opts.passphrase as string)
 
-  const api = xeWithContext(ctx)
-  const onChainWallet = await api.walletWithNextNonce(wallet.address)
+  const xeClient = xe()
+  const onChainWallet = await xeClient.walletWithNextNonce(wallet.address)
 
-  const data: xe.tx.TxData = {
+  const data: xeTx.TxData = {
     action: 'release_stake',
     memo: 'Release Stake',
     stake: stake.hash
   }
   if (needUnlock) data.express = true
-  const tx = xe.tx.sign({
+  const tx = xeTx.sign({
     timestamp: Date.now(),
     sender: wallet.address,
     recipient: wallet.address,
@@ -286,8 +278,8 @@ const releaseAction = (ctx: CommandContext) => async (id: string) => {
     nonce: onChainWallet.nonce
   }, wallet.privateKey)
 
-  const result = await api.createTransaction(tx)
-  if (!handleCreateTxResult(network, result)) process.exitCode = 1
+  const result = await xeClient.createTransaction(tx)
+  if (!handleCreateTxResult(ctx.network, result)) process.exitCode = 1
 }
 
 const releaseHelp = [
@@ -297,9 +289,9 @@ const releaseHelp = [
   'release of funds, rather than waiting for the unlock period to conclude.'
 ].join('')
 
-const unlockAction = (ctx: CommandContext) => async (id: string) => {
+const unlockAction = ({ index, logger, xe, ...ctx }: CommandContext) => async (id: string) => {
   const { parent, cmd, network } = ctx
-  const log = ctx.logger()
+  const log = logger()
 
   const opts = {
     ...walletCLI.getWalletOption(parent, network),
@@ -309,10 +301,10 @@ const unlockAction = (ctx: CommandContext) => async (id: string) => {
       return { yes }
     })()
   }
-  log.debug('Options', opts)
+  log.debug('options', opts)
 
   const storage = withFile(opts.wallet)
-  const { results: stakes } = await index.stake.stakes(network.index.baseURL, await storage.address(), { limit: 999 })
+  const { results: stakes } = await index().stakes(await storage.address(), { limit: 999 })
   const stake = findOne(stakes, id)
 
   if (stake.unlockRequested !== undefined) {
@@ -344,13 +336,13 @@ const unlockAction = (ctx: CommandContext) => async (id: string) => {
   }
 
   await askToSignTx(opts)
-  log.info('Decrypting wallet', { file: opts.wallet })
+  log.debug('Decrypting wallet', { file: opts.wallet })
   const wallet = await storage.read(opts.passphrase as string)
 
-  const api = xeWithContext(ctx)
-  const onChainWallet = await api.walletWithNextNonce(wallet.address)
+  const xeClient = xe()
+  const onChainWallet = await xeClient.walletWithNextNonce(wallet.address)
 
-  const tx = xe.tx.sign({
+  const tx = xeTx.sign({
     timestamp: Date.now(),
     sender: wallet.address,
     recipient: wallet.address,
@@ -363,7 +355,7 @@ const unlockAction = (ctx: CommandContext) => async (id: string) => {
     nonce: onChainWallet.nonce
   }, wallet.privateKey)
 
-  const result = await api.createTransaction(tx)
+  const result = await xeClient.createTransaction(tx)
   if (!handleCreateTxResult(network, result)) process.exitCode = 1
 }
 

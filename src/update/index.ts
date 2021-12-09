@@ -2,7 +2,7 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-import { Context } from '../main'
+import { Context } from '..'
 import { createHash } from 'crypto'
 import fs from 'fs/promises'
 import { getDebugOption } from '../edge/cli'
@@ -38,7 +38,7 @@ export const cachedLatestVersion = async ({ network, ...ctx }: Context): Promise
   const file = tmpdir() + path.sep + '.edge-cli-version'
   let lv: SemVer|undefined = undefined
   try {
-    log.info('Reading cache file', { file })
+    log.debug('Reading cache file', { file })
     const stats = await fs.stat(file)
     if (stats.mtime.getTime() + versionCacheTimeout > Date.now()) {
       const data = (await fs.readFile(file)).toString()
@@ -54,7 +54,7 @@ export const cachedLatestVersion = async ({ network, ...ctx }: Context): Promise
   if (lv === undefined) {
     lv = await latestVersion({ network, ...ctx })
     try {
-      log.info('Writing cache file', { data: lv.format(), file })
+      log.debug('Writing cache file', { data: lv.format(), file })
       await fs.writeFile(file, lv.format())
       log.debug('Wrote file', { file })
     }
@@ -75,18 +75,18 @@ export const download = async ({ network, ...ctx }: Context): Promise<DownloadIn
   const log = ctx.logger('update.download')
   try {
     const csURL = network.files.latestChecksumURL(normalizedPlatform(), arch())
-    log.info('Getting latest checksum', { url: csURL })
+    log.debug('Getting latest checksum', { url: csURL })
     const csResponse = await superagent.get(csURL)
     const checksum = csResponse.text.trim()
     log.debug('Response', { checksum })
 
     const file = await fs.mkdtemp(path.join(tmpdir(), 'edge-update-')) + path.sep + 'edge'
     const buildURL = network.files.latestBuildURL(normalizedPlatform(), arch(), ext())
-    log.info('Downloading latest build', { url: buildURL, file })
+    log.debug('Downloading latest build', { url: buildURL, file })
     await downloadURL(buildURL, file)
     log.debug('Downloaded', { file })
 
-    log.info('Verifying checksum')
+    log.debug('Verifying checksum')
     const filesum = await calcDigest(file)
     if (checksum === filesum) return { checksum, file }
     throw new Error(`checksum mismatch (local = ${filesum}, remote = ${checksum})`)
@@ -102,7 +102,7 @@ export const latestVersion = async ({ network, ...ctx }: Context): Promise<SemVe
   const log = ctx.logger('update.version.get')
   const url = network.files.latestVersionURL(normalizedPlatform(), arch())
   try {
-    log.info('Getting latest version', { url })
+    log.debug('Getting latest version', { url })
     const response = await superagent.get(url)
     log.debug('Response', { response })
     const lv = parse(response.text.trim())

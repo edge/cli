@@ -5,7 +5,7 @@
 import { Command } from 'commander'
 import color from '../edge/color'
 import path from 'path'
-import { Context, Network } from '../main'
+import { Context, Network } from '..'
 import { cachedLatestVersion, currentVersion, download, latestVersion } from '.'
 import { chmodSync, copyFileSync, renameSync, unlinkSync } from 'fs'
 import { errorHandler, getDebugOption, getNoColorOption } from '../edge/cli'

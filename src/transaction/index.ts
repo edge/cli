@@ -2,10 +2,9 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-import * as index from '@edge/index-utils'
-import * as xe from '@edge/xe-utils'
+import { Network } from '..'
 import { askSecure } from '../input'
-import { Context, Network } from '../main'
+import { tx as xeTx } from '@edge/xe-utils'
 
 export const askToSignTx = async (opts: { passphrase?: string }): Promise<void> => {
   if (!opts.passphrase) {
@@ -23,7 +22,7 @@ export const askToSignTx = async (opts: { passphrase?: string }): Promise<void> 
   }
 }
 
-export const handleCreateTxResult = (network: Network, result: xe.tx.CreateResponse): boolean => {
+export const handleCreateTxResult = (network: Network, result: xeTx.CreateResponse): boolean => {
   if (result.metadata.accepted !== 1) {
     const reason = result.results.find(r => r)?.reason || 'unknown reason'
     console.log(`There was a problem creating your transaction: ${reason}`)
@@ -35,19 +34,4 @@ export const handleCreateTxResult = (network: Network, result: xe.tx.CreateRespo
     console.log(`${network.explorer.baseURL}/transaction/${result.results[0].hash}`)
     return true
   }
-}
-
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export const withContext = (ctx: Context) => {
-  const host = ctx.network.index.baseURL
-  const log = ctx.logger('index')
-
-  const transactions = async (address: string, params?: index.tx.TxsParams) => {
-    log.info('Getting transactions', { host, address, params })
-    const data = await index.tx.transactions(host, address, params)
-    log.debug('Response', { data })
-    return data
-  }
-
-  return { transactions }
 }

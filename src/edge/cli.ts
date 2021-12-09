@@ -6,7 +6,7 @@
 import { Command } from 'commander'
 import pkg from '../../package.json'
 import { toUpperCaseFirst } from '../helpers'
-import { Context, Network } from '../main'
+import { Context, Network } from '..'
 
 export const create = (network: Network): Command => {
   const version = `Edge CLI v${pkg.version} (${toUpperCaseFirst(network.name)})`

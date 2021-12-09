@@ -1,4 +1,4 @@
-import { Context } from './main'
+import { Context } from '.'
 import { Writable } from 'stream'
 import chalk from 'chalk'
 import color from './edge/color'
@@ -53,12 +53,12 @@ export class SimpleAdapter implements Adaptor {
   }
 }
 
-export const createLogger = (ctx: Context) => (name?: string): Log => {
+export const logger = ({ parent }: Pick<Context, 'parent'>, name?: string): Log => {
   const log = new Log(name)
 
   const { debug, noColor } = {
-    ...getDebugOption(ctx.parent),
-    ...getNoColorOption(ctx.parent)
+    ...getDebugOption(parent),
+    ...getNoColorOption(parent)
   }
 
   log.use(new SimpleAdapter(!noColor, true))

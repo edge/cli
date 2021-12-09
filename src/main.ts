@@ -1,52 +1,13 @@
-// Copyright (C) 2021 Edge Network Technologies Limited
-// Use of this source code is governed by a GNU GPL-style license
-// that can be found in the LICENSE.md file. All rights reserved.
-
 import * as deviceCLI from './device/cli'
 import * as stakeCLI from './stake/cli'
 import * as transactionCLI from './transaction/cli'
 import * as updateCLI from './update/cli'
 import * as walletCLI from './wallet/cli'
-import { Command } from 'commander'
-import { Log } from '@edge/log'
 import { create as createCLI } from './edge/cli'
-import { createLogger } from './log'
-
-export type CommandContext = Context & {
-  cmd: Command
-}
-
-export type Context = {
-  parent: Command
-  network: Network
-  logger: (name?: string) => Log
-}
-
-export type Network = {
-  appName: string
-  name: string
-  blockchain: {
-    baseURL: string
-  }
-  explorer: {
-    baseURL: string
-  }
-  files: {
-    latestBuildURL: (os: string, arch: string, ext: string) => string
-    latestChecksumURL: (os: string, arch: string) => string
-    latestVersionURL: (os: string, arch: string) => string
-  }
-  flags: Record<string, boolean>
-  index: {
-    baseURL: string
-  }
-  registry: {
-    imageName: (app: string) => string
-  }
-  wallet: {
-    defaultFile: string
-  }
-}
+import indexClient from './api'
+import { logger } from './log'
+import xeClient from './api/xe'
+import { Context, Network } from '.'
 
 const main = (argv: string[], network: Network): void => {
   const cli = createCLI(network)
@@ -55,7 +16,9 @@ const main = (argv: string[], network: Network): void => {
     parent: cli,
     network
   }
-  ctx.logger = createLogger(ctx)
+  ctx.index = (name?: string) => indexClient(ctx, name)
+  ctx.logger = (name?: string) => logger(ctx, name)
+  ctx.xe = (name?: string) => xeClient(ctx, name)
 
   if (network.flags.onboarding) cli.addCommand(deviceCLI.withContext(ctx))
 
