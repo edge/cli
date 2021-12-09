@@ -23,6 +23,7 @@ export type Network = {
     latestChecksumURL: (os: string, arch: string) => string
     latestVersionURL: (os: string, arch: string) => string
   }
+  flags: Record<string, boolean>
   index: {
     baseURL: string
   }
@@ -36,7 +37,7 @@ export type Network = {
 
 const main = (argv: string[], network: Network): void => {
   const cli = createCLI(network)
-  deviceCLI.withProgram(cli, network)
+  if (network.flags.onboarding) deviceCLI.withProgram(cli, network)
   stakeCLI.withProgram(cli, network)
   transactionCLI.withProgram(cli, network)
   updateCLI.withProgram(cli, network, argv)
