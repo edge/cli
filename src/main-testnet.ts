@@ -20,6 +20,9 @@ main(process.argv, {
     latestChecksumURL: (os, arch) => `https://files.edge.network/cli/testnet/${os}/${arch}/latest/checksum`,
     latestVersionURL: (os, arch) => `https://files.edge.network/cli/testnet/${os}/${arch}/latest/version`
   },
+  flags: {
+    onboarding: true
+  },
   index: {
     baseURL: 'https://index.test.network'
   },
