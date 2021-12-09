@@ -25,9 +25,8 @@ export const askToSignTx = async (opts: { passphrase?: string }): Promise<void> 
 
 export const handleCreateTxResult = (network: Network, result: xe.tx.CreateResponse): boolean => {
   if (result.metadata.accepted !== 1) {
-    console.log('There was a problem creating your transaction. The response from the blockchain is shown below:')
-    console.log()
-    console.log(JSON.stringify(result, undefined, 2))
+    const reason = result.results.find(r => r)?.reason || 'unknown reason'
+    console.log(`There was a problem creating your transaction: ${reason}`)
     return false
   }
   else {

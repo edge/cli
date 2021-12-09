@@ -8,7 +8,9 @@ import * as transactionCLI from './transaction/cli'
 import * as updateCLI from './update/cli'
 import * as walletCLI from './wallet/cli'
 import { Command } from 'commander'
+import { Log } from '@edge/log'
 import { create as createCLI } from './edge/cli'
+import { createLogger } from './log'
 
 export type CommandContext = Context & {
   cmd: Command
@@ -17,6 +19,7 @@ export type CommandContext = Context & {
 export type Context = {
   parent: Command
   network: Network
+  logger: (name?: string) => Log
 }
 
 export type Network = {
@@ -47,7 +50,12 @@ export type Network = {
 
 const main = (argv: string[], network: Network): void => {
   const cli = createCLI(network)
-  const ctx = { parent: cli, network }
+
+  const ctx = <Context>{
+    parent: cli,
+    network
+  }
+  ctx.logger = createLogger(ctx)
 
   if (network.flags.onboarding) cli.addCommand(deviceCLI.withContext(ctx))
 

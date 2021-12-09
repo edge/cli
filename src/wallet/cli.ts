@@ -24,17 +24,25 @@ export type WalletOption = {
   wallet: string
 }
 
-const balanceAction = ({ parent, network }: Context) => async () => {
+const balanceAction = ({ parent, network, ...ctx }: Context) => async () => {
+  const log = ctx.logger()
+
   const opts = getWalletOption(parent, network)
+  log.debug('Options', opts)
+
   const address = await withFile(opts.wallet).address()
 
-  const { balance } = await xe.wallet.info(network.blockchain.baseURL, address)
+  log.info('Getting wallet info', { host: network.blockchain.baseURL, address })
+  const info = await xe.wallet.info(network.blockchain.baseURL, address)
+  log.debug('Wallet info', info)
 
   console.log(`Address: ${address}`)
-  console.log(`Balance: ${formatXE(balance)}`)
+  console.log(`Balance: ${formatXE(info.balance)}`)
 }
 
-const createAction = ({ parent, cmd, network }: CommandContext) => async () => {
+const createAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async () => {
+  const log = ctx.logger()
+
   const opts = {
     ...getWalletOption(parent, network),
     ...getPassphraseOption(cmd),
@@ -46,6 +54,8 @@ const createAction = ({ parent, cmd, network }: CommandContext) => async () => {
       return { privateKeyFile, overwrite }
     })()
   }
+  log.debug('Options', opts)
+
   const storage = withFile(opts.wallet)
 
   if (await storage.check() && !opts.overwrite) {
@@ -73,7 +83,9 @@ const createAction = ({ parent, cmd, network }: CommandContext) => async () => {
   }
 
   const wallet = xe.wallet.create()
+  log.info('Writing file', { wallet, file: opts.wallet })
   await storage.write(wallet, opts.passphrase)
+  log.debug('Wrote file', { file: opts.wallet })
   console.log(`Wallet ${wallet.address} created.`)
   console.log()
 
@@ -105,7 +117,9 @@ const createAction = ({ parent, cmd, network }: CommandContext) => async () => {
     console.log()
   }
   try {
+    log.info('Writing file', { file: pkFile })
     writeFileSync(pkFile, wallet.privateKey)
+    log.debug('Wrote file', { file: pkFile })
     console.log(`Private key saved to ${pkFile}.`)
   }
   catch (err) {
@@ -125,16 +139,21 @@ const createHelp = [
   'This should be copied to a secure location and kept secret.'
 ].join('')
 
-const infoAction = ({ parent, cmd, network }: CommandContext) => async () => {
+const infoAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async () => {
+  const log = ctx.logger()
+
   const opts = {
     ...getWalletOption(parent, network),
     ...getPassphraseOption(cmd)
   }
+  log.debug('Options', opts)
+
   const storage = withFile(opts.wallet)
   console.log(`Address: ${await storage.address()}`)
 
   if (opts.passphrase) {
     try {
+      log.info('Decrypting wallet', { file: opts.wallet })
       const wallet = await storage.read(opts.passphrase)
       console.log(`Private key: ${wallet.privateKey}`)
     }
@@ -150,7 +169,9 @@ const infoHelp = [
   'If a passphrase is provided, this command will also decrypt and display your private key.'
 ].join('')
 
-const forgetAction = ({ parent, cmd, network }: CommandContext) => async () => {
+const forgetAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async () => {
+  const log = ctx.logger()
+
   const opts = {
     ...getWalletOption(parent, network),
     ...(() => {
@@ -158,6 +179,8 @@ const forgetAction = ({ parent, cmd, network }: CommandContext) => async () => {
       return { yes }
     })()
   }
+  log.debug('Options', opts)
+
   const storage = withFile(opts.wallet)
   if (!await storage.check()) {
     console.log('No wallet found.')
@@ -179,8 +202,10 @@ const forgetAction = ({ parent, cmd, network }: CommandContext) => async () => {
     console.log()
   }
 
+  log.info('Deleting file', { wallet: opts.wallet })
   unlink(opts.wallet, err => {
     if (err !== null) throw err
+    log.debug('Deleted file', { wallet: opts.wallet })
     console.log('Your wallet is forgotten.')
   })
 }
@@ -190,7 +215,9 @@ const forgetHelp = [
   'This command deletes your wallet from disk.'
 ].join('')
 
-const restoreAction = ({ parent, cmd, network }: CommandContext) => async () => {
+const restoreAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async () => {
+  const log = ctx.logger()
+
   const opts = {
     ...getWalletOption(parent, network),
     ...(() => {
@@ -200,6 +227,8 @@ const restoreAction = ({ parent, cmd, network }: CommandContext) => async () => 
     ...getPrivateKeyOption(cmd),
     ...getPassphraseOption(cmd)
   }
+  log.debug('Options', opts)
+
   const storage = withFile(opts.wallet)
 
   if (await storage.check() && !opts.overwrite) {
@@ -235,7 +264,9 @@ const restoreAction = ({ parent, cmd, network }: CommandContext) => async () => 
   }
 
   const wallet = xe.wallet.recover(opts.privateKey || '')
+  log.info('Writing file', { wallet, file: opts.wallet })
   await storage.write(wallet, opts.passphrase)
+  log.debug('Wrote file', { file: opts.wallet })
   console.log(`Wallet ${wallet.address} restored.`)
 }
 

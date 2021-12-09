@@ -20,25 +20,32 @@ import { canAssign, findOne, precedence as nodeTypePrecedence } from '../stake'
 import { errorHandler, getVerboseOption } from '../edge/cli'
 import { printData, printTrunc, toUpperCaseFirst } from '../helpers'
 
-const addAction = ({ parent, cmd, network }: CommandContext) => async () => {
+const addAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async () => {
+  const log = ctx.logger()
+
   const opts = {
+    ...getVerboseOption(parent),
     ...walletCLI.getWalletOption(parent, network),
     ...walletCLI.getPassphraseOption(cmd),
     ...(() => {
-      const { fullIds, stake, yes } = cmd.opts<{
-        fullIds: boolean
+      const { stake, yes } = cmd.opts<{
         stake: string | undefined
         yes: boolean
       }>()
-      return { fullIds, stake, yes }
-    })()
+      return { stake, yes }
+    })(),
+    docker: getDockerOptions(cmd)
   }
-  const printID = printTrunc(!opts.fullIds, 8)
+  log.debug('Options', opts)
+
+  const printID = printTrunc(!opts.verbose, 8)
 
   const storage = withFile(opts.wallet)
-  const docker = new Docker(getDockerOptions(cmd))
+  log.info('Connecting to Docker', { ...opts.docker })
+  const docker = new Docker(opts.docker)
 
   // get device data. if none, initialize device on the fly
+  log.info('Finding/creating device data')
   const dataVolume = data.withVolume(docker, await data.volume(docker, true))
   const device = await (async () => {
     let w: data.Device | undefined = undefined
@@ -53,10 +60,15 @@ const addAction = ({ parent, cmd, network }: CommandContext) => async () => {
     }
     return w as data.Device
   })()
+  log.debug('Device data', { device })
 
   // get user stakes, check whether device already assigned
-  const { results: stakes } = await index.stake.stakes(network.index.baseURL, await storage.address(), { limit: 999 })
+  const address = await storage.address()
+  log.info('Getting stakes', { host: network.index.baseURL, address })
+  const { results: stakes } = await index.stake.stakes(network.index.baseURL, address, { limit: 999 })
   if (Object.keys(stakes).length === 0) throw new Error('no stakes')
+  log.debug('Stakes', { stakes })
+
   const assigned = Object.values(stakes).find(s => s.device === device.address)
   if (assigned !== undefined) {
     console.log([
@@ -98,6 +110,7 @@ const addAction = ({ parent, cmd, network }: CommandContext) => async () => {
     console.log()
     return numberedStakes[sel-1]
   })()
+  log.debug('Using stake', { stake })
 
   if (!canAssign(stake)) {
     if (stake.released) throw new Error('this stake has been released')
@@ -128,6 +141,7 @@ const addAction = ({ parent, cmd, network }: CommandContext) => async () => {
 
   // create assignment tx
   await askToSignTx(opts)
+  log.info('Decrypting wallet', { file: opts.wallet })
   const wallet = await storage.read(opts.passphrase as string)
 
   const api = xeWithNetwork(network)
@@ -147,7 +161,9 @@ const addAction = ({ parent, cmd, network }: CommandContext) => async () => {
     nonce: onChainWallet.nonce
   }, wallet.privateKey)
 
+  log.info('Creating transaction', { tx })
   const result = await api.createTransaction(tx)
+  log.debug('Response', { ...result })
   if (!handleCreateTxResult(network, result)) {
     process.exitCode = 1
     return
@@ -176,20 +192,24 @@ const addHelp = (network: Network) => [
   `If you do not already have a stake, you can run '${network.appName} stake create' to get one.`
 ].join('')
 
-const infoAction = ({ parent, cmd, network }: CommandContext) => async () => {
+const infoAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async () => {
+  const log = ctx.logger()
+
   const opts = {
     ...getVerboseOption(parent),
     ...walletCLI.getWalletOption(parent, network),
-    ...(() => {
-      const { fullIds } = cmd.opts<{ fullIds: boolean }>()
-      return { fullIds }
-    })()
+    docker: getDockerOptions(cmd)
   }
-  const printID = printTrunc(!opts.fullIds, 8)
+  log.debug('Options', opts)
 
-  const docker = new Docker(getDockerOptions(cmd))
+  const printID = printTrunc(!opts.verbose, 8)
+
+  log.info('Connecting to Docker', { ...opts.docker })
+  const docker = new Docker(opts.docker)
+  log.info('Finding device data')
   const dataVolume = data.withVolume(docker, await data.volume(docker))
   const device = await dataVolume.read()
+  log.debug('Device data', { device })
 
   const toPrint: Record<string, string> = {
     Network: toUpperCaseFirst(device.network),
@@ -198,7 +218,9 @@ const infoAction = ({ parent, cmd, network }: CommandContext) => async () => {
 
   try {
     const address = await withFile(opts.wallet).address()
+    log.info('Getting stakes', { host: network.blockchain.baseURL, address })
     const stakes = await xe.stake.stakes(network.blockchain.baseURL, address)
+    log.debug('Stakes', { stakes })
     const stake = Object.values(stakes).find(s => s.device === device.address)
     if (stake !== undefined) {
       toPrint.Type = toUpperCaseFirst(stake.type)
@@ -218,24 +240,35 @@ const infoHelp = [
   'This command displays information about your device and the stake it is assigned to.'
 ].join('')
 
-const removeAction = ({ parent, cmd, network }: CommandContext) => async () => {
+const removeAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async () => {
+  const log = ctx.logger()
+
   const opts = {
+    ...getVerboseOption(parent),
     ...walletCLI.getWalletOption(parent, network),
     ...walletCLI.getPassphraseOption(cmd),
     ...(() => {
-      const { fullIds, yes } = cmd.opts<{ fullIds: boolean, yes: boolean }>()
-      return { fullIds, yes }
-    })()
+      const { yes } = cmd.opts<{ yes: boolean }>()
+      return { yes }
+    })(),
+    docker: getDockerOptions(cmd)
   }
-  const printID = printTrunc(!opts.fullIds, 8)
+  log.debug('Options', opts)
+
+  const printID = printTrunc(!opts.verbose, 8)
 
   const storage = withFile(opts.wallet)
-  const docker = new Docker(getDockerOptions(cmd))
+  log.info('Connecting to Docker', { ...opts.docker })
+  const docker = new Docker(opts.docker)
 
+  log.info('Finding device data')
   const dataVolume = data.withVolume(docker, await data.volume(docker))
   const device = await dataVolume.read()
 
-  const stakes = await xe.stake.stakes(network.blockchain.baseURL, await storage.address())
+  const address = await storage.address()
+  log.info('Getting stakes', { host: network.blockchain.baseURL, address })
+  const stakes = await xe.stake.stakes(network.blockchain.baseURL, address)
+  log.debug('Stakes', { stakes })
   const stake = Object.values(stakes).find(s => s.device === device.address)
   const nodeName = stake !== undefined ? toUpperCaseFirst(stake.type) : ''
 
@@ -260,6 +293,7 @@ const removeAction = ({ parent, cmd, network }: CommandContext) => async () => {
   if (stake !== undefined) {
     // if required, create unassignment tx
     await askToSignTx(opts)
+    log.info('Decrypting wallet', { file: opts.wallet })
     const wallet = await storage.read(opts.passphrase as string)
     const api = xeWithNetwork(network)
     const onChainWallet = await api.walletWithNextNonce(wallet.address)
@@ -279,7 +313,9 @@ const removeAction = ({ parent, cmd, network }: CommandContext) => async () => {
 
     console.log('Unassigning stake...')
     console.log()
+    log.info('Creating transaction', { tx })
     const result = await api.createTransaction(tx)
+    log.debug('Response', { ...result })
     if (!handleCreateTxResult(network, result)) {
       process.exitCode = 1
       return
@@ -287,9 +323,11 @@ const removeAction = ({ parent, cmd, network }: CommandContext) => async () => {
     console.log()
 
     // if node is running, stop it
+    log.info('Finding node')
     const imageName = network.registry.imageName(stake.type)
     const info = (await docker.listContainers()).find(c => c.Image === imageName)
     if (info !== undefined) {
+      log.info('Found node', { name: toUpperCaseFirst(stake.type), id: info.Id })
       const container = docker.getContainer(info.Id)
       console.log(`Stopping ${nodeName}...`)
       await container.stop()
@@ -314,12 +352,19 @@ const removeHelp = [
   '  - Destroy the device\'s identity\n'
 ].join('')
 
-const restartAction = ({ parent, cmd, network }: CommandContext) => async () => {
+const restartAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async () => {
+  const log = ctx.logger()
+
   const opts = {
     ...getVerboseOption(parent),
-    ...walletCLI.getWalletOption(parent, network)
+    ...walletCLI.getWalletOption(parent, network),
+    docker: getDockerOptions(cmd)
   }
-  const docker = new Docker(getDockerOptions(cmd))
+  log.debug('Options', opts)
+
+  log.info('Connecting to Docker', { ...opts.docker })
+  const docker = new Docker(opts.docker)
+  log.info('Finding node')
   const nodeInfo = await node.withAddress(docker, network, await withFile(opts.wallet).address())
 
   const info = await nodeInfo.container()
@@ -327,27 +372,38 @@ const restartAction = ({ parent, cmd, network }: CommandContext) => async () => 
     console.log(`${nodeInfo.name} is not running`)
     return
   }
+  log.debug('Found node', { name: nodeInfo.name, id: info.Id })
 
+  log.info('Restarting node')
   await docker.getContainer(info.Id).restart()
   console.log(`${nodeInfo.name} restarted`)
 }
 
 const restartHelp = '\nRestart the node, if it is running.'
 
-const startAction = ({ parent, cmd, network }: CommandContext) => async () => {
+const startAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async () => {
+  const log = ctx.logger()
+
   const opts = {
     ...getVerboseOption(parent),
-    ...walletCLI.getWalletOption(parent, network)
+    ...walletCLI.getWalletOption(parent, network),
+    docker: getDockerOptions(cmd)
   }
-  const docker = new Docker(getDockerOptions(cmd))
+  log.debug('Options', opts)
+
+  log.info('Connecting to Docker', { ...opts.docker })
+  const docker = new Docker(opts.docker)
+  log.info('Finding node')
   const nodeInfo = await node.withAddress(docker, network, await withFile(opts.wallet).address())
 
   let info = await nodeInfo.container()
   if (info !== undefined) {
+    log.debug('Found node', { name: nodeInfo.name, id: info.Id })
     console.log(`${nodeInfo.name} is already running`)
     return
   }
 
+  log.info('Creating node')
   const container = await docker.createContainer({
     Image: nodeInfo.image,
     AttachStdin: false,
@@ -361,10 +417,13 @@ const startAction = ({ parent, cmd, network }: CommandContext) => async () => {
       RestartPolicy: { Name: 'unless-stopped' }
     }
   })
+  log.info('Starting node')
   await container.start()
 
+  log.info('Finding node')
   info = await nodeInfo.container()
   if (info === undefined) throw new Error(`${nodeInfo.name} failed to start`)
+  log.debug('Found node', { name: nodeInfo.name, id: info.Id })
   console.log(`${nodeInfo.name} started`)
 }
 
@@ -374,12 +433,19 @@ const startHelp = (network: Network) => [
   `Run '${network.appName} device add --help' for more information.`
 ].join('')
 
-const statusAction = ({ parent, cmd, network }: CommandContext) => async () => {
+const statusAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async () => {
+  const log = ctx.logger()
+
   const opts = {
     ...getVerboseOption(parent),
-    ...walletCLI.getWalletOption(parent, network)
+    ...walletCLI.getWalletOption(parent, network),
+    docker: getDockerOptions(cmd)
   }
-  const docker = new Docker(getDockerOptions(cmd))
+  log.debug('Options', opts)
+
+  log.info('Connecting to Docker', { ...opts.docker })
+  const docker = new Docker(opts.docker)
+  log.info('Finding node')
   const nodeInfo = await node.withAddress(docker, network, await withFile(opts.wallet).address())
 
   const info = await nodeInfo.container()
@@ -389,12 +455,19 @@ const statusAction = ({ parent, cmd, network }: CommandContext) => async () => {
 
 const statusHelp = '\nDisplay the status of the node (whether it is running or not).'
 
-const stopAction = ({ parent, cmd, network }: CommandContext) => async () => {
+const stopAction = ({ parent, cmd, network, ...ctx }: CommandContext) => async () => {
+  const log = ctx.logger()
+
   const opts = {
     ...getVerboseOption(parent),
-    ...walletCLI.getWalletOption(parent, network)
+    ...walletCLI.getWalletOption(parent, network),
+    docker: getDockerOptions(cmd)
   }
-  const docker = new Docker(getDockerOptions(cmd))
+  log.debug('Options', opts)
+
+  log.info('Connecting to Docker', { ...opts.docker })
+  const docker = new Docker(opts.docker)
+  log.info('Finding node')
   const nodeInfo = await node.withAddress(docker, network, await withFile(opts.wallet).address())
 
   const info = await nodeInfo.container()
@@ -402,9 +475,12 @@ const stopAction = ({ parent, cmd, network }: CommandContext) => async () => {
     console.log(`${nodeInfo.name} is not running`)
     return
   }
+  log.debug('Found node', { name: nodeInfo.name, id: info.Id })
 
   const container = docker.getContainer(info.Id)
+  log.info('Stopping node')
   await container.stop()
+  log.info('Removing node')
   await container.remove()
   console.log(`${nodeInfo.name} stopped`)
 }
@@ -433,7 +509,6 @@ export const withContext = (ctx: Context): Command => {
     .description('add this device to the network')
     .addHelpText('after', addHelp(ctx.network))
     .addOption(socketPathOption())
-    .option('-D, --full-ids', 'display full-length IDs')
     .option('-s, --stake <id>', 'stake ID')
     .option('-y, --yes', 'do not ask for confirmation')
   add.action(errorHandler(ctx, checkVersionHandler(ctx, addAction({ ...ctx, cmd: add }))))
@@ -443,7 +518,6 @@ export const withContext = (ctx: Context): Command => {
     .description('display device/stake information')
     .addHelpText('after', infoHelp)
     .addOption(socketPathOption())
-    .option('-D, --full-ids', 'display full-length IDs')
   info.action(errorHandler(ctx, checkVersionHandler(ctx, infoAction({ ...ctx, cmd: info }))))
 
   // edge device remove
@@ -451,7 +525,6 @@ export const withContext = (ctx: Context): Command => {
     .description('remove this device from the network')
     .addHelpText('after', removeHelp)
     .addOption(socketPathOption())
-    .option('-D, --full-ids', 'display full-length IDs')
     .option('-y, --yes', 'do not ask for confirmation')
   remove.action(errorHandler(ctx, checkVersionHandler(ctx, removeAction({ ...ctx, cmd: remove }))))
 

@@ -4,7 +4,6 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Command } from 'commander'
-import color from './color'
 import pkg from '../../package.json'
 import { toUpperCaseFirst } from '../helpers'
 import { Context, Network } from '../main'
@@ -16,30 +15,32 @@ export const create = (network: Network): Command => {
   const cli = new Command(network.appName)
     .version(version)
     .description(desc)
+    .option('--debug', 'enable detailed error and debug messages')
     .option('--no-color', 'disable terminal text colors')
-    .option('-v, --verbose', 'enable verbose error reporting')
+    .option('-v, --verbose', 'enable detailed output')
 
   return cli
 }
 
 export const errorHandler =
-  <T>({ parent }: Context, f: (...args: any[]) => Promise<T>) =>
+  <T>({ parent, ...ctx }: Context, f: (...args: any[]) => Promise<T>) =>
     async (...args: any[]): Promise<T|undefined> => {
       try {
         return await f(...args)
       }
       catch (err) {
-        const { noColor, verbose } = {
-          ...getNoColorOption(parent),
-          ...getVerboseOption(parent)
-        }
-        if (verbose) console.error(err)
-        else if (!noColor) console.error(color.error(`${err}`))
-        else console.error(`${err}`)
+        const log = ctx.logger('critical')
+        const { debug } = getDebugOption(parent)
+        log.error(`${err}`, debug ? { err } : undefined)
         process.exitCode = 1
       }
       return undefined
     }
+
+export const getDebugOption = (cli: Command): { debug: boolean } => {
+  const { debug } = cli.opts<{ debug: boolean }>()
+  return { debug }
+}
 
 export const getNoColorOption = (cli: Command): { noColor: boolean } => {
   const { noColor } = cli.opts<{ noColor: boolean }>()

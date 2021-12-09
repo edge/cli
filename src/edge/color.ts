@@ -5,7 +5,11 @@
 import chalk from 'chalk'
 
 export default {
+  context: chalk.gray,
+  debug: chalk.blue,
   error: chalk.red,
-  info: chalk.green,
+  info: chalk.white,
+  notice: chalk.green,
+  success: chalk.green,
   warn: chalk.yellow
 }
