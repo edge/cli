@@ -8,13 +8,13 @@ ARG LDID_IMAGE=registry.edge.network/internal/alpine-ldid-$ARCH
 #
 # Compile the binaries
 #
-FROM node:lts AS build
+FROM node:16 AS build
 
 WORKDIR /cli
 
 ARG ARCH=x64
 ARG NETWORK=mainnet
-ARG NODE=node14
+ARG NODE=node16
 
 ENV PKG_CACHE_PATH=/pkg-cache
 
