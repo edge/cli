@@ -1,6 +1,11 @@
+// Copyright (C) 2021 Edge Network Technologies Limited
+// Use of this source code is governed by a GNU GPL-style license
+// that can be found in the LICENSE.md file. All rights reserved.
+
 import * as data from './data'
 import { Context } from '..'
 import Docker from 'dockerode'
+import { arch } from 'os'
 import { getDockerOptions } from './cli'
 import { toUpperCaseFirst } from '../helpers'
 
@@ -65,7 +70,7 @@ const device = ({ logger, wallet, xe, network, parent }: Context, name = 'device
     const stake = Object.values(await xe().stakes(address)).find(s => s.device === deviceWallet.address)
     if (stake === undefined) throw new Error('device is not assigned to a stake')
 
-    const image = network.registry.imageName(stake.type) + ':' + currentTag()
+    const image = network.registry.imageName(stake.type, arch()) + ':' + currentTag()
     const name = toUpperCaseFirst(stake.type)
 
     log.debug('found node', { image, name, stake })

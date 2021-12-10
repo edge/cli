@@ -43,7 +43,7 @@ export type Network = {
     baseURL: string
   }
   registry: {
-    imageName: (app: string) => string
+    imageName: (app: string, arch: string) => string
   }
   wallet: {
     defaultFile: string
