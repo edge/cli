@@ -437,7 +437,7 @@ const createContainerOptions = (image: string, env: string[] | undefined): Conta
   OpenStdin: false,
   StdinOnce: false,
   HostConfig: {
-    Binds: [`${config.docker.dataVolume}:/device`],
+    Binds: [`${config.docker.dataVolume}:/data`],
     RestartPolicy: { Name: 'unless-stopped' }
   }
 })
