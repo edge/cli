@@ -1,3 +1,4 @@
+import * as aboutCLI from './about/cli'
 import * as deviceCLI from './device/cli'
 import * as stakeCLI from './stake/cli'
 import * as transactionCLI from './transaction/cli'
@@ -21,6 +22,7 @@ const addProviders = (ctx: Pick<Context, 'parent' | 'network'>): Context => {
 
 const main = (argv: string[], network: Network): void => {
   const parent = createCLI(network)
+  aboutCLI.commands().forEach(cmd => parent.addCommand(cmd))
   const ctx = addProviders({ parent, network })
 
   if (network.flags.onboarding) parent.addCommand(deviceCLI.withContext(ctx))
