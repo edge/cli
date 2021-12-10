@@ -3,12 +3,12 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as data from './data'
-import { DockerOptions } from 'dockerode'
 import { checkVersionHandler } from '../update/cli'
 import config from '../config'
 import { getPassphraseOption } from '../wallet/cli'
 import { Command, Option } from 'commander'
 import { CommandContext, Context, Network } from '..'
+import { ContainerCreateOptions, DockerOptions } from 'dockerode'
 import { ask, askLetter, getYesOption, yesOption } from '../input'
 import { askToSignTx, handleCreateTxResult } from '../transaction'
 import { canAssign, findOne, precedence as nodeTypePrecedence } from '../stake'
@@ -303,8 +303,10 @@ const restartAction = ({ device }: CommandContext) => async () => {
 
 const restartHelp = '\nRestart the node, if it is running.'
 
-const startAction = ({ device, logger }: CommandContext) => async () => {
+const startAction = ({ device, logger, ...ctx }: CommandContext) => async () => {
   const log = logger()
+
+  const { env } = getNodeEnvOption(ctx.cmd)
 
   const userDevice = device()
   const docker = userDevice.docker()
@@ -316,19 +318,7 @@ const startAction = ({ device, logger }: CommandContext) => async () => {
     return
   }
 
-  const containerOptions = {
-    Image: node.image,
-    AttachStdin: false,
-    AttachStdout: false,
-    AttachStderr: false,
-    Tty: false,
-    OpenStdin: false,
-    StdinOnce: false,
-    HostConfig: {
-      Binds: [`${config.docker.dataVolume}:/device`],
-      RestartPolicy: { Name: 'unless-stopped' }
-    }
-  }
+  const containerOptions = createContainerOptions(node.image, env)
   log.debug('creating container', { containerOptions })
   const container = await docker.createContainer(containerOptions)
   log.debug('starting container')
@@ -390,19 +380,20 @@ export const getDockerOptions = (cmd: Command): DockerOptions => {
 const updateAction = ({ device, logger }: CommandContext) => async () => {
   const log = logger()
 
-  const userDevice = device()
-  const docker1 = userDevice.docker()
-  const node = await userDevice.node()
+  const [userDevice1, userDevice2] = [device(), device()]
+  const docker1 = userDevice1.docker()
+  let node = await userDevice1.node()
 
   const currentImage = await docker1.getImage(node.image).inspect()
   log.debug('Current image', { currentImage })
-  const info = await node.container()
-  const container = info && docker1.getContainer(info.Id)
+  let info = await node.container()
+  let container = info && docker1.getContainer(info.Id)
+  const containerInspect = await container?.inspect()
 
   console.log(`Checking for/downloading ${node.name} update...`)
   await docker1.pull(node.image)
 
-  const docker2 = userDevice.docker()
+  const docker2 = userDevice2.docker()
   const latestImage = await docker2.getImage(node.image).inspect()
   log.debug('Latest image', { latestImage })
 
@@ -413,22 +404,60 @@ const updateAction = ({ device, logger }: CommandContext) => async () => {
   }
   console.log(`${node.name} has been updated.`)
 
-  if (container !== undefined) {
-    await container.restart()
-    console.log()
-    console.log(`${node.name} restarted`)
-  }
+  if (container === undefined) return
+
+  // container is already running, need to stop-start
+  console.log()
+  console.log(`Restarting ${node.name}...`)
+  await container.stop()
+
+  const containerOptions = createContainerOptions(node.image, containerInspect?.Config.Env)
+  log.debug('creating container', { containerOptions })
+  container = await docker2.createContainer(containerOptions)
+  log.debug('starting container')
+  await container.start()
+
+  node = await userDevice2.node()
+  info = await node.container()
+  if (info === undefined) throw new Error(`${node.name} failed to restart`)
+  console.log()
+  console.log(`${node.name} restarted`)
 }
 
 const updateHelp = '\nUpdate the node, if an update is available.'
 
+const createContainerOptions = (image: string, env: string[] | undefined): ContainerCreateOptions => ({
+  Image: image,
+  AttachStdin: false,
+  AttachStdout: false,
+  AttachStderr: false,
+  Env: env,
+  Tty: false,
+  OpenStdin: false,
+  StdinOnce: false,
+  HostConfig: {
+    Binds: [`${config.docker.dataVolume}:/device`],
+    RestartPolicy: { Name: 'unless-stopped' }
+  }
+})
+
 export const dockerSocketPathOption = (description = 'Docker socket path'): Option =>
   new Option('--docker-socket-path', description)
+
+const getNodeEnvOption = (cmd: Command): { env: string[] } => {
+  const { env } = cmd.opts<{ env?: string[] }>()
+  return {
+    env: env !== undefined ? env : []
+  }
+}
 
 const getStakeOption = (cmd: Command) => {
   const { stake } = cmd.opts<{ stake?: string }>()
   return { stake }
 }
+
+const nodeEnvOption = (description = 'set environment variable(s) for node') =>
+  new Option('-e, --env <var...>', description)
 
 const stakeOption = (description = 'stake ID') => new Option('-s, --stake <id>', description)
 
@@ -467,6 +496,7 @@ export const withContext = (ctx: Context): [Command, Option[]] => {
   const start = new Command('start')
     .description('start node')
     .addHelpText('after', startHelp(ctx.network))
+    .addOption(nodeEnvOption())
   start.action(errorHandler(ctx, checkVersionHandler(ctx, startAction({ ...ctx, cmd: start }))))
 
   // edge device status

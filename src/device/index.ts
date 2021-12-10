@@ -4,6 +4,8 @@ import Docker from 'dockerode'
 import { getDockerOptions } from './cli'
 import { toUpperCaseFirst } from '../helpers'
 
+const currentTag = (): string => 'latest'
+
 const secure = (device: data.Device): data.Device => ({
   network: device.network,
   address: device.address,
@@ -63,7 +65,7 @@ const device = ({ logger, wallet, xe, network, parent }: Context, name = 'device
     const stake = Object.values(await xe().stakes(address)).find(s => s.device === deviceWallet.address)
     if (stake === undefined) throw new Error('device is not assigned to a stake')
 
-    const image = network.registry.imageName(stake.type)
+    const image = network.registry.imageName(stake.type) + ':' + currentTag()
     const name = toUpperCaseFirst(stake.type)
 
     log.debug('found node', { image, name, stake })
