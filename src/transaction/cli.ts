@@ -2,20 +2,19 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-import * as index from '@edge/index-utils'
-import * as walletCLI from '../wallet/cli'
-import * as xe from '@edge/xe-utils'
-import { ask } from '../input'
 import { checkVersionHandler } from '../update/cli'
 import { errorHandler } from '../edge/cli'
+import { tx as indexTx } from '@edge/index-utils'
 import { printData } from '../helpers'
-import { withFile } from '../wallet/storage'
 import { Command, Option } from 'commander'
-import { CommandContext, Context } from '../main'
-import { askToSignTx, handleCreateTxResult, withNetwork as indexWithNetwork } from './index'
-import { formatXE, parseAmount, withNetwork as xeWithNetwork } from './xe'
+import { CommandContext, Context } from '..'
+import { askLetter, getPaginationOptions, getYesOption, limitOption, pageOption, yesOption } from '../input'
+import { askToSignTx, handleCreateTxResult } from './index'
+import { formatXE, parseAmount } from './xe'
+import { getPassphraseOption, passphraseFileOption, passphraseOption } from '../wallet/cli'
+import { tx as xeTx, wallet as xeWallet } from '@edge/xe-utils'
 
-const formatIndexTx = (address: string, tx: index.tx.Tx): string => {
+const formatIndexTx = (address: string, tx: indexTx.Tx): string => {
   const data: Record<string, string> = {
     Tx: tx.hash,
     Nonce: tx.nonce.toString(),
@@ -40,7 +39,7 @@ const formatTimestamp = (d: Date): string => {
   return `${year}-${month}-${day} ${h}:${m}:${s}`
 }
 
-const formatTx = (address: string, tx: xe.tx.Tx): string => {
+const formatTx = (address: string, tx: xeTx.Tx): string => {
   const data: Record<string, string> = {
     Tx: tx.hash,
     Nonce: tx.nonce.toString(),
@@ -54,48 +53,22 @@ const formatTx = (address: string, tx: xe.tx.Tx): string => {
   return printData(data)
 }
 
-const getListOptions = (cmd: Command) => {
-  type ListOptions<T = number> = { page: T, limit: T }
-  const opts = cmd.opts<ListOptions<string>>()
-  return <ListOptions>{
-    page: parseInt(opts.page),
-    limit: parseInt(opts.limit)
-  }
-}
-
-const listAction = ({ parent, cmd, network }: CommandContext) => async () => {
-  const opts = {
-    ...walletCLI.getWalletOption(parent, network),
-    ...getJsonOption(cmd),
-    ...getListOptions(cmd)
-  }
-  const address = await withFile(opts.wallet).address()
-
-  const response = await indexWithNetwork(network).transactions(address, {
-    page: opts.page,
-    limit: opts.limit
-  })
-
-  if (opts.json) {
-    console.log(JSON.stringify(response, undefined, 2))
-    return
-  }
-
-  if (response.results.length === 0) {
+const listAction = ({ index, wallet, ...ctx }: CommandContext) => async () => {
+  const address = await wallet().address()
+  const { results, metadata } = await index().transactions(address, getPaginationOptions(ctx.cmd))
+  if (results.length === 0) {
     console.log('No transactions')
     return
   }
 
-  const numPages = Math.ceil(response.metadata.totalCount / response.metadata.limit)
-  console.log(`Page ${response.metadata.page}/${numPages}`)
+  const numPages = Math.ceil(metadata.totalCount / metadata.limit)
+  console.log(`Page ${metadata.page}/${numPages}`)
   console.log()
 
-  response.results
-    .map(tx => formatIndexTx(address, tx))
-    .forEach(tx => {
-      console.log(tx)
-      console.log()
-    })
+  results.map(tx => formatIndexTx(address, tx)).forEach(tx => {
+    console.log(tx)
+    console.log()
+  })
 }
 
 const listHelp = [
@@ -103,20 +76,10 @@ const listHelp = [
   'This command queries the index and displays your transactions.'
 ].join('')
 
-const listPendingAction = ({ parent, cmd, network }: CommandContext) => async () => {
-  const opts = {
-    ...walletCLI.getWalletOption(parent, network),
-    ...getJsonOption(cmd)
-  }
-  const address = await withFile(opts.wallet).address()
+const listPendingAction = ({ wallet, xe }: CommandContext) => async () => {
+  const address = await wallet().address()
 
-  const txs = await xeWithNetwork(network).pendingTransactions(address)
-
-  if (opts.json) {
-    console.log(JSON.stringify(txs, undefined, 2))
-    return
-  }
-
+  const txs = await xe().pendingTransactions(address)
   if (txs.length === 0) {
     console.log('No pending transactions')
     return
@@ -135,24 +98,25 @@ const listPendingHelp = [
 ].join('')
 
 // eslint-disable-next-line max-len
-const sendAction = ({ parent, cmd, network }: CommandContext) => async (amountInput: string, recipient: string) => {
+const sendAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (amountInput: string, recipient: string) => {
+  const log = logger()
+
   const opts = {
-    ...walletCLI.getWalletOption(parent, network),
-    ...walletCLI.getPassphraseOption(cmd),
-    ...(() => {
-      const { memo, yes } = cmd.opts<{ memo?: string, yes: boolean }>()
-      return { memo, yes }
-    })()
+    ...await getPassphraseOption(ctx.cmd),
+    ...getMemoOption(ctx.cmd),
+    ...getYesOption(ctx.cmd)
   }
+  log.debug('options', opts)
 
   const amount = parseAmount(amountInput)
-  if (!xe.wallet.validateAddress(recipient)) throw new Error('invalid recipient')
+  if (!xeWallet.validateAddress(recipient)) throw new Error('invalid recipient')
 
-  const storage = withFile(opts.wallet)
+  const storage = wallet()
   const address = await storage.address()
 
-  const api = xeWithNetwork(network)
-  const onChainWallet = await api.walletWithNextNonce(address)
+  const xeClient = xe()
+  const onChainWallet = await xeClient.walletWithNextNonce(address)
+
   const resultBalance = onChainWallet.balance - amount
   // eslint-disable-next-line max-len
   if (resultBalance < 0) throw new Error(`insufficient balance: your wallet only contains ${formatXE(onChainWallet.balance)}`)
@@ -165,34 +129,34 @@ const sendAction = ({ parent, cmd, network }: CommandContext) => async (amountIn
       `You will have ${formatXE(resultBalance)} remaining.`
     )
     console.log()
-    let confirm = ''
-    const ynRegexp = /^[yn]$/
-    while (confirm.length === 0) {
-      const input = await ask('Proceed with transaction? [yn] ')
-      if (ynRegexp.test(input)) confirm = input
-      else console.log('Please enter y or n.')
-    }
-    if (confirm === 'n') return
+    if (await askLetter('Proceed with transaction?', 'yn') === 'n') return
     console.log()
   }
 
   await askToSignTx(opts)
-  const wallet = await storage.read(opts.passphrase as string)
+  const userWallet = await storage.read(opts.passphrase as string)
 
-  const data: xe.tx.TxData = {}
+  const data: xeTx.TxData = {}
   if (opts.memo) data.memo = opts.memo
-  const tx = xe.tx.sign({
+  const tx = xeTx.sign({
     timestamp: Date.now(),
     sender: address,
     recipient,
     amount,
     data,
     nonce: onChainWallet.nonce
-  }, wallet.privateKey)
+  }, userWallet.privateKey)
 
-  const result = await api.createTransaction(tx)
-  if (!handleCreateTxResult(network, result)) process.exitCode = 1
+  const result = await xeClient.createTransaction(tx)
+  if (!handleCreateTxResult(ctx.network, result)) process.exitCode = 1
 }
+
+const getMemoOption = (cmd: Command): { memo?: string } => {
+  const { memo } = cmd.opts<{ memo?: string }>()
+  return { memo }
+}
+
+const memoOption = (description = 'attach a memo to the transaction') => new Option('-m, --memo <text>', description)
 
 const sendHelp = [
   '\n',
@@ -204,14 +168,6 @@ const sendHelp = [
   'You must provide a passphrase to decrypt your private key.'
 ].join('')
 
-const getJsonOption = (cmd: Command) => {
-  type JsonOption = { json: boolean }
-  const { json } = cmd.opts<JsonOption>()
-  return <JsonOption>{ json }
-}
-
-const jsonOption = () => new Option('--json', 'display results as json')
-
 export const withContext = (ctx: Context): Command => {
   const transactionCLI = new Command('transaction')
     .alias('tx')
@@ -222,9 +178,8 @@ export const withContext = (ctx: Context): Command => {
     .alias('ls')
     .description('list transactions')
     .addHelpText('after', listHelp)
-    .addOption(jsonOption())
-    .option('-p, --page <n>', 'page number', '1')
-    .option('-l, --limit <n>', 'transactions per page', '10')
+    .addOption(pageOption())
+    .addOption(limitOption())
   list.action(errorHandler(ctx, checkVersionHandler(ctx, listAction({ ...ctx, cmd: list }))))
 
   // edge transaction list-pending
@@ -232,7 +187,6 @@ export const withContext = (ctx: Context): Command => {
     .alias('lsp')
     .description('list pending transactions')
     .addHelpText('after', listPendingHelp)
-    .addOption(jsonOption())
   listPending.action(errorHandler(ctx, checkVersionHandler(ctx, listPendingAction({ ...ctx, cmd: listPending }))))
 
   // edge transaction send
@@ -241,10 +195,10 @@ export const withContext = (ctx: Context): Command => {
     .argument('<wallet>', 'recipient wallet address')
     .description('send XE to another wallet')
     .addHelpText('after', sendHelp)
-    .option('-m, --memo <text>', 'attach a memo to the transaction')
-    .addOption(walletCLI.passphraseOption())
-    .addOption(walletCLI.passphraseFileOption())
-    .option('-y, --yes', 'do not ask for confirmation')
+    .addOption(memoOption())
+    .addOption(passphraseOption())
+    .addOption(passphraseFileOption())
+    .addOption(yesOption())
   send.action(errorHandler(ctx, checkVersionHandler(ctx, sendAction({ ...ctx, cmd: send }))))
 
   transactionCLI

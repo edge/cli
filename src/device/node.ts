@@ -5,7 +5,7 @@
 import * as data from './data'
 import * as xe from '@edge/xe-utils'
 import Docker from 'dockerode'
-import { Network } from '../main'
+import { Network } from '..'
 import { toUpperCaseFirst } from '../helpers'
 
 /**

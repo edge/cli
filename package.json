@@ -1,6 +1,6 @@
 {
   "name": "@edge/cli",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Command line interface for the Edge network",
   "private": true,
   "author": "Edge Network <core@edge.network>",
@@ -39,8 +39,9 @@
   },
   "dependencies": {
     "@edge/index-utils": "^0.3.1",
+    "@edge/log": "^1.2.1",
     "@edge/wallet-utils": "^0.14.2",
-    "@edge/xe-utils": "^1.0.4",
+    "@edge/xe-utils": "^1.1.2",
     "chalk": "^4.1.2",
     "commander": "^8.1.0",
     "dockerode": "^3.3.1",

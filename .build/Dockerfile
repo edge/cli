@@ -2,9 +2,9 @@
 # Use of this source code is governed by a GNU GPL-style license
 # that can be found in the LICENSE.md file. All rights reserved.
 
-FROM node:14
+FROM node:16
 
-ARG targetNode=node14
+ARG targetNode=node16
 
 ARG targetNetwork
 

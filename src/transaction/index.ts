@@ -2,10 +2,9 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-import * as index from '@edge/index-utils'
-import * as xe from '@edge/xe-utils'
-import { Network } from '../main'
+import { Network } from '..'
 import { askSecure } from '../input'
+import { tx as xeTx } from '@edge/xe-utils'
 
 export const askToSignTx = async (opts: { passphrase?: string }): Promise<void> => {
   if (!opts.passphrase) {
@@ -23,11 +22,10 @@ export const askToSignTx = async (opts: { passphrase?: string }): Promise<void> 
   }
 }
 
-export const handleCreateTxResult = (network: Network, result: xe.tx.CreateResponse): boolean => {
+export const handleCreateTxResult = (network: Network, result: xeTx.CreateResponse): boolean => {
   if (result.metadata.accepted !== 1) {
-    console.log('There was a problem creating your transaction. The response from the blockchain is shown below:')
-    console.log()
-    console.log(JSON.stringify(result, undefined, 2))
+    const reason = result.results.find(r => r)?.reason || 'unknown reason'
+    console.log(`There was a problem creating your transaction: ${reason}`)
     return false
   }
   else {
@@ -35,13 +33,5 @@ export const handleCreateTxResult = (network: Network, result: xe.tx.CreateRespo
     console.log()
     console.log(`${network.explorer.baseURL}/transaction/${result.results[0].hash}`)
     return true
-  }
-}
-
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export const withNetwork = (network: Network) => {
-  const host = network.index.baseURL
-  return {
-    transactions: (address: string, params?: index.tx.TxsParams) => index.tx.transactions(host, address, params)
   }
 }

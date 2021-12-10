@@ -3,24 +3,21 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import { Command } from 'commander'
-import { SemVer } from 'semver'
 import color from '../edge/color'
 import path from 'path'
-import pkg from '../../package.json'
-import semver from 'semver'
-import { tmpdir } from 'os'
-import { Context, Network } from '../main'
-import { VersionStatus, download, status } from '.'
-import { chmodSync, copyFileSync, readFileSync, renameSync, stat, unlinkSync, writeFileSync } from 'fs'
-import { errorHandler, getNoColorOption } from '../edge/cli'
+import { Context, Network } from '..'
+import { cachedLatestVersion, currentVersion, download, latestVersion } from '.'
+import { chmodSync, copyFileSync, renameSync, unlinkSync } from 'fs'
+import { errorHandler, getDebugOption, getNoColorOption } from '../edge/cli'
 
-const checkAction = ({ network }: Context) => async (): Promise<void> => {
-  const { current, latest, requireUpdate } = await status(network)
-  if (requireUpdate) {
-    console.log(`Current Edge CLI version: v${current}`)
+const checkAction = (ctx: Context) => async (): Promise<void> => {
+  const cv = currentVersion()
+  const lv = await latestVersion(ctx)
+  if (lv.compare(cv) > 0) {
+    console.log(`Current Edge CLI version: v${cv}`)
     console.log()
-    console.log(`A new version of Edge CLI is available (v${latest}).`)
-    console.log(`Run '${network.appName} update' to update to the latest version.`)
+    console.log(`A new version of Edge CLI is available (v${lv}).`)
+    console.log(`Run '${ctx.network.appName} update' to update to the latest version.`)
   }
   else console.log('Edge CLI is up to date.')
 }
@@ -30,74 +27,47 @@ const checkHelp = [
   'Check for an update to Edge CLI.'
 ].join('')
 
-const checkVersionCacheTimeout = 1000 * 60 * 60
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const checkVersionHandler =
-  <T>({ parent, network }: Context, f: (...args: any[]) => Promise<T>) =>
+  <T>(ctx: Context, f: (...args: any[]) => Promise<T>) =>
     async (...args: any[]): Promise<T|undefined> => {
-      const fresult = await f(...args)
+      const result = await f(...args)
 
-      const { noColor } = getNoColorOption(parent)
+      const { debug, noColor } = {
+        ...getDebugOption(ctx.parent),
+        ...getNoColorOption(ctx.parent)
+      }
 
-      // check for locally cached version data
-      const cacheFile = tmpdir() + path.sep + '.edge-cli-version-check'
-      let vinfo: VersionStatus|undefined = undefined
+      const log = ctx.logger()
       try {
-        vinfo = await new Promise<VersionStatus|undefined>((resolve, reject) => {
-          stat(cacheFile, (err, info) => {
-            if (err !== null) return reject(err)
-            if (info.mtime.getTime() + checkVersionCacheTimeout < Date.now()) return resolve(undefined)
-            const data = JSON.parse(readFileSync(cacheFile).toString())
-            const current = new SemVer('0.0.1')
-            const latest = new SemVer('0.0.1')
-            Object.assign(current, data.current)
-            Object.assign(latest, data.latest)
-            return resolve({ current, latest, requireUpdate: data.requireUpdate })
-          })
-        })
+        const cv = currentVersion()
+        const lv = await cachedLatestVersion(ctx)
+
+        if (lv.compare(cv) > 0) {
+          console.log([
+            `A new version of Edge CLI is available (v${lv}).`,
+            `Please run '${ctx.network.appName} update' to update to the latest version.`
+          ].map(l => noColor ? l : color.notice(l)).join('\n'))
+        }
       }
       catch (err) {
-        // console.error(err)
-      }
-      if (vinfo === undefined) {
-        // no local cache; check update server
-        try {
-          vinfo = await status(network)
-        }
-        catch (err) {
-          // console.error(err)
-          let msg = 'There was a problem reaching the update server. Please check your network connectivity.'
-          if (!noColor) msg = color.warn(msg)
-          console.log(msg)
-        }
-        try {
-          writeFileSync(cacheFile, JSON.stringify(vinfo))
-        }
-        catch (err) {
-          // console.error(err)
-        }
-      }
-      if (vinfo !== undefined) {
-        const current = semver.parse(pkg.version)
-        if (current === null) throw new Error('Edge CLI version is invalid. Please update manually.')
-        if (current.compare(vinfo.latest) < 0) {
-          let msgs = [
-            `A new version of Edge CLI is available (v${vinfo.latest}).`,
-            `Please run '${network.appName} update' to update to the latest version.`
-          ]
-          if (!noColor) msgs = msgs.map(l => color.info(l))
-          msgs.forEach(l => console.log(l))
-        }
+        if (debug) log.error('Error checking latest version', { err })
+        else log.warn('There was a problem reaching the update server. Please check your network connectivity.')
       }
 
-      return fresult
+      return result
     }
 
-const updateAction = ({ network }: Context, argv: string[]) => async (): Promise<void> => {
-  const { latest, requireUpdate } = await status(network)
-  if (!requireUpdate) {
-    console.log(`Edge CLI v${latest} is the latest version`)
+const updateAction = (ctx: Context, argv: string[]) => async (): Promise<void> => {
+  const log = ctx.logger()
+
+  const { debug } = getDebugOption(ctx.parent)
+
+  const cv = currentVersion()
+  const lv = await latestVersion(ctx)
+
+  if (lv.compare(cv) >= 0) {
+    console.log(`Edge CLI v${cv} is the latest version`)
     return
   }
 
@@ -105,14 +75,14 @@ const updateAction = ({ network }: Context, argv: string[]) => async (): Promise
 
   if (/node$/.test(selfPath)) throw new Error('path to binary appears to be node path')
 
-  console.log(`Downloading v${latest}`)
-  const { file } = await download(network)
+  console.log(`Downloading v${lv}`)
+  const { file } = await download(ctx)
   const tmpFilename = `${path.dirname(file)}/tmp-${Date.now}`
 
   // After downloading the file, we move the current binary to a temporary
   // location, move the new file to the current binary location, and then
   // attempt to remove the previous binary. This may fail on windows.
-  console.log(`Updating from v${pkg.version} to v${latest}`)
+  console.log(`Updating from v${cv} to v${lv}`)
   chmodSync(file, 0o755)
   renameSync(selfPath, tmpFilename)
   copyFileSync(file, selfPath)
@@ -121,11 +91,11 @@ const updateAction = ({ network }: Context, argv: string[]) => async (): Promise
   try {
     unlinkSync(tmpFilename)
   }
-  catch (e) {
-    // Nothing to see here.
+  catch (err) {
+    if (debug) log.error('Unable to remove download', { err })
   }
 
-  console.log(`Updated Edge CLI to v${latest}`)
+  console.log(`Updated Edge CLI to v${lv}`)
 }
 
 const updateHelp = (network: Network) => [

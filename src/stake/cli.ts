@@ -2,19 +2,18 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-import * as index from '@edge/index-utils'
-import * as walletCLI from '../wallet/cli'
-import * as xe from '@edge/xe-utils'
-import { Command } from 'commander'
-import { ask } from '../input'
 import { checkVersionHandler } from '../update/cli'
-import { withFile } from '../wallet/storage'
-import { CommandContext, Context, Network } from '../main'
+import config from '../config'
+import { formatXE } from '../transaction/xe'
+import { tx as xeTx } from '@edge/xe-utils'
+import { Command, Option } from 'commander'
+import { CommandContext, Context, Network, XEClientProvider } from '..'
+import { askLetter, getYesOption, yesOption } from '../input'
 import { askToSignTx, handleCreateTxResult } from '../transaction'
-import { errorHandler, getVerboseOption } from '../edge/cli'
+import { errorHandler, getDebugOption, getVerboseOption } from '../edge/cli'
 import { findOne, types } from '.'
-import { formatXE, withNetwork as xeWithNetwork } from '../transaction/xe'
-import { printData, printTrunc, toDays, toUpperCaseFirst } from '../helpers'
+import { getPassphraseOption, passphraseFileOption, passphraseOption } from '../wallet/cli'
+import { printData, toDays, toUpperCaseFirst } from '../helpers'
 
 const formatTime = (t: number): string => {
   const d = new Date(t)
@@ -29,35 +28,35 @@ const formatTime = (t: number): string => {
   return `${yyyy}-${mm}-${dd} ${h}:${m}:${s}`
 }
 
-// wrapper for xe.vars; returns the original error in --verbose CLI, otherwise generic error message
-const onChainVars = async (verbose: boolean, host: string) => {
+// wrapper for xe.vars; returns the original error in --debug CLI, otherwise generic error message
+const xeVars = async (xe: XEClientProvider, debug: boolean) => {
   try {
-    return await xe.vars(host)
+    return await xe().vars()
   }
   catch (err) {
-    if (verbose) throw err
+    if (debug) throw err
     throw new Error('staking is currently unavailable. Please try again later.')
   }
 }
 
-const createAction = ({ parent, cmd, network }: CommandContext) => async (nodeType: string) => {
+const createAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (nodeType: string) => {
   if (!types.includes(nodeType)) throw new Error(`invalid node type "${nodeType}"`)
+  const log = logger()
 
   const opts = {
-    ...getVerboseOption(parent),
-    ...walletCLI.getWalletOption(parent, network),
-    ...walletCLI.getPassphraseOption(cmd),
-    ...(() => {
-      const { yes } = cmd.opts<{ yes: boolean }>()
-      return { yes }
-    })()
+    ...getDebugOption(ctx.parent),
+    ...await getPassphraseOption(ctx.cmd),
+    ...getYesOption(ctx.cmd)
   }
-  const storage = withFile(opts.wallet)
+  log.debug('options', opts)
 
-  const api = xeWithNetwork(network)
-  const onChainWallet = await api.walletWithNextNonce(await storage.address())
+  const storage = wallet()
+  const address = await storage.address()
 
-  const vars = await onChainVars(opts.verbose, network.blockchain.baseURL)
+  const xeClient = xe()
+  const onChainWallet = await xeClient.walletWithNextNonce(address)
+
+  const vars = await xeVars(xe, opts.debug)
   // fallback 0 is just for typing - nodeType is checked at top of func, so it should never be used
   const amount =
     nodeType === 'host' ? vars.host_stake_amount :
@@ -76,34 +75,27 @@ const createAction = ({ parent, cmd, network }: CommandContext) => async (nodeTy
       `You will have ${formatXE(resultBalance)} remaining.`
     )
     console.log()
-    let confirm = ''
-    const ynRegexp = /^[yn]$/
-    while (confirm.length === 0) {
-      const input = await ask('Proceed with staking? [yn] ')
-      if (ynRegexp.test(input)) confirm = input
-      else console.log('Please enter y or n.')
-    }
-    if (confirm === 'n') return
+    if (await askLetter('Proceed with staking?', 'yn') === 'n') return
     console.log()
   }
 
   await askToSignTx(opts)
-  const wallet = await storage.read(opts.passphrase as string)
+  const userWallet = await storage.read(opts.passphrase as string)
 
-  const tx = xe.tx.sign({
+  const tx = xeTx.sign({
     timestamp: Date.now(),
-    sender: wallet.address,
-    recipient: wallet.address,
+    sender: userWallet.address,
+    recipient: userWallet.address,
     amount,
     data: {
       action: 'create_stake',
       memo: `Create ${toUpperCaseFirst(nodeType)} Stake`
     },
     nonce: onChainWallet.nonce
-  }, wallet.privateKey)
+  }, userWallet.privateKey)
 
-  const result = await api.createTransaction(tx)
-  if (!handleCreateTxResult(network, result)) process.exitCode = 1
+  const result = await xeClient.createTransaction(tx)
+  if (!handleCreateTxResult(ctx.network, result)) process.exitCode = 1
 }
 
 const createHelp = (network: Network) => [
@@ -113,21 +105,10 @@ const createHelp = (network: Network) => [
   `Run '${network.appName} device add --help' for more information.`
 ].join('')
 
-const infoAction = ({ parent, cmd, network }: CommandContext) => async () => {
-  const opts = {
-    ...getVerboseOption(parent),
-    ...getJsonOption(cmd)
-  }
-  const vars = await onChainVars(opts.verbose, network.blockchain.baseURL)
-  if (opts.json) {
-    const someVars = {
-      host_stake_amount: vars.host_stake_amount,
-      gateway_stake_amount: vars.gateway_stake_amount,
-      stargate_stake_amount: vars.stargate_stake_amount
-    }
-    console.log(JSON.stringify(someVars, undefined, 2))
-    return
-  }
+const infoAction = ({ xe, ...ctx }: CommandContext) => async () => {
+  const { debug } = getDebugOption(ctx.parent)
+
+  const vars = await xeVars(xe, debug)
 
   const amounts = [
     vars.host_stake_amount,
@@ -145,24 +126,14 @@ const infoAction = ({ parent, cmd, network }: CommandContext) => async () => {
 
 const infoHelp = '\nDisplays current staking amounts.'
 
-const listAction = ({ parent, cmd, network }: CommandContext) => async () => {
-  const opts = {
-    ...walletCLI.getWalletOption(parent, network),
-    ...getJsonOption(cmd),
-    ...(() => {
-      const { fullIds } = cmd.opts<{ fullIds: boolean }>()
-      return { fullIds }
-    })()
-  }
-  const printID = printTrunc(!opts.fullIds, 8)
+const listAction = ({ index, wallet, ...ctx }: CommandContext) => async () => {
+  const { verbose } = getVerboseOption(ctx.parent)
+  const printID = (id: string) => verbose ? id : id.slice(0, config.id.shortLength)
 
-  const storage = withFile(opts.wallet)
-  const { results: stakes } = await index.stake.stakes(network.index.baseURL, await storage.address(), { limit: 999 })
+  const storage = wallet()
+  const address = await storage.address()
+  const { results: stakes } = await index().stakes(address, { limit: 999 })
 
-  if (opts.json) {
-    console.log(JSON.stringify(stakes, undefined, 2))
-    return
-  }
   Object.values(stakes).forEach(stake => {
     const data: Record<string, string> = {
       ID: printID(stake.id),
@@ -194,24 +165,18 @@ const listAction = ({ parent, cmd, network }: CommandContext) => async () => {
   })
 }
 
-const listHelp = [
-  '\n',
-  'Displays all stakes associated with your wallet.\n\n',
-  'The default output is simplified for legibility. Provide the --json option to display full detail.'
-].join('')
+const listHelp = '\nDisplays all stakes associated with your wallet.'
 
-const releaseAction = ({ parent, cmd, network }: CommandContext) => async (id: string) => {
+const releaseAction = ({ index, wallet, xe, ...ctx }: CommandContext) => async (id: string) => {
   const opts = {
-    ...getVerboseOption(parent),
-    ...walletCLI.getWalletOption(parent, network),
-    ...walletCLI.getPassphraseOption(cmd),
-    ...(() => {
-      const { express, yes } = cmd.opts<{ express: boolean, yes: boolean }>()
-      return { express, yes }
-    })()
+    ...getDebugOption(ctx.parent),
+    ...await getPassphraseOption(ctx.cmd),
+    ...getExpressOption(ctx.cmd),
+    ...getYesOption(ctx.cmd)
   }
-  const storage = withFile(opts.wallet)
-  const { results: stakes } = await index.stake.stakes(network.index.baseURL, await storage.address(), { limit: 999 })
+
+  const storage = wallet()
+  const { results: stakes } = await index().stakes(await storage.address(), { limit: 999 })
   const stake = findOne(stakes, id)
 
   if (stake.released !== undefined) {
@@ -227,7 +192,7 @@ const releaseAction = ({ parent, cmd, network }: CommandContext) => async (id: s
   const unlockAt = stake.unlockRequested + stake.unlockPeriod
   const needUnlock = unlockAt > Date.now()
   if (needUnlock && !opts.express) {
-    const { stake_express_release_fee } = await onChainVars(opts.verbose, network.blockchain.baseURL)
+    const { stake_express_release_fee } = await xeVars(xe, opts.debug)
     const releaseFee = stake_express_release_fee * stake.amount
     const releasePc = stake_express_release_fee * 100
     console.log(`This stake has not unlocked yet. It unlocks at ${formatTime(unlockAt)}.`)
@@ -241,7 +206,7 @@ const releaseAction = ({ parent, cmd, network }: CommandContext) => async (id: s
     // eslint-disable-next-line max-len
     console.log(`You are releasing a ${toUpperCaseFirst(stake.type)} stake.`)
     if (needUnlock) {
-      const { stake_express_release_fee } = await onChainVars(opts.verbose, network.blockchain.baseURL)
+      const { stake_express_release_fee } = await xeVars(xe, opts.debug)
       const releaseFee = stake_express_release_fee * stake.amount
       const releasePc = stake_express_release_fee * 100
       console.log([
@@ -251,40 +216,33 @@ const releaseAction = ({ parent, cmd, network }: CommandContext) => async (id: s
     }
     else console.log(`${formatXE(stake.amount)} will be returned to your available balance.`)
     console.log()
-    let confirm = ''
-    const ynRegexp = /^[yn]$/
-    while (confirm.length === 0) {
-      const input = await ask('Proceed with release? [yn] ')
-      if (ynRegexp.test(input)) confirm = input
-      else console.log('Please enter y or n.')
-    }
-    if (confirm === 'n') return
+    if (await askLetter('Proceed with release?', 'yn') === 'n') return
     console.log()
   }
 
   await askToSignTx(opts)
-  const wallet = await storage.read(opts.passphrase as string)
+  const userWallet = await storage.read(opts.passphrase as string)
 
-  const api = xeWithNetwork(network)
-  const onChainWallet = await api.walletWithNextNonce(wallet.address)
+  const xeClient = xe()
+  const onChainWallet = await xeClient.walletWithNextNonce(userWallet.address)
 
-  const data: xe.tx.TxData = {
+  const data: xeTx.TxData = {
     action: 'release_stake',
     memo: 'Release Stake',
     stake: stake.hash
   }
   if (needUnlock) data.express = true
-  const tx = xe.tx.sign({
+  const tx = xeTx.sign({
     timestamp: Date.now(),
-    sender: wallet.address,
-    recipient: wallet.address,
+    sender: userWallet.address,
+    recipient: userWallet.address,
     amount: 0,
     data,
     nonce: onChainWallet.nonce
-  }, wallet.privateKey)
+  }, userWallet.privateKey)
 
-  const result = await api.createTransaction(tx)
-  if (!handleCreateTxResult(network, result)) process.exitCode = 1
+  const result = await xeClient.createTransaction(tx)
+  if (!handleCreateTxResult(ctx.network, result)) process.exitCode = 1
 }
 
 const releaseHelp = [
@@ -294,17 +252,17 @@ const releaseHelp = [
   'release of funds, rather than waiting for the unlock period to conclude.'
 ].join('')
 
-const unlockAction = ({ parent, cmd, network }: CommandContext) => async (id: string) => {
+const unlockAction = ({ index, logger, wallet, xe, ...ctx }: CommandContext) => async (id: string) => {
+  const log = logger()
+
   const opts = {
-    ...walletCLI.getWalletOption(parent, network),
-    ...walletCLI.getPassphraseOption(cmd),
-    ...(() => {
-      const { yes } = cmd.opts<{ yes: boolean }>()
-      return { yes }
-    })()
+    ...await getPassphraseOption(ctx.cmd),
+    ...getYesOption(ctx.cmd)
   }
-  const storage = withFile(opts.wallet)
-  const { results: stakes } = await index.stake.stakes(network.index.baseURL, await storage.address(), { limit: 999 })
+  log.debug('options', opts)
+
+  const storage = wallet()
+  const { results: stakes } = await index().stakes(await storage.address(), { limit: 999 })
   const stake = findOne(stakes, id)
 
   if (stake.unlockRequested !== undefined) {
@@ -324,27 +282,20 @@ const unlockAction = ({ parent, cmd, network }: CommandContext) => async (id: st
       `you will be able to release the stake and return ${formatXE(stake.amount)} to your available balance.`
     ].join(''))
     console.log()
-    let confirm = ''
-    const ynRegexp = /^[yn]$/
-    while (confirm.length === 0) {
-      const input = await ask('Proceed with unlock? [yn] ')
-      if (ynRegexp.test(input)) confirm = input
-      else console.log('Please enter y or n.')
-    }
-    if (confirm === 'n') return
+    if (await askLetter('Proceed with unlock?', 'yn') === 'n') return
     console.log()
   }
 
   await askToSignTx(opts)
-  const wallet = await storage.read(opts.passphrase as string)
+  const userWallet = await storage.read(opts.passphrase as string)
 
-  const api = xeWithNetwork(network)
-  const onChainWallet = await api.walletWithNextNonce(wallet.address)
+  const xeClient = xe()
+  const onChainWallet = await xeClient.walletWithNextNonce(userWallet.address)
 
-  const tx = xe.tx.sign({
+  const tx = xeTx.sign({
     timestamp: Date.now(),
-    sender: wallet.address,
-    recipient: wallet.address,
+    sender: userWallet.address,
+    recipient: userWallet.address,
     amount: 0,
     data: {
       action: 'unlock_stake',
@@ -352,10 +303,10 @@ const unlockAction = ({ parent, cmd, network }: CommandContext) => async (id: st
       stake: stake.hash
     },
     nonce: onChainWallet.nonce
-  }, wallet.privateKey)
+  }, userWallet.privateKey)
 
-  const result = await api.createTransaction(tx)
-  if (!handleCreateTxResult(network, result)) process.exitCode = 1
+  const result = await xeClient.createTransaction(tx)
+  if (!handleCreateTxResult(ctx.network, result)) process.exitCode = 1
 }
 
 const unlockHelp = [
@@ -363,11 +314,12 @@ const unlockHelp = [
   'Unlock a stake.'
 ].join('')
 
-const getJsonOption = (cmd: Command) => {
-  type JsonOption = { json: boolean }
-  const { json } = cmd.opts<JsonOption>()
-  return <JsonOption>{ json }
+const getExpressOption = (cmd: Command): { express: boolean } => {
+  const opts = cmd.opts<{ express: boolean }>()
+  return { express: !!opts.express }
 }
+
+const expressOption = (description = 'express release') => new Option('-e, --express', description)
 
 export const withContext = (ctx: Context): Command => {
   const stakeCLI = new Command('stake')
@@ -378,16 +330,15 @@ export const withContext = (ctx: Context): Command => {
     .argument('<type>', `node type (${types.join('|')})`)
     .description('create a new stake')
     .addHelpText('after', createHelp(ctx.network))
-    .addOption(walletCLI.passphraseOption())
-    .addOption(walletCLI.passphraseFileOption())
-    .option('-y, --yes', 'do not ask for confirmation')
+    .addOption(passphraseOption())
+    .addOption(passphraseFileOption())
+    .addOption(yesOption())
   create.action(errorHandler(ctx, checkVersionHandler(ctx, createAction({ ...ctx, cmd: create }))))
 
   // edge stake info
   const info = new Command('info')
     .description('get on-chain staking information')
     .addHelpText('after', infoHelp)
-    .option('--json', 'display info as json')
   info.action(errorHandler(ctx, checkVersionHandler(ctx, infoAction({ ...ctx, cmd: info }))))
 
   // edge stake ls
@@ -395,8 +346,6 @@ export const withContext = (ctx: Context): Command => {
     .alias('ls')
     .description('list all stakes')
     .addHelpText('after', listHelp)
-    .option('-D, --full-ids', 'display full-length IDs (ignored if --json)')
-    .option('--json', 'display stakes as json')
   list.action(errorHandler(ctx, checkVersionHandler(ctx, listAction({ ...ctx, cmd: list }))))
 
   // edge stake release
@@ -404,10 +353,10 @@ export const withContext = (ctx: Context): Command => {
     .argument('<id>', 'stake ID')
     .description('release a stake')
     .addHelpText('after', releaseHelp)
-    .option('-e, --express', 'express release')
-    .addOption(walletCLI.passphraseOption())
-    .addOption(walletCLI.passphraseFileOption())
-    .option('-y, --yes', 'do not ask for confirmation')
+    .addOption(expressOption())
+    .addOption(passphraseOption())
+    .addOption(passphraseFileOption())
+    .addOption(yesOption())
   release.action(errorHandler(ctx, checkVersionHandler(ctx, releaseAction({ ...ctx, cmd: release }))))
 
   // edge stake unlock
@@ -415,9 +364,9 @@ export const withContext = (ctx: Context): Command => {
     .argument('<id>', 'stake ID')
     .description('unlock a stake')
     .addHelpText('after', unlockHelp)
-    .addOption(walletCLI.passphraseOption())
-    .addOption(walletCLI.passphraseFileOption())
-    .option('-y, --yes', 'do not ask for confirmation')
+    .addOption(passphraseOption())
+    .addOption(passphraseFileOption())
+    .addOption(yesOption())
   unlock.action(errorHandler(ctx, checkVersionHandler(ctx, unlockAction({ ...ctx, cmd: unlock }))))
 
   stakeCLI
