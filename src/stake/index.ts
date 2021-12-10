@@ -2,6 +2,7 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+import config from '../config'
 import { namedError } from '../helpers'
 import { stake } from '@edge/index-utils'
 
@@ -15,7 +16,7 @@ export const canAssign = (stake: stake.AddressedStake): boolean => {
 }
 
 export const findOne = (stakes: stake.AddressedStake[], id: string): stake.AddressedStake => {
-  if (id.length < 3) throw new Error('stake ID must be at least 3 characters')
+  if (id.length < config.id.minEntryLength) throw new Error('stake ID must be at least 3 characters')
   const ss = Object.values(stakes).filter(s => s.id.slice(0, id.length) === id)
   if (ss.length === 0) throw new Error(`stake ${id} not found`)
   if (ss.length > 1) {

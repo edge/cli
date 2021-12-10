@@ -8,7 +8,7 @@ import { formatXE } from '../transaction/xe'
 import { wallet as xeWallet } from '@edge/xe-utils'
 import { Command, Option } from 'commander'
 import { CommandContext, Context, Network } from '..'
-import { ask, askLetter, askSecure } from '../input'
+import { ask, askLetter, askSecure, getYesOption, yesOption } from '../input'
 import { readFile, writeFile } from 'fs/promises'
 
 export type PassphraseOption = {
@@ -36,13 +36,8 @@ const createAction = ({ logger, wallet, ...ctx }: CommandContext) => async () =>
 
   const opts = {
     ...await getPassphraseOption(ctx.cmd),
-    ...(() => {
-      const { privateKeyFile, overwrite } = ctx.cmd.opts<{
-        privateKeyFile: string | undefined
-        overwrite: boolean
-      }>()
-      return { privateKeyFile, overwrite }
-    })()
+    ...getOverwriteOption(ctx.cmd),
+    ...getPrivateKeyFileOption(ctx.cmd)
   }
   log.debug('options', opts)
 
@@ -113,21 +108,15 @@ const createHelp = [
   'This should be copied to a secure location and kept secret.'
 ].join('')
 
-const infoAction = ({ logger, wallet, ...ctx }: CommandContext) => async () => {
-  const log = logger()
-
-  const opts = {
-    ...await getPassphraseOption(ctx.cmd)
-  }
-  log.debug('options', opts)
-
+const infoAction = ({ wallet, ...ctx }: CommandContext) => async () => {
   const storage = wallet()
   console.log(`Address: ${await storage.address()}`)
 
-  if (opts.passphrase) {
+  const { passphrase } = await getPassphraseOption(ctx.cmd)
+  if (passphrase) {
     try {
-      const wallet = await storage.read(opts.passphrase)
-      console.log(`Private key: ${wallet.privateKey}`)
+      const userWallet = await storage.read(passphrase)
+      console.log(`Private key: ${userWallet.privateKey}`)
     }
     catch (err) {
       console.log(`Cannot display private key: ${(err as Error).message}`)
@@ -141,17 +130,7 @@ const infoHelp = [
   'If a passphrase is provided, this command will also decrypt and display your private key.'
 ].join('')
 
-const forgetAction = ({ logger, wallet, ...ctx }: CommandContext) => async () => {
-  const log = logger()
-
-  const opts = {
-    ...(() => {
-      const { yes } = ctx.cmd.opts<{ yes: boolean }>()
-      return { yes }
-    })()
-  }
-  log.debug('options', opts)
-
+const forgetAction = ({ wallet, ...ctx }: CommandContext) => async () => {
   const storage = wallet()
   if (!await storage.check()) {
     console.log('No wallet found.')
@@ -160,7 +139,7 @@ const forgetAction = ({ logger, wallet, ...ctx }: CommandContext) => async () =>
 
   console.log(`Address: ${await storage.address()}`)
 
-  if (!opts.yes) {
+  if (!getYesOption(ctx.cmd).yes) {
     console.log()
     if (await askLetter('Are you sure you want to forget this wallet?', 'yn') === 'n') return
     console.log()
@@ -179,10 +158,7 @@ const restoreAction = ({ logger, wallet, ...ctx }: CommandContext) => async () =
   const log = logger()
 
   const opts = {
-    ...(() => {
-      const { overwrite } = ctx.cmd.opts<{ overwrite: boolean }>()
-      return { overwrite }
-    })(),
+    ...getOverwriteOption(ctx.cmd),
     ...await getPrivateKeyOption(ctx.cmd),
     ...await getPassphraseOption(ctx.cmd)
   }
@@ -224,8 +200,13 @@ const restoreHelp = [
   '\n',
   'This command will restore an existing wallet using a private key you already have.\n\n',
   'You will be asked to provide a passphrase to encrypt the wallet locally. ',
-  'The passphrase is also required later to decrypt the wallet for certain actions, such as signing transactions.\n\n'
+  'The passphrase is also required later to decrypt the wallet for certain actions, such as signing transactions.'
 ].join('')
+
+const getOverwriteOption = (cmd: Command) => {
+  const opts = cmd.opts<{ overwrite?: boolean }>()
+  return { overwrite: !!opts.overwrite }
+}
 
 export const getPassphraseOption = async (cmd: Command): Promise<PassphraseOption> => {
   type Input = Record<'passphrase' | 'passphraseFile', string|undefined>
@@ -253,10 +234,18 @@ export const getPrivateKeyOption = async (cmd: Command): Promise<PrivateKeyOptio
   return {}
 }
 
+const getPrivateKeyFileOption = (cmd: Command) => {
+  const { privateKeyFile } = cmd.opts<{ privateKeyFile: string }>()
+  return { privateKeyFile }
+}
+
 export const getWalletOption = (parent: Command, network: Network): WalletOption => {
   const { wallet } = parent.opts<Partial<WalletOption>>()
   return { wallet: wallet || network.wallet.defaultFile }
 }
+
+const overwriteOption = (description = 'overwrite existing wallet if one exists') =>
+  new Option('-f, --overwrite', description)
 
 export const privateKeyOption = (): Option => new Option('-k, --private-key <string>', 'wallet private key')
 export const privateKeyFileOption = (): Option => new Option(
@@ -283,7 +272,7 @@ export const withContext = (ctx: Context): [Command, Option] => {
   const create = new Command('create')
     .description('create a new wallet')
     .addHelpText('after', createHelp)
-    .option('-f, --overwrite', 'overwrite existing wallet if one exists')
+    .addOption(overwriteOption())
     .addOption(passphraseOption())
     .addOption(passphraseFileOption())
     .addOption(privateKeyFileOption())
@@ -293,7 +282,7 @@ export const withContext = (ctx: Context): [Command, Option] => {
   const forget = new Command('forget')
     .description('forget saved wallet')
     .addHelpText('after', forgetHelp)
-    .option('-y, --yes', 'do not ask for confirmation')
+    .addOption(yesOption())
   forget.action(errorHandler(ctx, checkVersionHandler(ctx, forgetAction({ ...ctx, cmd: forget }))))
 
   // edge wallet info
@@ -308,7 +297,7 @@ export const withContext = (ctx: Context): [Command, Option] => {
   const restore = new Command('restore')
     .description('restore a wallet')
     .addHelpText('after', restoreHelp)
-    .option('-f, --overwrite', 'overwrite existing wallet if one exists')
+    .addOption(overwriteOption())
     .addOption(privateKeyOption())
     .addOption(privateKeyFileOption())
     .addOption(passphraseOption())

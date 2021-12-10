@@ -2,13 +2,13 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-import { Command } from 'commander'
-import { askLetter } from '../input'
 import { checkVersionHandler } from '../update/cli'
 import { errorHandler } from '../edge/cli'
 import { tx as indexTx } from '@edge/index-utils'
 import { printData } from '../helpers'
+import { Command, Option } from 'commander'
 import { CommandContext, Context } from '..'
+import { askLetter, getPaginationOptions, getYesOption, limitOption, pageOption, yesOption } from '../input'
 import { askToSignTx, handleCreateTxResult } from './index'
 import { formatXE, parseAmount } from './xe'
 import { getPassphraseOption, passphraseFileOption, passphraseOption } from '../wallet/cli'
@@ -53,25 +53,9 @@ const formatTx = (address: string, tx: xeTx.Tx): string => {
   return printData(data)
 }
 
-const getListOptions = (cmd: Command) => {
-  type ListOptions<T = number> = { page: T, limit: T }
-  const opts = cmd.opts<ListOptions<string>>()
-  return <ListOptions>{
-    page: parseInt(opts.page),
-    limit: parseInt(opts.limit)
-  }
-}
-
-const listAction = ({ index, logger, wallet, ...ctx }: CommandContext) => async () => {
-  const log = logger()
-
-  const opts = {
-    list: getListOptions(ctx.cmd)
-  }
-  log.debug('options', opts)
-
+const listAction = ({ index, wallet, ...ctx }: CommandContext) => async () => {
   const address = await wallet().address()
-  const { results, metadata } = await index().transactions(address, opts.list)
+  const { results, metadata } = await index().transactions(address, getPaginationOptions(ctx.cmd))
   if (results.length === 0) {
     console.log('No transactions')
     return
@@ -119,10 +103,8 @@ const sendAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (am
 
   const opts = {
     ...await getPassphraseOption(ctx.cmd),
-    ...(() => {
-      const { memo, yes } = ctx.cmd.opts<{ memo?: string, yes: boolean }>()
-      return { memo, yes }
-    })()
+    ...getMemoOption(ctx.cmd),
+    ...getYesOption(ctx.cmd)
   }
   log.debug('options', opts)
 
@@ -169,6 +151,13 @@ const sendAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (am
   if (!handleCreateTxResult(ctx.network, result)) process.exitCode = 1
 }
 
+const getMemoOption = (cmd: Command): { memo?: string } => {
+  const { memo } = cmd.opts<{ memo?: string }>()
+  return { memo }
+}
+
+const memoOption = (description = 'attach a memo to the transaction') => new Option('-m, --memo <text>', description)
+
 const sendHelp = [
   '\n',
   'This command sends an XE transaction to any address you choose. ',
@@ -189,8 +178,8 @@ export const withContext = (ctx: Context): Command => {
     .alias('ls')
     .description('list transactions')
     .addHelpText('after', listHelp)
-    .option('-p, --page <n>', 'page number', '1')
-    .option('-l, --limit <n>', 'transactions per page', '10')
+    .addOption(pageOption())
+    .addOption(limitOption())
   list.action(errorHandler(ctx, checkVersionHandler(ctx, listAction({ ...ctx, cmd: list }))))
 
   // edge transaction list-pending
@@ -206,10 +195,10 @@ export const withContext = (ctx: Context): Command => {
     .argument('<wallet>', 'recipient wallet address')
     .description('send XE to another wallet')
     .addHelpText('after', sendHelp)
-    .option('-m, --memo <text>', 'attach a memo to the transaction')
+    .addOption(memoOption())
     .addOption(passphraseOption())
     .addOption(passphraseFileOption())
-    .option('-y, --yes', 'do not ask for confirmation')
+    .addOption(yesOption())
   send.action(errorHandler(ctx, checkVersionHandler(ctx, sendAction({ ...ctx, cmd: send }))))
 
   transactionCLI

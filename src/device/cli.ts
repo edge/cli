@@ -10,34 +10,27 @@ import { getPassphraseOption } from '../wallet/cli'
 import { Command, Option } from 'commander'
 import { CommandContext, Context, Network } from '..'
 import Docker, { DockerOptions } from 'dockerode'
-import { ask, askLetter } from '../input'
+import { ask, askLetter, getYesOption, yesOption } from '../input'
 import { askToSignTx, handleCreateTxResult } from '../transaction'
 import { canAssign, findOne, precedence as nodeTypePrecedence } from '../stake'
 import { errorHandler, getDebugOption, getVerboseOption } from '../edge/cli'
-import { printData, printTrunc, toUpperCaseFirst } from '../helpers'
+import { printData, toUpperCaseFirst } from '../helpers'
 import { tx as xeTx, wallet as xeWallet } from '@edge/xe-utils'
 
 const addAction = ({ index, logger, network, wallet, xe, ...ctx }: CommandContext) => async () => {
   const log = logger()
 
   const opts = {
-    ...getVerboseOption(ctx.parent),
     ...await getPassphraseOption(ctx.cmd),
-    ...(() => {
-      const { stake, yes } = ctx.cmd.opts<{
-        stake: string | undefined
-        yes: boolean
-      }>()
-      return { stake, yes }
-    })(),
-    docker: getDockerOptions(ctx.cmd)
+    ...getStakeOption(ctx.cmd),
+    ...getYesOption(ctx.cmd)
   }
-  log.debug('options', opts)
 
-  const printID = printTrunc(!opts.verbose, 8)
+  const { verbose } = getVerboseOption(ctx.parent)
+  const printID = (id: string) => verbose ? id : id.slice(0, config.id.shortLength)
 
-  log.debug('connecting to Docker', { ...opts.docker })
-  const docker = new Docker(opts.docker)
+  log.debug('connecting to Docker')
+  const docker = new Docker(getDockerOptions(ctx.cmd))
 
   // get device data. if none, initialize device on the fly
   log.debug('finding/creating device data')
@@ -179,17 +172,12 @@ const addHelp = (network: Network) => [
 const infoAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async () => {
   const log = logger()
 
-  const opts = {
-    ...getDebugOption(ctx.parent),
-    ...getVerboseOption(ctx.parent),
-    docker: getDockerOptions(ctx.cmd)
-  }
-  log.debug('options', opts)
+  const { debug } = getDebugOption(ctx.parent)
+  const { verbose } = getVerboseOption(ctx.parent)
+  const printID = (id: string) => verbose ? id: id.slice(0, config.id.shortLength)
 
-  const printID = printTrunc(!opts.verbose, 8)
-
-  log.debug('connecting to Docker', { ...opts.docker })
-  const docker = new Docker(opts.docker)
+  log.debug('connecting to Docker')
+  const docker = new Docker(getDockerOptions(ctx.cmd))
   log.debug('finding device data')
   const dataVolume = data.withVolume(docker, await data.volume(docker))
   const device = await dataVolume.read()
@@ -210,7 +198,7 @@ const infoAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async () 
     else toPrint.Stake = 'Unassigned'
   }
   catch (err) {
-    if (opts.debug) log.error(`${err}`, { err })
+    if (debug) log.error(`${err}`, { err })
     toPrint.Stake = 'Unassigned (no wallet)'
   }
 
@@ -223,24 +211,18 @@ const infoHelp = [
 ].join('')
 
 const removeAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async () => {
-  const { parent, cmd, network } = ctx
   const log = logger()
 
   const opts = {
-    ...getVerboseOption(parent),
-    ...await getPassphraseOption(cmd),
-    ...(() => {
-      const { yes } = cmd.opts<{ yes: boolean }>()
-      return { yes }
-    })(),
-    docker: getDockerOptions(cmd)
+    ...await getPassphraseOption(ctx.cmd),
+    ...getYesOption(ctx.cmd)
   }
-  log.debug('options', opts)
 
-  const printID = printTrunc(!opts.verbose, 8)
+  const { verbose } = getVerboseOption(ctx.parent)
+  const printID = (id: string) => verbose ? id : id.slice(0, config.id.shortLength)
 
-  log.debug('connecting to Docker', { ...opts.docker })
-  const docker = new Docker(opts.docker)
+  log.debug('connecting to Docker')
+  const docker = new Docker(getDockerOptions(ctx.cmd))
 
   log.debug('finding device data')
   const dataVolume = data.withVolume(docker, await data.volume(docker))
@@ -255,7 +237,7 @@ const removeAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (
 
   // confirm user intent
   if (!opts.yes) {
-    console.log(`You are removing this device from Edge ${toUpperCaseFirst(network.name)}.`)
+    console.log(`You are removing this device from Edge ${toUpperCaseFirst(ctx.network.name)}.`)
     console.log()
     if (stake === undefined) console.log('This device is not assigned to any stake.')
     else console.log(`This will remove this device's assignment to stake ${printID(stake.id)} (${nodeName}).`)
@@ -286,7 +268,7 @@ const removeAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (
     console.log('Unassigning stake...')
     console.log()
     const result = await xeClient.createTransaction(tx)
-    if (!handleCreateTxResult(network, result)) {
+    if (!handleCreateTxResult(ctx.network, result)) {
       process.exitCode = 1
       return
     }
@@ -294,7 +276,7 @@ const removeAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (
 
     // if node is running, stop it
     log.debug('finding node')
-    const imageName = network.registry.imageName(stake.type)
+    const imageName = ctx.network.registry.imageName(stake.type)
     const info = (await docker.listContainers()).find(c => c.Image === imageName)
     if (info !== undefined) {
       log.debug('found node', { name: toUpperCaseFirst(stake.type), id: info.Id })
@@ -310,7 +292,7 @@ const removeAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (
   await dataVolume.remove()
   console.log()
 
-  console.log(`This device has been removed from Edge ${toUpperCaseFirst(network.name)}.`)
+  console.log(`This device has been removed from Edge ${toUpperCaseFirst(ctx.network.name)}.`)
 }
 
 const removeHelp = [
@@ -464,7 +446,14 @@ const getDockerOptions = (cmd: Command): DockerOptions => {
   }
 }
 
-const socketPathOption = () => new Option('--docker-socket-path', 'Docker socket path')
+const dockerSocketPathOption = () => new Option('--docker-socket-path', 'Docker socket path')
+
+const getStakeOption = (cmd: Command) => {
+  const { stake } = cmd.opts<{ stake?: string }>()
+  return { stake }
+}
+
+const stakeOption = (description = 'stake ID') => new Option('-s, --stake <id>', description)
 
 export const withContext = (ctx: Context): Command => {
   const deviceCLI = new Command('device')
@@ -474,52 +463,52 @@ export const withContext = (ctx: Context): Command => {
   const add = new Command('add')
     .description('add this device to the network')
     .addHelpText('after', addHelp(ctx.network))
-    .addOption(socketPathOption())
-    .option('-s, --stake <id>', 'stake ID')
-    .option('-y, --yes', 'do not ask for confirmation')
+    .addOption(dockerSocketPathOption())
+    .addOption(stakeOption())
+    .addOption(yesOption())
   add.action(errorHandler(ctx, checkVersionHandler(ctx, addAction({ ...ctx, cmd: add }))))
 
   // edge device info
   const info = new Command('info')
     .description('display device/stake information')
     .addHelpText('after', infoHelp)
-    .addOption(socketPathOption())
+    .addOption(dockerSocketPathOption())
   info.action(errorHandler(ctx, checkVersionHandler(ctx, infoAction({ ...ctx, cmd: info }))))
 
   // edge device remove
   const remove = new Command('remove')
     .description('remove this device from the network')
     .addHelpText('after', removeHelp)
-    .addOption(socketPathOption())
-    .option('-y, --yes', 'do not ask for confirmation')
+    .addOption(dockerSocketPathOption())
+    .addOption(yesOption())
   remove.action(errorHandler(ctx, checkVersionHandler(ctx, removeAction({ ...ctx, cmd: remove }))))
 
   // edge device restart
   const restart = new Command('restart')
     .description('restart node')
     .addHelpText('after', restartHelp)
-    .addOption(socketPathOption())
+    .addOption(dockerSocketPathOption())
   restart.action(errorHandler(ctx, checkVersionHandler(ctx, restartAction({ ...ctx, cmd: restart }))))
 
   // edge device start
   const start = new Command('start')
     .description('start node')
     .addHelpText('after', startHelp(ctx.network))
-    .addOption(socketPathOption())
+    .addOption(dockerSocketPathOption())
   start.action(errorHandler(ctx, checkVersionHandler(ctx, startAction({ ...ctx, cmd: start }))))
 
   // edge device status
   const status = new Command('status')
     .description('display node status')
     .addHelpText('after', statusHelp)
-    .addOption(socketPathOption())
+    .addOption(dockerSocketPathOption())
   status.action(errorHandler(ctx, checkVersionHandler(ctx, statusAction({ ...ctx, cmd: status }))))
 
   // edge device stop
   const stop = new Command('stop')
     .description('stop node')
     .addHelpText('after', stopHelp)
-    .addOption(socketPathOption())
+    .addOption(dockerSocketPathOption())
   stop.action(errorHandler(ctx, checkVersionHandler(ctx, stopAction({ ...ctx, cmd: stop }))))
 
   deviceCLI

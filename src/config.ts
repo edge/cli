@@ -6,6 +6,10 @@ export default {
   blockchain: {
     defaultTimeout: parseInt(process.env.BLOCKCHAIN_TIMEOUT || '10') * 1000
   },
+  id: {
+    minEntryLength: 3,
+    shortLength: 12
+  },
   index: {
     defaultTimeout: parseInt(process.env.INDEX_TIMEOUT || '10') * 1000
   },

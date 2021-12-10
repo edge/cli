@@ -2,17 +2,18 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-import { Command } from 'commander'
-import { askLetter } from '../input'
 import { checkVersionHandler } from '../update/cli'
+import config from '../config'
 import { formatXE } from '../transaction/xe'
 import { tx as xeTx } from '@edge/xe-utils'
+import { Command, Option } from 'commander'
 import { CommandContext, Context, Network, XEClientProvider } from '..'
+import { askLetter, getYesOption, yesOption } from '../input'
 import { askToSignTx, handleCreateTxResult } from '../transaction'
 import { errorHandler, getDebugOption, getVerboseOption } from '../edge/cli'
 import { findOne, types } from '.'
 import { getPassphraseOption, passphraseFileOption, passphraseOption } from '../wallet/cli'
-import { printData, printTrunc, toDays, toUpperCaseFirst } from '../helpers'
+import { printData, toDays, toUpperCaseFirst } from '../helpers'
 
 const formatTime = (t: number): string => {
   const d = new Date(t)
@@ -40,16 +41,12 @@ const xeVars = async (xe: XEClientProvider, debug: boolean) => {
 
 const createAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (nodeType: string) => {
   if (!types.includes(nodeType)) throw new Error(`invalid node type "${nodeType}"`)
-  const { parent, cmd, network } = ctx
   const log = logger()
 
   const opts = {
-    ...getDebugOption(parent),
-    ...await getPassphraseOption(cmd),
-    ...(() => {
-      const { yes } = cmd.opts<{ yes: boolean }>()
-      return { yes }
-    })()
+    ...getDebugOption(ctx.parent),
+    ...await getPassphraseOption(ctx.cmd),
+    ...getYesOption(ctx.cmd)
   }
   log.debug('options', opts)
 
@@ -98,7 +95,7 @@ const createAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (
   }, userWallet.privateKey)
 
   const result = await xeClient.createTransaction(tx)
-  if (!handleCreateTxResult(network, result)) process.exitCode = 1
+  if (!handleCreateTxResult(ctx.network, result)) process.exitCode = 1
 }
 
 const createHelp = (network: Network) => [
@@ -108,13 +105,10 @@ const createHelp = (network: Network) => [
   `Run '${network.appName} device add --help' for more information.`
 ].join('')
 
-const infoAction = ({ logger, xe, ...ctx }: CommandContext) => async () => {
-  const log = logger()
+const infoAction = ({ xe, ...ctx }: CommandContext) => async () => {
+  const { debug } = getDebugOption(ctx.parent)
 
-  const opts = getDebugOption(ctx.parent)
-  log.debug('options', opts)
-
-  const vars = await xeVars(xe, opts.debug)
+  const vars = await xeVars(xe, debug)
 
   const amounts = [
     vars.host_stake_amount,
@@ -132,15 +126,9 @@ const infoAction = ({ logger, xe, ...ctx }: CommandContext) => async () => {
 
 const infoHelp = '\nDisplays current staking amounts.'
 
-const listAction = ({ index, logger, wallet, ...ctx }: CommandContext) => async () => {
-  const log = logger()
-
-  const opts = {
-    ...getVerboseOption(ctx.parent)
-  }
-  log.debug('options', opts)
-
-  const printID = printTrunc(!opts.verbose, 8)
+const listAction = ({ index, wallet, ...ctx }: CommandContext) => async () => {
+  const { verbose } = getVerboseOption(ctx.parent)
+  const printID = (id: string) => verbose ? id : id.slice(0, config.id.shortLength)
 
   const storage = wallet()
   const address = await storage.address()
@@ -179,18 +167,13 @@ const listAction = ({ index, logger, wallet, ...ctx }: CommandContext) => async 
 
 const listHelp = '\nDisplays all stakes associated with your wallet.'
 
-const releaseAction = ({ index, logger, wallet, xe, ...ctx }: CommandContext) => async (id: string) => {
-  const log = logger()
-
+const releaseAction = ({ index, wallet, xe, ...ctx }: CommandContext) => async (id: string) => {
   const opts = {
     ...getDebugOption(ctx.parent),
     ...await getPassphraseOption(ctx.cmd),
-    ...(() => {
-      const { express, yes } = ctx.cmd.opts<{ express: boolean, yes: boolean }>()
-      return { express, yes }
-    })()
+    ...getExpressOption(ctx.cmd),
+    ...getYesOption(ctx.cmd)
   }
-  log.debug('options', opts)
 
   const storage = wallet()
   const { results: stakes } = await index().stakes(await storage.address(), { limit: 999 })
@@ -274,10 +257,7 @@ const unlockAction = ({ index, logger, wallet, xe, ...ctx }: CommandContext) => 
 
   const opts = {
     ...await getPassphraseOption(ctx.cmd),
-    ...(() => {
-      const { yes } = ctx.cmd.opts<{ yes: boolean }>()
-      return { yes }
-    })()
+    ...getYesOption(ctx.cmd)
   }
   log.debug('options', opts)
 
@@ -334,6 +314,13 @@ const unlockHelp = [
   'Unlock a stake.'
 ].join('')
 
+const getExpressOption = (cmd: Command): { express: boolean } => {
+  const opts = cmd.opts<{ express: boolean }>()
+  return { express: !!opts.express }
+}
+
+const expressOption = (description = 'express release') => new Option('-e, --express', description)
+
 export const withContext = (ctx: Context): Command => {
   const stakeCLI = new Command('stake')
     .description('manage stakes')
@@ -345,7 +332,7 @@ export const withContext = (ctx: Context): Command => {
     .addHelpText('after', createHelp(ctx.network))
     .addOption(passphraseOption())
     .addOption(passphraseFileOption())
-    .option('-y, --yes', 'do not ask for confirmation')
+    .addOption(yesOption())
   create.action(errorHandler(ctx, checkVersionHandler(ctx, createAction({ ...ctx, cmd: create }))))
 
   // edge stake info
@@ -366,10 +353,10 @@ export const withContext = (ctx: Context): Command => {
     .argument('<id>', 'stake ID')
     .description('release a stake')
     .addHelpText('after', releaseHelp)
-    .option('-e, --express', 'express release')
+    .addOption(expressOption())
     .addOption(passphraseOption())
     .addOption(passphraseFileOption())
-    .option('-y, --yes', 'do not ask for confirmation')
+    .addOption(yesOption())
   release.action(errorHandler(ctx, checkVersionHandler(ctx, releaseAction({ ...ctx, cmd: release }))))
 
   // edge stake unlock
@@ -379,7 +366,7 @@ export const withContext = (ctx: Context): Command => {
     .addHelpText('after', unlockHelp)
     .addOption(passphraseOption())
     .addOption(passphraseFileOption())
-    .option('-y, --yes', 'do not ask for confirmation')
+    .addOption(yesOption())
   unlock.action(errorHandler(ctx, checkVersionHandler(ctx, unlockAction({ ...ctx, cmd: unlock }))))
 
   stakeCLI

@@ -12,14 +12,14 @@ export const create = (network: Network): Command => {
   const version = `Edge CLI v${pkg.version} (${toUpperCaseFirst(network.name)})`
   const desc = `Edge CLI (${toUpperCaseFirst(network.name)})`
 
-  const cli = new Command(network.appName)
+  const parent = new Command(network.appName)
     .version(version)
     .description(desc)
     .option('--debug', 'enable detailed error and debug messages')
     .option('--no-color', 'disable terminal text colors')
     .option('-v, --verbose', 'enable detailed output')
 
-  return cli
+  return parent
 }
 
 export const errorHandler =
@@ -37,17 +37,17 @@ export const errorHandler =
       return undefined
     }
 
-export const getDebugOption = (cli: Command): { debug: boolean } => {
-  const { debug } = cli.opts<{ debug: boolean }>()
+export const getDebugOption = (parent: Command): { debug: boolean } => {
+  const { debug } = parent.opts<{ debug: boolean }>()
   return { debug }
 }
 
-export const getNoColorOption = (cli: Command): { noColor: boolean } => {
-  const { noColor } = cli.opts<{ noColor: boolean }>()
+export const getNoColorOption = (parent: Command): { noColor: boolean } => {
+  const { noColor } = parent.opts<{ noColor: boolean }>()
   return { noColor }
 }
 
-export const getVerboseOption = (cli: Command): { verbose: boolean } => {
-  const { verbose } = cli.opts<{ verbose: boolean }>()
+export const getVerboseOption = (parent: Command): { verbose: boolean } => {
+  const { verbose } = parent.opts<{ verbose: boolean }>()
   return { verbose }
 }
