@@ -3,12 +3,12 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as data from './data'
-import { DockerOptions } from 'dockerode'
 import { checkVersionHandler } from '../update/cli'
 import config from '../config'
 import { getPassphraseOption } from '../wallet/cli'
 import { Command, Option } from 'commander'
 import { CommandContext, Context, Network } from '..'
+import { ContainerCreateOptions, DockerOptions } from 'dockerode'
 import { ask, askLetter, getYesOption, yesOption } from '../input'
 import { askToSignTx, handleCreateTxResult } from '../transaction'
 import { canAssign, findOne, precedence as nodeTypePrecedence } from '../stake'
@@ -303,8 +303,10 @@ const restartAction = ({ device }: CommandContext) => async () => {
 
 const restartHelp = '\nRestart the node, if it is running.'
 
-const startAction = ({ device, logger }: CommandContext) => async () => {
+const startAction = ({ device, logger, ...ctx }: CommandContext) => async () => {
   const log = logger()
+
+  const { env } = getNodeEnvOption(ctx.cmd)
 
   const userDevice = device()
   const docker = userDevice.docker()
@@ -316,11 +318,12 @@ const startAction = ({ device, logger }: CommandContext) => async () => {
     return
   }
 
-  const containerOptions = {
+  const containerOptions: ContainerCreateOptions = {
     Image: node.image,
     AttachStdin: false,
     AttachStdout: false,
     AttachStderr: false,
+    Env: env.length ? env : undefined,
     Tty: false,
     OpenStdin: false,
     StdinOnce: false,
@@ -425,10 +428,20 @@ const updateHelp = '\nUpdate the node, if an update is available.'
 export const dockerSocketPathOption = (description = 'Docker socket path'): Option =>
   new Option('--docker-socket-path', description)
 
+const getNodeEnvOption = (cmd: Command): { env: string[] } => {
+  const { env } = cmd.opts<{ env?: string[] }>()
+  return {
+    env: env !== undefined ? env : []
+  }
+}
+
 const getStakeOption = (cmd: Command) => {
   const { stake } = cmd.opts<{ stake?: string }>()
   return { stake }
 }
+
+const nodeEnvOption = (description = 'set environment variable(s) for node') =>
+  new Option('-e, --env <var...>', description)
 
 const stakeOption = (description = 'stake ID') => new Option('-s, --stake <id>', description)
 
@@ -467,6 +480,7 @@ export const withContext = (ctx: Context): [Command, Option[]] => {
   const start = new Command('start')
     .description('start node')
     .addHelpText('after', startHelp(ctx.network))
+    .addOption(nodeEnvOption())
   start.action(errorHandler(ctx, checkVersionHandler(ctx, startAction({ ...ctx, cmd: start }))))
 
   // edge device status
