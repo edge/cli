@@ -3,6 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as data from './data'
+import { arch } from 'os'
 import { checkVersionHandler } from '../update/cli'
 import config from '../config'
 import { getPassphraseOption } from '../wallet/cli'
@@ -260,7 +261,7 @@ const removeAction = ({ device, logger, wallet, xe, ...ctx }: CommandContext) =>
 
     // if node is running, stop it
     log.debug('finding node')
-    const imageName = ctx.network.registry.imageName(stake.type)
+    const imageName = ctx.network.registry.imageName(stake.type, arch())
     const info = (await docker.listContainers()).find(c => c.Image === imageName)
     if (info !== undefined) {
       log.debug('found container', { name: toUpperCaseFirst(stake.type), id: info.Id })
