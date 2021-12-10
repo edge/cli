@@ -66,7 +66,7 @@ const updateAction = (ctx: Context, argv: string[]) => async (): Promise<void> =
   const cv = currentVersion()
   const lv = await latestVersion(ctx)
 
-  if (lv.compare(cv) >= 0) {
+  if (lv.compare(cv) <= 0) {
     console.log(`Edge CLI v${cv} is the latest version`)
     return
   }
