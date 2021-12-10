@@ -89,7 +89,7 @@ const readThroughContainer = async (docker: Docker, volume: VolumeInspectInfo): 
 
     const archive = tar.extract()
     archive.on('entry', (h, s, next) => {
-      const name = h.name.replace(/^\/?device\//, '') as keyof Device
+      const name = h.name.replace(/^\/?data\//, '') as keyof Device
       s.on('end', () => next())
       if (keys.includes(name)) {
         s.on('readable', () => {
