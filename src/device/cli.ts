@@ -387,6 +387,41 @@ export const getDockerOptions = (cmd: Command): DockerOptions => {
   }
 }
 
+const updateAction = ({ device, logger }: CommandContext) => async () => {
+  const log = logger()
+
+  const userDevice = device()
+  const docker1 = userDevice.docker()
+  const node = await userDevice.node()
+
+  const currentImage = await docker1.getImage(node.image).inspect()
+  log.debug('Current image', { currentImage })
+  const info = await node.container()
+  const container = info && docker1.getContainer(info.Id)
+
+  console.log(`Checking for/downloading ${node.name} update...`)
+  await docker1.pull(node.image)
+
+  const docker2 = userDevice.docker()
+  const latestImage = await docker2.getImage(node.image).inspect()
+  log.debug('Latest image', { latestImage })
+
+  console.log()
+  if (latestImage.Id === currentImage.Id) {
+    console.log(`${node.name} is up to date.`)
+    return
+  }
+  console.log(`${node.name} has been updated.`)
+
+  if (container !== undefined) {
+    await container.restart()
+    console.log()
+    console.log(`${node.name} restarted`)
+  }
+}
+
+const updateHelp = '\nUpdate the node, if an update is available.'
+
 export const dockerSocketPathOption = (description = 'Docker socket path'): Option =>
   new Option('--docker-socket-path', description)
 
@@ -446,6 +481,12 @@ export const withContext = (ctx: Context): [Command, Option[]] => {
     .addHelpText('after', stopHelp)
   stop.action(errorHandler(ctx, checkVersionHandler(ctx, stopAction({ ...ctx, cmd: stop }))))
 
+  // edge device update
+  const update = new Command('update')
+    .description('update node')
+    .addHelpText('after', updateHelp)
+  update.action(errorHandler(ctx, checkVersionHandler(ctx, updateAction({ ...ctx, cmd: update }))))
+
   deviceCLI
     .addCommand(add)
     .addCommand(info)
@@ -454,6 +495,7 @@ export const withContext = (ctx: Context): [Command, Option[]] => {
     .addCommand(start)
     .addCommand(status)
     .addCommand(stop)
+    .addCommand(update)
 
   return [deviceCLI, [dockerSocketPathOption()]]
 }
