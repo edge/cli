@@ -2,7 +2,6 @@ import { Command } from 'commander'
 
 const communityAction = () => async () => {
   console.log([
-    '\n',
     'Browse public Edge code on GitHub:\n',
     '  https://github.com/edge\n\n',
     'Chat with the community on Telegram, Discord, or Reddit:\n',
