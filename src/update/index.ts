@@ -38,15 +38,15 @@ export const cachedLatestVersion = async ({ network, ...ctx }: Context): Promise
   const file = tmpdir() + path.sep + '.edge-cli-version'
   let lv: SemVer|undefined = undefined
   try {
-    log.debug('Reading cache file', { file })
+    log.debug('reading cache file', { file })
     const stats = await fs.stat(file)
     if (stats.mtime.getTime() + versionCacheTimeout > Date.now()) {
       const data = (await fs.readFile(file)).toString()
-      log.debug('Read cache data', { data })
+      log.debug('read cache data', { data })
       const parsed = parse(data)
       if (parsed !== null) lv = parsed
     }
-    else log.debug('Cache outdated')
+    else log.debug('cache outdated')
   }
   catch (err) {
     if (debug) log.error('Cache read error', { err })
@@ -54,9 +54,9 @@ export const cachedLatestVersion = async ({ network, ...ctx }: Context): Promise
   if (lv === undefined) {
     lv = await latestVersion({ network, ...ctx })
     try {
-      log.debug('Writing cache file', { data: lv.format(), file })
+      log.debug('writing cache file', { data: lv.format(), file })
       await fs.writeFile(file, lv.format())
-      log.debug('Wrote file', { file })
+      log.debug('wrote file', { file })
     }
     catch (err) {
       if (debug) log.error('Cache write error', { err })
@@ -75,18 +75,18 @@ export const download = async ({ network, ...ctx }: Context): Promise<DownloadIn
   const log = ctx.logger('update.download')
   try {
     const csURL = network.files.latestChecksumURL(normalizedPlatform(), arch())
-    log.debug('Getting latest checksum', { url: csURL })
+    log.debug('getting latest checksum', { url: csURL })
     const csResponse = await superagent.get(csURL)
     const checksum = csResponse.text.trim()
-    log.debug('Response', { checksum })
+    log.debug('response', { checksum })
 
     const file = await fs.mkdtemp(path.join(tmpdir(), 'edge-update-')) + path.sep + 'edge'
     const buildURL = network.files.latestBuildURL(normalizedPlatform(), arch(), ext())
-    log.debug('Downloading latest build', { url: buildURL, file })
+    log.debug('downloading latest build', { url: buildURL, file })
     await downloadURL(buildURL, file)
-    log.debug('Downloaded', { file })
+    log.debug('downloaded', { file })
 
-    log.debug('Verifying checksum')
+    log.debug('verifying checksum')
     const filesum = await calcDigest(file)
     if (checksum === filesum) return { checksum, file }
     throw new Error(`checksum mismatch (local = ${filesum}, remote = ${checksum})`)
@@ -102,9 +102,9 @@ export const latestVersion = async ({ network, ...ctx }: Context): Promise<SemVe
   const log = ctx.logger('update.version.get')
   const url = network.files.latestVersionURL(normalizedPlatform(), arch())
   try {
-    log.debug('Getting latest version', { url })
+    log.debug('getting latest version', { url })
     const response = await superagent.get(url)
-    log.debug('Response', { response })
+    log.debug('response', { response })
     const lv = parse(response.text.trim())
     if (lv === null) throw new Error(`server provided invalid version "${response.text}"`)
     return lv

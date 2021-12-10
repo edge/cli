@@ -36,11 +36,11 @@ const addAction = ({ index, logger, network, wallet, xe, ...ctx }: CommandContex
 
   const printID = printTrunc(!opts.verbose, 8)
 
-  log.debug('Connecting to Docker', { ...opts.docker })
+  log.debug('connecting to Docker', { ...opts.docker })
   const docker = new Docker(opts.docker)
 
   // get device data. if none, initialize device on the fly
-  log.debug('Finding/creating device data')
+  log.debug('finding/creating device data')
   const dataVolume = data.withVolume(docker, await data.volume(docker, true))
   const device = await (async () => {
     let w: data.Device | undefined = undefined
@@ -55,7 +55,7 @@ const addAction = ({ index, logger, network, wallet, xe, ...ctx }: CommandContex
     }
     return w as data.Device
   })()
-  log.debug('Device data', { device })
+  log.debug('device data', { device })
 
   // get user stakes, check whether device already assigned
   const storage = wallet()
@@ -104,7 +104,7 @@ const addAction = ({ index, logger, network, wallet, xe, ...ctx }: CommandContex
     console.log()
     return numberedStakes[sel-1]
   })()
-  log.debug('Using stake', { stake })
+  log.debug('using stake', { stake })
 
   if (!canAssign(stake)) {
     if (stake.released) throw new Error('this stake has been released')
@@ -188,12 +188,12 @@ const infoAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async () 
 
   const printID = printTrunc(!opts.verbose, 8)
 
-  log.debug('Connecting to Docker', { ...opts.docker })
+  log.debug('connecting to Docker', { ...opts.docker })
   const docker = new Docker(opts.docker)
-  log.debug('Finding device data')
+  log.debug('finding device data')
   const dataVolume = data.withVolume(docker, await data.volume(docker))
   const device = await dataVolume.read()
-  log.debug('Device data', { device })
+  log.debug('device data', { device })
 
   const toPrint: Record<string, string> = {
     Network: toUpperCaseFirst(device.network),
@@ -239,10 +239,10 @@ const removeAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (
 
   const printID = printTrunc(!opts.verbose, 8)
 
-  log.debug('Connecting to Docker', { ...opts.docker })
+  log.debug('connecting to Docker', { ...opts.docker })
   const docker = new Docker(opts.docker)
 
-  log.debug('Finding device data')
+  log.debug('finding device data')
   const dataVolume = data.withVolume(docker, await data.volume(docker))
   const device = await dataVolume.read()
 
@@ -293,11 +293,11 @@ const removeAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (
     console.log()
 
     // if node is running, stop it
-    log.debug('Finding node')
+    log.debug('finding node')
     const imageName = network.registry.imageName(stake.type)
     const info = (await docker.listContainers()).find(c => c.Image === imageName)
     if (info !== undefined) {
-      log.debug('Found node', { name: toUpperCaseFirst(stake.type), id: info.Id })
+      log.debug('found node', { name: toUpperCaseFirst(stake.type), id: info.Id })
       const container = docker.getContainer(info.Id)
       console.log(`Stopping ${nodeName}...`)
       await container.stop()
@@ -331,9 +331,9 @@ const restartAction = ({ logger, wallet, ...ctx }: CommandContext) => async () =
   }
   log.debug('options', opts)
 
-  log.debug('Connecting to Docker', { ...opts.docker })
+  log.debug('connecting to Docker', { ...opts.docker })
   const docker = new Docker(opts.docker)
-  log.debug('Finding node')
+  log.debug('finding node')
   const nodeInfo = await node.withAddress(docker, ctx.network, await wallet().address())
 
   const info = await nodeInfo.container()
@@ -341,9 +341,9 @@ const restartAction = ({ logger, wallet, ...ctx }: CommandContext) => async () =
     console.log(`${nodeInfo.name} is not running`)
     return
   }
-  log.debug('Found node', { name: nodeInfo.name, id: info.Id })
+  log.debug('found node', { name: nodeInfo.name, id: info.Id })
 
-  log.debug('Restarting node')
+  log.debug('restarting node')
   await docker.getContainer(info.Id).restart()
   console.log(`${nodeInfo.name} restarted`)
 }
@@ -359,19 +359,19 @@ const startAction = ({ logger, wallet, ...ctx }: CommandContext) => async () => 
   }
   log.debug('options', opts)
 
-  log.debug('Connecting to Docker', { ...opts.docker })
+  log.debug('connecting to Docker', { ...opts.docker })
   const docker = new Docker(opts.docker)
-  log.debug('Finding node')
+  log.debug('finding node')
   const nodeInfo = await node.withAddress(docker, ctx.network, await wallet().address())
 
   let info = await nodeInfo.container()
   if (info !== undefined) {
-    log.debug('Found node', { name: nodeInfo.name, id: info.Id })
+    log.debug('found node', { name: nodeInfo.name, id: info.Id })
     console.log(`${nodeInfo.name} is already running`)
     return
   }
 
-  log.debug('Creating node')
+  log.debug('creating node')
   const container = await docker.createContainer({
     Image: nodeInfo.image,
     AttachStdin: false,
@@ -385,13 +385,13 @@ const startAction = ({ logger, wallet, ...ctx }: CommandContext) => async () => 
       RestartPolicy: { Name: 'unless-stopped' }
     }
   })
-  log.debug('Starting node')
+  log.debug('starting node')
   await container.start()
 
-  log.debug('Finding node')
+  log.debug('finding node')
   info = await nodeInfo.container()
   if (info === undefined) throw new Error(`${nodeInfo.name} failed to start`)
-  log.debug('Found node', { name: nodeInfo.name, id: info.Id })
+  log.debug('found node', { name: nodeInfo.name, id: info.Id })
   console.log(`${nodeInfo.name} started`)
 }
 
@@ -410,9 +410,9 @@ const statusAction = ({ logger, wallet, ...ctx }: CommandContext) => async () =>
   }
   log.debug('options', opts)
 
-  log.debug('Connecting to Docker', { ...opts.docker })
+  log.debug('connecting to Docker', { ...opts.docker })
   const docker = new Docker(opts.docker)
-  log.debug('Finding node')
+  log.debug('finding node')
   const nodeInfo = await node.withAddress(docker, ctx.network, await wallet().address())
 
   const info = await nodeInfo.container()
@@ -431,9 +431,9 @@ const stopAction = ({ logger, wallet, ...ctx }: CommandContext) => async () => {
   }
   log.debug('options', opts)
 
-  log.debug('Connecting to Docker', { ...opts.docker })
+  log.debug('connecting to Docker', { ...opts.docker })
   const docker = new Docker(opts.docker)
-  log.debug('Finding node')
+  log.debug('finding node')
   const nodeInfo = await node.withAddress(docker, ctx.network, await wallet().address())
 
   const info = await nodeInfo.container()
@@ -441,12 +441,12 @@ const stopAction = ({ logger, wallet, ...ctx }: CommandContext) => async () => {
     console.log(`${nodeInfo.name} is not running`)
     return
   }
-  log.debug('Found node', { name: nodeInfo.name, id: info.Id })
+  log.debug('found node', { name: nodeInfo.name, id: info.Id })
 
   const container = docker.getContainer(info.Id)
-  log.debug('Stopping node')
+  log.debug('stopping node')
   await container.stop()
-  log.debug('Removing node')
+  log.debug('removing node')
   await container.remove()
   console.log(`${nodeInfo.name} stopped`)
 }

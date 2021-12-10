@@ -91,9 +91,9 @@ const createAction = ({ logger, wallet, ...ctx }: CommandContext) => async () =>
     console.log()
   }
   try {
-    log.debug('Writing file', { file: pkFile })
+    log.debug('writing file', { file: pkFile })
     await writeFile(pkFile, userWallet.privateKey)
-    log.debug('Wrote file', { file: pkFile })
+    log.debug('wrote file', { file: pkFile })
     console.log(`Private key saved to ${pkFile}.`)
   }
   catch (err) {
