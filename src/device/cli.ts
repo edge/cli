@@ -318,20 +318,7 @@ const startAction = ({ device, logger, ...ctx }: CommandContext) => async () => 
     return
   }
 
-  const containerOptions: ContainerCreateOptions = {
-    Image: node.image,
-    AttachStdin: false,
-    AttachStdout: false,
-    AttachStderr: false,
-    Env: env.length ? env : undefined,
-    Tty: false,
-    OpenStdin: false,
-    StdinOnce: false,
-    HostConfig: {
-      Binds: [`${config.docker.dataVolume}:/device`],
-      RestartPolicy: { Name: 'unless-stopped' }
-    }
-  }
+  const containerOptions = createContainerOptions(node.image, env)
   log.debug('creating container', { containerOptions })
   const container = await docker.createContainer(containerOptions)
   log.debug('starting container')
@@ -393,19 +380,20 @@ export const getDockerOptions = (cmd: Command): DockerOptions => {
 const updateAction = ({ device, logger }: CommandContext) => async () => {
   const log = logger()
 
-  const userDevice = device()
-  const docker1 = userDevice.docker()
-  const node = await userDevice.node()
+  const [userDevice1, userDevice2] = [device(), device()]
+  const docker1 = userDevice1.docker()
+  let node = await userDevice1.node()
 
   const currentImage = await docker1.getImage(node.image).inspect()
   log.debug('Current image', { currentImage })
-  const info = await node.container()
-  const container = info && docker1.getContainer(info.Id)
+  let info = await node.container()
+  let container = info && docker1.getContainer(info.Id)
+  const containerInspect = await container?.inspect()
 
   console.log(`Checking for/downloading ${node.name} update...`)
   await docker1.pull(node.image)
 
-  const docker2 = userDevice.docker()
+  const docker2 = userDevice2.docker()
   const latestImage = await docker2.getImage(node.image).inspect()
   log.debug('Latest image', { latestImage })
 
@@ -416,14 +404,42 @@ const updateAction = ({ device, logger }: CommandContext) => async () => {
   }
   console.log(`${node.name} has been updated.`)
 
-  if (container !== undefined) {
-    await container.restart()
-    console.log()
-    console.log(`${node.name} restarted`)
-  }
+  if (container === undefined) return
+
+  // container is already running, need to stop-start
+  console.log()
+  console.log(`Restarting ${node.name}...`)
+  await container.stop()
+
+  const containerOptions = createContainerOptions(node.image, containerInspect?.Config.Env)
+  log.debug('creating container', { containerOptions })
+  container = await docker2.createContainer(containerOptions)
+  log.debug('starting container')
+  await container.start()
+
+  node = await userDevice2.node()
+  info = await node.container()
+  if (info === undefined) throw new Error(`${node.name} failed to restart`)
+  console.log()
+  console.log(`${node.name} restarted`)
 }
 
 const updateHelp = '\nUpdate the node, if an update is available.'
+
+const createContainerOptions = (image: string, env: string[] | undefined): ContainerCreateOptions => ({
+  Image: image,
+  AttachStdin: false,
+  AttachStdout: false,
+  AttachStderr: false,
+  Env: env,
+  Tty: false,
+  OpenStdin: false,
+  StdinOnce: false,
+  HostConfig: {
+    Binds: [`${config.docker.dataVolume}:/device`],
+    RestartPolicy: { Name: 'unless-stopped' }
+  }
+})
 
 export const dockerSocketPathOption = (description = 'Docker socket path'): Option =>
   new Option('--docker-socket-path', description)
