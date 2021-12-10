@@ -4,13 +4,13 @@
 
 import * as data from './data'
 import * as node from './node'
-import { ask } from '../input'
 import { checkVersionHandler } from '../update/cli'
 import config from '../config'
 import { getPassphraseOption } from '../wallet/cli'
 import { Command, Option } from 'commander'
 import { CommandContext, Context, Network } from '..'
 import Docker, { DockerOptions } from 'dockerode'
+import { ask, askLetter } from '../input'
 import { askToSignTx, handleCreateTxResult } from '../transaction'
 import { canAssign, findOne, precedence as nodeTypePrecedence } from '../stake'
 import { errorHandler, getDebugOption, getVerboseOption } from '../edge/cli'
@@ -122,14 +122,7 @@ const addAction = ({ index, logger, network, wallet, xe, ...ctx }: CommandContex
       `allowing this device to operate a ${nodeName} node.`
     ].join(''))
     console.log()
-    let confirm = ''
-    const ynRegexp = /^[yn]$/
-    while (confirm.length === 0) {
-      const input = await ask('Add this device? [yn] ')
-      if (ynRegexp.test(input)) confirm = input
-      else console.log('Please enter y or n.')
-    }
-    if (confirm === 'n') return
+    if (await askLetter('Add this device?', 'yn') === 'n') return
     console.log()
   }
 
@@ -267,14 +260,7 @@ const removeAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (
     if (stake === undefined) console.log('This device is not assigned to any stake.')
     else console.log(`This will remove this device's assignment to stake ${printID(stake.id)} (${nodeName}).`)
     console.log()
-    let confirm = ''
-    const ynRegexp = /^[yn]$/
-    while (confirm.length === 0) {
-      const input = await ask('Remove this device? [yn] ')
-      if (ynRegexp.test(input)) confirm = input
-      else console.log('Please enter y or n.')
-    }
-    if (confirm === 'n') return
+    if (await askLetter('Remove this device?', 'yn') === 'n') return
     console.log()
   }
 

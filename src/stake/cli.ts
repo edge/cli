@@ -3,7 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import { Command } from 'commander'
-import { ask } from '../input'
+import { askLetter } from '../input'
 import { checkVersionHandler } from '../update/cli'
 import { formatXE } from '../transaction/xe'
 import { tx as xeTx } from '@edge/xe-utils'
@@ -78,14 +78,7 @@ const createAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (
       `You will have ${formatXE(resultBalance)} remaining.`
     )
     console.log()
-    let confirm = ''
-    const ynRegexp = /^[yn]$/
-    while (confirm.length === 0) {
-      const input = await ask('Proceed with staking? [yn] ')
-      if (ynRegexp.test(input)) confirm = input
-      else console.log('Please enter y or n.')
-    }
-    if (confirm === 'n') return
+    if (await askLetter('Proceed with staking?', 'yn') === 'n') return
     console.log()
   }
 
@@ -240,14 +233,7 @@ const releaseAction = ({ index, logger, wallet, xe, ...ctx }: CommandContext) =>
     }
     else console.log(`${formatXE(stake.amount)} will be returned to your available balance.`)
     console.log()
-    let confirm = ''
-    const ynRegexp = /^[yn]$/
-    while (confirm.length === 0) {
-      const input = await ask('Proceed with release? [yn] ')
-      if (ynRegexp.test(input)) confirm = input
-      else console.log('Please enter y or n.')
-    }
-    if (confirm === 'n') return
+    if (await askLetter('Proceed with release?', 'yn') === 'n') return
     console.log()
   }
 
@@ -316,14 +302,7 @@ const unlockAction = ({ index, logger, wallet, xe, ...ctx }: CommandContext) => 
       `you will be able to release the stake and return ${formatXE(stake.amount)} to your available balance.`
     ].join(''))
     console.log()
-    let confirm = ''
-    const ynRegexp = /^[yn]$/
-    while (confirm.length === 0) {
-      const input = await ask('Proceed with unlock? [yn] ')
-      if (ynRegexp.test(input)) confirm = input
-      else console.log('Please enter y or n.')
-    }
-    if (confirm === 'n') return
+    if (await askLetter('Proceed with unlock?', 'yn') === 'n') return
     console.log()
   }
 

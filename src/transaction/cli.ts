@@ -3,7 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import { Command } from 'commander'
-import { ask } from '../input'
+import { askLetter } from '../input'
 import { checkVersionHandler } from '../update/cli'
 import { errorHandler } from '../edge/cli'
 import { tx as indexTx } from '@edge/index-utils'
@@ -147,14 +147,7 @@ const sendAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (am
       `You will have ${formatXE(resultBalance)} remaining.`
     )
     console.log()
-    let confirm = ''
-    const ynRegexp = /^[yn]$/
-    while (confirm.length === 0) {
-      const input = await ask('Proceed with transaction? [yn] ')
-      if (ynRegexp.test(input)) confirm = input
-      else console.log('Please enter y or n.')
-    }
-    if (confirm === 'n') return
+    if (await askLetter('Proceed with transaction?', 'yn') === 'n') return
     console.log()
   }
 

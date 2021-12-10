@@ -8,7 +8,7 @@ import { formatXE } from '../transaction/xe'
 import { wallet as xeWallet } from '@edge/xe-utils'
 import { Command, Option } from 'commander'
 import { CommandContext, Context, Network } from '..'
-import { ask, askSecure } from '../input'
+import { ask, askLetter, askSecure } from '../input'
 import { readFile, writeFile } from 'fs/promises'
 
 export type PassphraseOption = {
@@ -49,14 +49,7 @@ const createAction = ({ logger, wallet, ...ctx }: CommandContext) => async () =>
   const storage = wallet()
 
   if (await storage.check() && !opts.overwrite) {
-    let confirm = ''
-    const ynRegexp = /^[yn]$/
-    while (confirm.length === 0) {
-      const input = await ask('A wallet already exists. Overwrite? [yn] ')
-      if (ynRegexp.test(input)) confirm = input
-      else console.log('Please enter y or n.')
-    }
-    if (confirm === 'n') return
+    if (await askLetter('A wallet already exists. Overwrite?', 'yn') === 'n') return
     console.log()
   }
 
@@ -77,16 +70,9 @@ const createAction = ({ logger, wallet, ...ctx }: CommandContext) => async () =>
   console.log(`Wallet ${userWallet.address} created.`)
   console.log()
 
-  let nextStep = opts.privateKeyFile ? 'e' : ''
-  if (nextStep.length === 0) {
-    const ynRegexp = /^[ven]$/
-    while (nextStep.length === 0) {
-      const input = await ask('Would you like to (v)iew or (e)xport your private key? [ven] ')
-      if (ynRegexp.test(input)) nextStep = input
-      else console.log('Please enter v, e, or n.')
-    }
-    console.log()
-  }
+  const nextStep = opts.privateKeyFile
+    ? 'e'
+    : await askLetter('Would you like to (v)iew or (e)xport your private key?', 'ven')
 
   if (nextStep === 'v') {
     console.log(`Private key: ${userWallet.privateKey}`)
@@ -176,14 +162,7 @@ const forgetAction = ({ logger, wallet, ...ctx }: CommandContext) => async () =>
 
   if (!opts.yes) {
     console.log()
-    let confirm = ''
-    const ynRegexp = /^[yn]$/
-    while (confirm.length === 0) {
-      const input = await ask('Are you sure you want to forget this wallet? [yn] ')
-      if (ynRegexp.test(input)) confirm = input
-      else console.log('Please enter y or n.')
-    }
-    if (confirm === 'n') return
+    if (await askLetter('Are you sure you want to forget this wallet?', 'yn') === 'n') return
     console.log()
   }
 
@@ -212,14 +191,7 @@ const restoreAction = ({ logger, wallet, ...ctx }: CommandContext) => async () =
   const storage = wallet()
 
   if (await storage.check() && !opts.overwrite) {
-    let confirm = ''
-    const ynRegexp = /^[yn]$/
-    while (confirm.length === 0) {
-      const input = await ask('A wallet already exists. Overwrite? [yn] ')
-      if (ynRegexp.test(input)) confirm = input
-      else console.log('Please enter y or n.')
-    }
-    if (confirm === 'n') return
+    if (await askLetter('A wallet already exists. Overwrite?', 'yn') === 'n') return
     console.log()
   }
 

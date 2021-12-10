@@ -28,6 +28,17 @@ export const ask = (question: string): Promise<string> =>
     })
   })
 
+export const askLetter = async (question: string, allowChars: string): Promise<string> => {
+  if (!process.stdout.isTTY) throw inputError('tty required')
+  const allow = allowChars.split('')
+  let answer = await ask(`${question} [${allowChars}] `)
+  while (!allow.includes(answer)) {
+    console.log(`Please enter ${allow.slice(0, allow.length-1).join(', ')} or ${allow[allow.length-1]}.`)
+    answer = await ask(`${question} [${allowChars}] `)
+  }
+  return answer
+}
+
 export const askSecure = (question: string): Promise<string> =>
   new Promise((resolve, reject) => {
     if (!process.stdout.isTTY) return reject(inputError('tty required'))
