@@ -438,7 +438,11 @@ const createContainerOptions = (image: string, env: string[] | undefined): Conta
   StdinOnce: false,
   HostConfig: {
     Binds: [`${config.docker.dataVolume}:/data`],
-    RestartPolicy: { Name: 'unless-stopped' }
+    RestartPolicy: { Name: 'unless-stopped' },
+    PortBindings: {
+      '80/tcp': [{ HostPort: '80' }],
+      '443/tcp': [{ HostPort: '443' }]
+    }
   }
 })
 
