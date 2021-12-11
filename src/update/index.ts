@@ -27,8 +27,8 @@ const calcDigest = async (file: string): Promise<string> => {
 
 const downloadURL = async (url: string, file: string) => {
   const fh = await fs.open(file, 'w')
-  const request = superagent.get(url)
-  await fs.writeFile(fh, await request)
+  const data = await superagent.get(url)
+  await fs.writeFile(fh, data)
   await fh.close()
 }
 
