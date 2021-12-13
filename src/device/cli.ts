@@ -321,14 +321,17 @@ const startAction = ({ device, logger, ...ctx }: CommandContext) => async () => 
 
   console.log(`Checking for/downloading ${node.name} update...`)
   const authconfig = getRegistryAuthOptions(ctx.cmd)
-  if (authconfig !== undefined) await docker.pull(node.image, { authconfig })
-  else await docker.pull(node.image)
+  const { tag } = getImageTagOption(ctx.cmd)
+  const imageWithTag = `${node.image}:${tag}`
+  if (authconfig !== undefined) await docker.pull(imageWithTag, { authconfig })
+  else await docker.pull(imageWithTag)
+  log.debug('pulled latest image', { image: imageWithTag })
   log.debug('pulled latest image', { image: node.image })
 
-  const latestImage = await waitForImage(docker, node.image)
+  const latestImage = await waitForImage(docker, imageWithTag)
   log.debug('latest image', { latestImage })
 
-  const containerOptions = createContainerOptions(node, env)
+  const containerOptions = createContainerOptions(node, tag, env)
   log.debug('creating container', { containerOptions })
   const container = await docker.createContainer(containerOptions)
   log.debug('starting container')
@@ -392,10 +395,12 @@ const updateAction = ({ device, logger, ...ctx }: CommandContext) => async () =>
 
   console.log(`Checking for/downloading ${node.name} update...`)
   const authconfig = getRegistryAuthOptions(ctx.cmd)
-  if (authconfig !== undefined) await docker.pull(node.image, { authconfig })
-  else await docker.pull(node.image)
-  log.debug('pulled latest image', { image: node.image })
-  const latestImage = await waitForImage(docker, node.image)
+  const { tag } = getImageTagOption(ctx.cmd)
+  const imageWithTag = `${node.image}:${tag}`
+  if (authconfig !== undefined) await docker.pull(imageWithTag, { authconfig })
+  else await docker.pull(imageWithTag)
+  log.debug('pulled latest image', { image: imageWithTag })
+  const latestImage = await waitForImage(docker, imageWithTag)
   log.debug('latest image', { latestImage })
 
   console.log()
@@ -412,7 +417,7 @@ const updateAction = ({ device, logger, ...ctx }: CommandContext) => async () =>
   console.log(`Restarting ${node.name}...`)
   await container.stop()
 
-  const containerOptions = createContainerOptions(node, containerInspect?.Config.Env)
+  const containerOptions = createContainerOptions(node, tag, containerInspect?.Config.Env)
   log.debug('creating container', { containerOptions })
   container = await docker.createContainer(containerOptions)
   log.debug('starting container')
@@ -432,9 +437,9 @@ type nodeInfo = {
   stake: xeStake.Stake
 }
 
-const createContainerOptions = (node: nodeInfo, env: string[] | undefined): ContainerCreateOptions => {
+const createContainerOptions = (node: nodeInfo, tag: string, env: string[] | undefined): ContainerCreateOptions => {
   const opts: ContainerCreateOptions = {
-    Image: node.image,
+    Image: `${node.image}:${tag}`,
     name: node.containerName,
     AttachStdin: false,
     AttachStdout: false,
@@ -475,6 +480,13 @@ export const getDockerOptions = (cmd: Command): DockerOptions => {
   }
 }
 
+const getImageTagOption = (cmd: Command) => {
+  const { target } = cmd.opts<{ target?: string }>()
+  return {
+    tag: target || config.docker.edgeRegistry.defaultImageTag
+  }
+}
+
 const getNodeEnvOption = (cmd: Command): { env: string[] } => {
   const { env } = cmd.opts<{ env?: string[] }>()
   return {
@@ -487,11 +499,11 @@ const getRegistryAuthOptions = (cmd: Command): AuthConfig|undefined => {
     registryUsername?: string
     registryPassword?: string
   }>()
-  if (opts.registryUsername || config.docker.edgeRegistryAuth.username) {
+  if (opts.registryUsername || config.docker.edgeRegistry.auth.username) {
     return {
-      serveraddress: config.docker.edgeRegistry,
-      username: opts.registryUsername || config.docker.edgeRegistryAuth.username,
-      password: opts.registryPassword || config.docker.edgeRegistryAuth.password
+      serveraddress: config.docker.edgeRegistry.address,
+      username: opts.registryUsername || config.docker.edgeRegistry.auth.username,
+      password: opts.registryPassword || config.docker.edgeRegistry.auth.password
     }
   }
   return undefined
@@ -501,6 +513,9 @@ const getStakeOption = (cmd: Command) => {
   const { stake } = cmd.opts<{ stake?: string }>()
   return { stake }
 }
+
+const imageTagOption = (description = 'node target version') =>
+  new Option('--target <version>', description)
 
 const nodeEnvOption = (description = 'set environment variable(s) for node') =>
   new Option('-e, --env <var...>', description)
@@ -570,6 +585,7 @@ export const withContext = (ctx: Context): [Command, Option[]] => {
   const start = new Command('start')
     .description('start node')
     .addHelpText('after', startHelp(ctx.network))
+    .addOption(imageTagOption())
     .addOption(nodeEnvOption())
     .addOption(registryUsernameOption())
     .addOption(registryPasswordOption())
@@ -591,6 +607,7 @@ export const withContext = (ctx: Context): [Command, Option[]] => {
   const update = new Command('update')
     .description('update node')
     .addHelpText('after', updateHelp)
+    .addOption(imageTagOption())
     .addOption(registryUsernameOption())
     .addOption(registryPasswordOption())
   update.action(errorHandler(ctx, checkVersionHandler(ctx, updateAction({ ...ctx, cmd: update }))))

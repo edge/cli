@@ -9,12 +9,6 @@ import { arch } from 'os'
 import { getDockerOptions } from './cli'
 import { toUpperCaseFirst } from '../helpers'
 
-const currentTag = async (): Promise<string> => {
-  const tag = process.env.SPECIFIC_TAG
-  // TODO: get latest version from Stargate
-  return tag === undefined ? 'latest' : tag
-}
-
 const secure = (device: data.Device): data.Device => ({
   network: device.network,
   address: device.address,
@@ -74,8 +68,7 @@ const device = ({ logger, wallet, xe, network, parent }: Context, name = 'device
     const stake = Object.values(await xe().stakes(address)).find(s => s.device === deviceWallet.address)
     if (stake === undefined) throw new Error('device is not assigned to a stake')
 
-    const tag = await currentTag()
-    const image = network.registry.imageName(stake.type, arch()) + ':' + tag
+    const image = network.registry.imageName(stake.type, arch())
     const name = toUpperCaseFirst(stake.type)
     const containerName = `edge_${stake.type}_${address.slice(3, 9)}`
 

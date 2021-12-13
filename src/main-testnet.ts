@@ -28,7 +28,7 @@ main(process.argv, {
     baseURL: 'https://index.test.network'
   },
   registry: {
-    imageName: (app, arch) => `${config.docker.edgeRegistry}/${app}/testnet-${arch}`
+    imageName: (app, arch) => `${config.docker.edgeRegistry.address}/${app}/testnet-${arch}`
   },
   wallet: {
     defaultFile: `${homedir}${sep}.edge${sep}wallet${sep}testnet.json`

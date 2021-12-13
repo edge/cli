@@ -8,10 +8,13 @@ export default {
   },
   docker: {
     dataVolume: process.env.DOCKER_DATA_VOLUME || 'edge-device-data',
-    edgeRegistry: 'registry.edge.network',
-    edgeRegistryAuth: {
-      username: process.env.EDGE_REGISTRY_USERNAME || '',
-      password: process.env.EDGE_REGISTRY_PASSWORD || ''
+    edgeRegistry: {
+      address: 'registry.edge.network',
+      defaultImageTag: 'latest',
+      auth: {
+        username: process.env.EDGE_REGISTRY_USERNAME || '',
+        password: process.env.EDGE_REGISTRY_PASSWORD || ''
+      }
     },
     socketPath: process.env.DOCKER_SOCKET_PATH || '/var/run/docker.sock'
   },

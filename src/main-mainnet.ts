@@ -26,7 +26,7 @@ main(process.argv, {
     baseURL: 'https://index.xe.network'
   },
   registry: {
-    imageName: (app, arch) => `${config.docker.edgeRegistry}/${app}/mainnet-${arch}`
+    imageName: (app, arch) => `${config.docker.edgeRegistry.address}/${app}/mainnet-${arch}`
   },
   wallet: {
     defaultFile: `${homedir}${sep}.edge${sep}wallet${sep}mainnet.json`
