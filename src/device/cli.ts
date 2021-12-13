@@ -15,7 +15,7 @@ import { askToSignTx, handleCreateTxResult } from '../transaction'
 import { canAssign, findOne, precedence as nodeTypePrecedence } from '../stake'
 import { errorHandler, getDebugOption, getVerboseOption } from '../edge/cli'
 import { printData, toUpperCaseFirst } from '../helpers'
-import { tx as xeTx, wallet as xeWallet } from '@edge/xe-utils'
+import { stake as xeStake, tx as xeTx, wallet as xeWallet } from '@edge/xe-utils'
 
 const addAction = ({ device, index, network, wallet, xe, ...ctx }: CommandContext) => async () => {
   const opts = {
@@ -324,7 +324,7 @@ const startAction = ({ device, logger, ...ctx }: CommandContext) => async () => 
   const latestImage = await waitForImage(docker, node.image)
   log.debug('latest image', { latestImage })
 
-  const containerOptions = createContainerOptions(node.image, node.containerName, env)
+  const containerOptions = createContainerOptions(node, env)
   log.debug('creating container', { containerOptions })
   const container = await docker.createContainer(containerOptions)
   log.debug('starting container')
@@ -416,7 +416,7 @@ const updateAction = ({ device, logger }: CommandContext) => async () => {
   console.log(`Restarting ${node.name}...`)
   await container.stop()
 
-  const containerOptions = createContainerOptions(node.image, node.containerName, containerInspect?.Config.Env)
+  const containerOptions = createContainerOptions(node, containerInspect?.Config.Env)
   log.debug('creating container', { containerOptions })
   container = await docker.createContainer(containerOptions)
   log.debug('starting container')
@@ -430,29 +430,42 @@ const updateAction = ({ device, logger }: CommandContext) => async () => {
 
 const updateHelp = '\nUpdate the node, if an update is available.'
 
-const createContainerOptions = (image: string, name: string, env: string[] | undefined): ContainerCreateOptions => ({
-  Image: image,
-  name,
-  AttachStdin: false,
-  AttachStdout: false,
-  AttachStderr: false,
-  Env: env,
-  Tty: false,
-  OpenStdin: false,
-  StdinOnce: false,
-  HostConfig: {
-    Binds: [`${config.docker.dataVolume}:/data`],
-    RestartPolicy: { Name: 'unless-stopped' },
-    PortBindings: {
+type nodeInfo = {
+  containerName: string
+  image: string
+  stake: xeStake.Stake
+}
+
+const createContainerOptions = (node: nodeInfo, env: string[] | undefined): ContainerCreateOptions => {
+  const opts: ContainerCreateOptions = {
+    Image: node.image,
+    name: node.containerName,
+    AttachStdin: false,
+    AttachStdout: false,
+    AttachStderr: false,
+    Env: env,
+    Tty: false,
+    OpenStdin: false,
+    StdinOnce: false,
+    HostConfig: {
+      Binds: [`${config.docker.dataVolume}:/data`],
+      RestartPolicy: { Name: 'unless-stopped' }
+    }
+  }
+  if (node.stake.type === 'gateway' || node.stake.type === 'stargate') {
+    const bindings = {
       '80/tcp': [{ HostPort: '80' }],
       '443/tcp': [{ HostPort: '443' }]
     }
-  },
-  ExposedPorts: {
-    '80/tcp': {},
-    '443/tcp': {}
+    if (opts.HostConfig !== undefined) opts.HostConfig.PortBindings
+    else opts.HostConfig = { PortBindings: bindings }
+    opts.ExposedPorts = {
+      '80/tcp': {},
+      '443/tcp': {}
+    }
   }
-})
+  return opts
+}
 
 export const dockerSocketPathOption = (description = 'Docker socket path'): Option =>
   new Option('--docker-socket-path', description)
