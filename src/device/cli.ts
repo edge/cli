@@ -443,6 +443,10 @@ const createContainerOptions = (image: string, env: string[] | undefined): Conta
       '80/tcp': [{ HostPort: '80' }],
       '443/tcp': [{ HostPort: '443' }]
     }
+  },
+  ExposedPorts: {
+    '80/tcp': {},
+    '443/tcp': {}
   }
 })
 
