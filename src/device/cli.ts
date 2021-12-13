@@ -9,7 +9,7 @@ import config from '../config'
 import { getPassphraseOption } from '../wallet/cli'
 import { Command, Option } from 'commander'
 import { CommandContext, Context, Network } from '..'
-import { ContainerCreateOptions, DockerOptions } from 'dockerode'
+import Dockerode, { ContainerCreateOptions, DockerOptions } from 'dockerode'
 import { ask, askLetter, getYesOption, yesOption } from '../input'
 import { askToSignTx, handleCreateTxResult } from '../transaction'
 import { canAssign, findOne, precedence as nodeTypePrecedence } from '../stake'
@@ -319,6 +319,11 @@ const startAction = ({ device, logger, ...ctx }: CommandContext) => async () => 
     return
   }
 
+  await docker.pull(node.image)
+  log.debug('pulled latest image', { image: node.image })
+  const latestImage = await waitForImage(docker, node.image)
+  log.debug('latest image', { latestImage })
+
   const containerOptions = createContainerOptions(node.image, env)
   log.debug('creating container', { containerOptions })
   const container = await docker.createContainer(containerOptions)
@@ -381,22 +386,21 @@ export const getDockerOptions = (cmd: Command): DockerOptions => {
 const updateAction = ({ device, logger }: CommandContext) => async () => {
   const log = logger()
 
-  const [userDevice1, userDevice2] = [device(), device()]
-  const docker1 = userDevice1.docker()
-  let node = await userDevice1.node()
+  const userDevice = device()
+  const docker = userDevice.docker()
+  const node = await userDevice.node()
 
-  const currentImage = await docker1.getImage(node.image).inspect()
+  const currentImage = await docker.getImage(node.image).inspect()
   log.debug('Current image', { currentImage })
   let info = await node.container()
-  let container = info && docker1.getContainer(info.Id)
+  let container = info && docker.getContainer(info.Id)
   const containerInspect = await container?.inspect()
 
   console.log(`Checking for/downloading ${node.name} update...`)
-  await docker1.pull(node.image)
-
-  const docker2 = userDevice2.docker()
-  const latestImage = await docker2.getImage(node.image).inspect()
-  log.debug('Latest image', { latestImage })
+  await docker.pull(node.image)
+  log.debug('pulled latest image', { image: node.image })
+  const latestImage = await waitForImage(docker, node.image)
+  log.debug('latest image', { latestImage })
 
   console.log()
   if (latestImage.Id === currentImage.Id) {
@@ -414,11 +418,10 @@ const updateAction = ({ device, logger }: CommandContext) => async () => {
 
   const containerOptions = createContainerOptions(node.image, containerInspect?.Config.Env)
   log.debug('creating container', { containerOptions })
-  container = await docker2.createContainer(containerOptions)
+  container = await docker.createContainer(containerOptions)
   log.debug('starting container')
   await container.start()
 
-  node = await userDevice2.node()
   info = await node.container()
   if (info === undefined) throw new Error(`${node.name} failed to restart`)
   console.log()
@@ -469,6 +472,28 @@ const nodeEnvOption = (description = 'set environment variable(s) for node') =>
   new Option('-e, --env <var...>', description)
 
 const stakeOption = (description = 'stake ID') => new Option('-s, --stake <id>', description)
+
+/**
+ * After running docker pull, the image data is not necessarily immediately available to subsequent calls.
+ * This helper function checks for the image periodically until either a valid response is received or the check limit
+ * is reached.
+ */
+const waitForImage = async (docker: Dockerode, image: string, period = 500, limit = 20) =>
+  new Promise<Dockerode.ImageInspectInfo>((res, rej) => {
+    let n = 0
+    const interval = setInterval(async () => {
+      try {
+        n += 1
+        const info = await docker.getImage(image).inspect()
+        clearInterval(interval)
+        return res(info)
+      }
+      catch (err) {
+        if ((err as { statusCode: number }).statusCode !== 404) return rej(err)
+        if (n >= limit) return rej(new Error(`failed to find image after ${(limit * period)/1000}s`))
+      }
+    }, period)
+  })
 
 export const withContext = (ctx: Context): [Command, Option[]] => {
   const deviceCLI = new Command('device')
