@@ -4,6 +4,7 @@
 
 import { Context } from '..'
 import { createHash } from 'crypto'
+import { createWriteStream } from 'fs'
 import fs from 'fs/promises'
 import { getDebugOption } from '../edge/cli'
 import { normalizedPlatform } from '../helpers'
@@ -25,12 +26,19 @@ const calcDigest = async (file: string): Promise<string> => {
   return createHash('sha256').update(data).digest('hex')
 }
 
-const downloadURL = async (url: string, file: string) => {
-  const fh = await fs.open(file, 'w')
-  const data = await superagent.get(url)
-  await fs.writeFile(fh, data)
-  await fh.close()
-}
+const downloadURL = async (url: string, file: string) => new Promise<void>((resolve, reject) => {
+  const stream = createWriteStream(file)
+  const request = superagent.get(url)
+  request.on('end', () => {
+    stream.close()
+    resolve()
+  })
+  request.on('error', err => {
+    stream.close()
+    reject(err)
+  })
+  request.pipe(stream)
+})
 
 export const cachedLatestVersion = async ({ network, ...ctx }: Context): Promise<SemVer> => {
   const { debug } = getDebugOption(ctx.parent)
@@ -86,8 +94,8 @@ export const download = async ({ network, ...ctx }: Context): Promise<DownloadIn
     await downloadURL(buildURL, file)
     log.debug('downloaded', { file })
 
-    log.debug('verifying checksum')
     const filesum = await calcDigest(file)
+    log.debug('verifying checksum', { checksum, filesum })
     if (checksum === filesum) return { checksum, file }
     throw new Error(`checksum mismatch (local = ${filesum}, remote = ${checksum})`)
   }
