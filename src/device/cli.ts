@@ -324,7 +324,7 @@ const startAction = ({ device, logger, ...ctx }: CommandContext) => async () => 
   const latestImage = await waitForImage(docker, node.image)
   log.debug('latest image', { latestImage })
 
-  const containerOptions = createContainerOptions(node.image, env)
+  const containerOptions = createContainerOptions(node.image, node.containerName, env)
   log.debug('creating container', { containerOptions })
   const container = await docker.createContainer(containerOptions)
   log.debug('starting container')
@@ -416,7 +416,7 @@ const updateAction = ({ device, logger }: CommandContext) => async () => {
   console.log(`Restarting ${node.name}...`)
   await container.stop()
 
-  const containerOptions = createContainerOptions(node.image, containerInspect?.Config.Env)
+  const containerOptions = createContainerOptions(node.image, node.containerName, containerInspect?.Config.Env)
   log.debug('creating container', { containerOptions })
   container = await docker.createContainer(containerOptions)
   log.debug('starting container')
@@ -430,8 +430,9 @@ const updateAction = ({ device, logger }: CommandContext) => async () => {
 
 const updateHelp = '\nUpdate the node, if an update is available.'
 
-const createContainerOptions = (image: string, env: string[] | undefined): ContainerCreateOptions => ({
+const createContainerOptions = (image: string, name: string, env: string[] | undefined): ContainerCreateOptions => ({
   Image: image,
+  name,
   AttachStdin: false,
   AttachStdout: false,
   AttachStderr: false,
