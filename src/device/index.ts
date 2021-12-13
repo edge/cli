@@ -26,13 +26,13 @@ const secure = (device: data.Device): data.Device => ({
 const device = ({ logger, wallet, xe, network, parent }: Context, name = 'device') => {
   const log = logger(name)
 
-  let dockerInstance: Docker
+  let dockerInstance: Docker | undefined
 
   const docker = () => {
     if (dockerInstance === undefined) {
       const options = getDockerOptions(parent)
-      log.debug('connecting to Docker', { options })
       dockerInstance = new Docker(options)
+      log.debug('connected to Docker', { options })
     }
     return dockerInstance
   }
