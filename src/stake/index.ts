@@ -11,7 +11,6 @@ export const ambiguousIDError = namedError('AmbiguousIDError')
 export const canAssign = (stake: stake.AddressedStake): boolean => {
   if (stake.released) return false
   if (stake.unlockRequested) return false
-  if (stake.device) return false
   return true
 }
 

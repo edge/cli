@@ -26,6 +26,7 @@ const addAction = ({ device, index, network, wallet, xe, ...ctx }: CommandContex
   const { yes } = getYesOption(ctx.cmd)
 
   const { verbose } = getVerboseOption(ctx.parent)
+  const printAddr = (id: string) => verbose ? id : id.slice(0, 9) + '...'
   const printID = (id: string) => verbose ? id : id.slice(0, config.id.shortLength)
 
   const userDevice = device()
@@ -79,9 +80,10 @@ const addAction = ({ device, index, network, wallet, xe, ...ctx }: CommandContex
         const posDiff = nodeTypePrecedence[a.type] - nodeTypePrecedence[b.type]
         return posDiff !== 0 ? posDiff : a.created - b.created
       })
-    numberedStakes.forEach((stake, n) => console.log(
-      `${n+1}. ${printID(stake.id)} (${toUpperCaseFirst(stake.type)})`
-    ))
+    numberedStakes.forEach((stake, n) => console.log([
+      `${n+1}. ${printID(stake.id)} (${toUpperCaseFirst(stake.type)})`,
+      stake.device ? ` (assigned to ${printAddr(stake.device)})` : ''
+    ].join('')))
     console.log()
     let sel = 0
     while (sel === 0) {
@@ -97,7 +99,7 @@ const addAction = ({ device, index, network, wallet, xe, ...ctx }: CommandContex
   if (!canAssign(stake)) {
     if (stake.released) throw new Error('this stake has been released')
     if (stake.unlockRequested) throw new Error('this stake is unlocked/unlocking and cannot be assigned')
-    if (stake.device) throw new Error('this stake is already assigned')
+    throw new Error('this stake cannot be assigned for an unknown reason')
   }
 
   // confirm user intent
@@ -110,6 +112,13 @@ const addAction = ({ device, index, network, wallet, xe, ...ctx }: CommandContex
       `allowing this device to operate a ${nodeName} node.`
     ].join(''))
     console.log()
+    if (stake.device) {
+      console.log([
+        `This stake is already assigned to device ${printAddr(stake.device)} which will be removed from the network `,
+        'if you assign this device in its place.'
+      ].join(''))
+      console.log()
+    }
     if (await askLetter('Add this device?', 'yn') === 'n') return
     console.log()
   }
