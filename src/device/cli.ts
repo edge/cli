@@ -454,12 +454,11 @@ const createContainerOptions = (node: nodeInfo, tag: string, env: string[] | und
     }
   }
   if (node.stake.type === 'gateway' || node.stake.type === 'stargate') {
-    const bindings = {
+    if (!opts || !opts.HostConfig) opts.HostConfig = {}
+    opts.HostConfig.PortBindings = {
       '80/tcp': [{ HostPort: '80' }],
       '443/tcp': [{ HostPort: '443' }]
     }
-    if (opts.HostConfig !== undefined) opts.HostConfig.PortBindings
-    else opts.HostConfig = { PortBindings: bindings }
     opts.ExposedPorts = {
       '80/tcp': {},
       '443/tcp': {}
