@@ -3,6 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as data from './data'
+import * as stargate from '../stargate'
 import { arch } from 'os'
 import { checkVersionHandler } from '../update/cli'
 import config from '../config'
@@ -319,21 +320,19 @@ const startAction = ({ device, logger, ...ctx }: CommandContext) => async () => 
     return
   }
 
-  console.log(`Checking for latest ${node.name} version...`)
+  console.log(`Checking ${node.name} version...`)
   const authconfig = getRegistryAuthOptions(ctx.cmd)
-  const { tag } = getImageTagOption(ctx.cmd)
-  const imageWithTag = `${node.image}:${tag}`
+  const { target } = await getTargetOption(ctx, ctx.cmd, node.stake.type)
+  log.debug('got target version', { target })
+  const targetImage = `${node.image}:${target}`
 
-  console.log(`Downloading ${node.name} v${tag}...`)
-  if (authconfig !== undefined) await docker.pull(imageWithTag, { authconfig })
-  else await docker.pull(imageWithTag)
-  log.debug('pulled latest image', { image: imageWithTag })
-  log.debug('pulled latest image', { image: node.image })
-
-  const latestImage = await waitForImage(docker, imageWithTag)
+  console.log(`Updating ${node.name} v${target}...`)
+  if (authconfig !== undefined) await docker.pull(targetImage, { authconfig })
+  else await docker.pull(targetImage)
+  const latestImage = await waitForImage(docker, targetImage)
   log.debug('latest image', { latestImage })
 
-  const containerOptions = createContainerOptions(node, tag, env)
+  const containerOptions = createContainerOptions(node, target, env)
   log.debug('creating container', { containerOptions })
   const container = await docker.createContainer(containerOptions)
   log.debug('starting container')
@@ -389,37 +388,57 @@ const updateAction = ({ device, logger, ...ctx }: CommandContext) => async () =>
   const userDevice = device()
   const docker = userDevice.docker()
   const node = await userDevice.node()
-  const currentImage = await docker.getImage(node.image).inspect()
-  log.debug('Current image', { currentImage })
+
+  console.log(`Checking ${node.name} version...`)
+  const { target } = await getTargetOption(ctx, ctx.cmd, node.stake.type)
+  log.debug('got target version', { target })
+  const targetImage = `${node.image}:${target}`
+
   let info = await node.container()
   let container = info && docker.getContainer(info.Id)
   const containerInspect = await container?.inspect()
 
-  console.log(`Checking for/downloading ${node.name} update...`)
+  let currentImage: Dockerode.ImageInspectInfo | undefined = undefined
+  if (containerInspect !== undefined) {
+    // get running container image to compare
+    currentImage = await docker.getImage(containerInspect.Image).inspect()
+  }
+  else {
+    try {
+      // get existing image if pulled previously
+      currentImage = await docker.getImage(targetImage).inspect()
+    }
+    catch (err) {
+      log.debug('failed to locate current image', { err })
+    }
+  }
+  if (currentImage !== undefined) log.debug('current image', { currentImage })
+
+  console.log(`Updating ${node.name} v${target}...`)
   const authconfig = getRegistryAuthOptions(ctx.cmd)
-  const { tag } = getImageTagOption(ctx.cmd)
-  const imageWithTag = `${node.image}:${tag}`
-  if (authconfig !== undefined) await docker.pull(imageWithTag, { authconfig })
-  else await docker.pull(imageWithTag)
-  log.debug('pulled latest image', { image: imageWithTag })
-  const latestImage = await waitForImage(docker, imageWithTag)
+  if (authconfig !== undefined) await docker.pull(targetImage, { authconfig })
+  else await docker.pull(targetImage)
+  const latestImage = await waitForImage(docker, targetImage)
   log.debug('latest image', { latestImage })
 
   console.log()
-  if (latestImage.Id === currentImage.Id) {
-    console.log(`${node.name} is up to date.`)
+  if (latestImage.Id === currentImage?.Id) {
+    console.log(`${node.name} is up to date`)
     return
   }
-  console.log(`${node.name} has been updated.`)
+  console.log(`${node.name} has been updated`)
 
   if (container === undefined) return
 
   // container is already running, need to stop-start
   console.log()
   console.log(`Restarting ${node.name}...`)
+  log.debug('stopping container', { id: containerInspect?.Id })
   await container.stop()
+  log.debug('removing container', { id: containerInspect?.Id })
+  await container.remove()
 
-  const containerOptions = createContainerOptions(node, tag, containerInspect?.Config.Env)
+  const containerOptions = createContainerOptions(node, target, containerInspect?.Config.Env)
   log.debug('creating container', { containerOptions })
   container = await docker.createContainer(containerOptions)
   log.debug('starting container')
@@ -481,13 +500,6 @@ export const getDockerOptions = (cmd: Command): DockerOptions => {
   }
 }
 
-const getImageTagOption = (cmd: Command) => {
-  const { target } = cmd.opts<{ target?: string }>()
-  return {
-    tag: target || config.docker.edgeRegistry.defaultImageTag
-  }
-}
-
 const getNodeEnvOption = (cmd: Command): { env: string[] } => {
   const { env } = cmd.opts<{ env?: string[] }>()
   return {
@@ -515,8 +527,12 @@ const getStakeOption = (cmd: Command) => {
   return { stake }
 }
 
-const imageTagOption = (description = 'node target version') =>
-  new Option('--target <version>', description)
+const getTargetOption = async ({ network }: Pick<Context, 'network'>, cmd: Command, name: string) => {
+  const { target } = cmd.opts<{ target?: string }>()
+  return {
+    target: target || await stargate.getServiceVersion(network, name)
+  }
+}
 
 const nodeEnvOption = (description = 'set environment variable(s) for node') =>
   new Option('-e, --env <var...>', description)
@@ -528,6 +544,9 @@ const registryUsernameOption = (description = 'Edge Docker registry username') =
   new Option('--registry-username <username>', description)
 
 const stakeOption = (description = 'stake ID') => new Option('-s, --stake <id>', description)
+
+const targetOption = (description = 'node target version') =>
+  new Option('--target <version>', description)
 
 /**
  * After running docker pull, the image data is not necessarily immediately available to subsequent calls.
@@ -586,7 +605,7 @@ export const withContext = (ctx: Context): [Command, Option[]] => {
   const start = new Command('start')
     .description('start node')
     .addHelpText('after', startHelp(ctx.network))
-    .addOption(imageTagOption())
+    .addOption(targetOption())
     .addOption(nodeEnvOption())
     .addOption(registryUsernameOption())
     .addOption(registryPasswordOption())
@@ -608,7 +627,7 @@ export const withContext = (ctx: Context): [Command, Option[]] => {
   const update = new Command('update')
     .description('update node')
     .addHelpText('after', updateHelp)
-    .addOption(imageTagOption())
+    .addOption(targetOption())
     .addOption(registryUsernameOption())
     .addOption(registryPasswordOption())
   update.action(errorHandler(ctx, checkVersionHandler(ctx, updateAction({ ...ctx, cmd: update }))))

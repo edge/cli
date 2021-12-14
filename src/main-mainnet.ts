@@ -28,6 +28,9 @@ main(process.argv, {
   registry: {
     imageName: (app, arch) => `${config.docker.edgeRegistry.address}/${app}/mainnet-${arch}`
   },
+  stargate: {
+    serviceURL: app => `https://stargate.edge.network/services/${app}`
+  },
   wallet: {
     defaultFile: `${homedir}${sep}.edge${sep}wallet${sep}mainnet.json`
   }
