@@ -389,16 +389,34 @@ const updateAction = ({ device, logger, ...ctx }: CommandContext) => async () =>
   const userDevice = device()
   const docker = userDevice.docker()
   const node = await userDevice.node()
-  const currentImage = await docker.getImage(node.image).inspect()
-  log.debug('Current image', { currentImage })
+
+  const { tag } = getImageTagOption(ctx.cmd)
+  const imageWithTag = `${node.image}:${tag}`
+
   let info = await node.container()
   let container = info && docker.getContainer(info.Id)
   const containerInspect = await container?.inspect()
 
+  let currentImage: Dockerode.ImageInspectInfo | undefined = undefined
+  if (containerInspect !== undefined) {
+    // get running container image to compare
+    currentImage = await docker.getImage(containerInspect.Image).inspect()
+    log.debug('current image', { currentImage })
+  }
+  else {
+    try {
+      // get existing image if pulled previously
+      currentImage = await docker.getImage(imageWithTag).inspect()
+    }
+    catch (err) {
+      log.debug('failed to locate current image', { err })
+    }
+  }
+  if (currentImage !== undefined) log.debug('current image', { currentImage })
+
   console.log(`Checking for/downloading ${node.name} update...`)
   const authconfig = getRegistryAuthOptions(ctx.cmd)
-  const { tag } = getImageTagOption(ctx.cmd)
-  const imageWithTag = `${node.image}:${tag}`
+
   if (authconfig !== undefined) await docker.pull(imageWithTag, { authconfig })
   else await docker.pull(imageWithTag)
   log.debug('pulled latest image', { image: imageWithTag })
@@ -406,7 +424,7 @@ const updateAction = ({ device, logger, ...ctx }: CommandContext) => async () =>
   log.debug('latest image', { latestImage })
 
   console.log()
-  if (latestImage.Id === currentImage.Id) {
+  if (latestImage.Id === currentImage?.Id) {
     console.log(`${node.name} is up to date.`)
     return
   }
@@ -417,7 +435,10 @@ const updateAction = ({ device, logger, ...ctx }: CommandContext) => async () =>
   // container is already running, need to stop-start
   console.log()
   console.log(`Restarting ${node.name}...`)
+  log.debug('stopping container', { id: containerInspect?.Id })
   await container.stop()
+  log.debug('removing container', { id: containerInspect?.Id })
+  await container.remove()
 
   const containerOptions = createContainerOptions(node, tag, containerInspect?.Config.Env)
   log.debug('creating container', { containerOptions })
