@@ -45,6 +45,9 @@ export type Network = {
   registry: {
     imageName: (app: string, arch: string) => string
   }
+  stargate: {
+    serviceURL: (app: string) => string
+  }
   wallet: {
     defaultFile: string
   }
