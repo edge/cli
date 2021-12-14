@@ -319,10 +319,12 @@ const startAction = ({ device, logger, ...ctx }: CommandContext) => async () => 
     return
   }
 
-  console.log(`Checking for/downloading ${node.name} update...`)
+  console.log(`Checking for latest ${node.name} version...`)
   const authconfig = getRegistryAuthOptions(ctx.cmd)
   const { tag } = getImageTagOption(ctx.cmd)
   const imageWithTag = `${node.image}:${tag}`
+
+  console.log(`Downloading ${node.name} v${tag}...`)
   if (authconfig !== undefined) await docker.pull(imageWithTag, { authconfig })
   else await docker.pull(imageWithTag)
   log.debug('pulled latest image', { image: imageWithTag })
