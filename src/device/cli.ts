@@ -320,18 +320,15 @@ const startAction = ({ device, logger, ...ctx }: CommandContext) => async () => 
     return
   }
 
-  console.log(`Checking for latest ${node.name} version...`)
+  console.log(`Checking ${node.name} version...`)
   const authconfig = getRegistryAuthOptions(ctx.cmd)
   const { target } = await getTargetOption(ctx, ctx.cmd, node.stake.type)
   log.debug('got target version', { target })
   const targetImage = `${node.image}:${target}`
 
-  console.log(`Downloading ${node.name} v${target}...`)
+  console.log(`Updating ${node.name} v${target}...`)
   if (authconfig !== undefined) await docker.pull(targetImage, { authconfig })
   else await docker.pull(targetImage)
-  log.debug('pulled latest image', { image: targetImage })
-  log.debug('pulled latest image', { image: node.image })
-
   const latestImage = await waitForImage(docker, targetImage)
   log.debug('latest image', { latestImage })
 
@@ -392,6 +389,7 @@ const updateAction = ({ device, logger, ...ctx }: CommandContext) => async () =>
   const docker = userDevice.docker()
   const node = await userDevice.node()
 
+  console.log(`Checking ${node.name} version...`)
   const { target } = await getTargetOption(ctx, ctx.cmd, node.stake.type)
   log.debug('got target version', { target })
   const targetImage = `${node.image}:${target}`
@@ -404,7 +402,6 @@ const updateAction = ({ device, logger, ...ctx }: CommandContext) => async () =>
   if (containerInspect !== undefined) {
     // get running container image to compare
     currentImage = await docker.getImage(containerInspect.Image).inspect()
-    log.debug('current image', { currentImage })
   }
   else {
     try {
@@ -417,21 +414,19 @@ const updateAction = ({ device, logger, ...ctx }: CommandContext) => async () =>
   }
   if (currentImage !== undefined) log.debug('current image', { currentImage })
 
-  console.log(`Checking for/downloading ${node.name} update...`)
+  console.log(`Updating ${node.name} v${target}...`)
   const authconfig = getRegistryAuthOptions(ctx.cmd)
-
   if (authconfig !== undefined) await docker.pull(targetImage, { authconfig })
   else await docker.pull(targetImage)
-  log.debug('pulled latest image', { image: targetImage })
   const latestImage = await waitForImage(docker, targetImage)
   log.debug('latest image', { latestImage })
 
   console.log()
   if (latestImage.Id === currentImage?.Id) {
-    console.log(`${node.name} is up to date.`)
+    console.log(`${node.name} is up to date`)
     return
   }
-  console.log(`${node.name} has been updated.`)
+  console.log(`${node.name} has been updated`)
 
   if (container === undefined) return
 
