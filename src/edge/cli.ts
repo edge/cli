@@ -29,9 +29,11 @@ export const errorHandler =
         return await f(...args)
       }
       catch (err) {
-        const log = ctx.logger('critical')
-        const { debug } = getDebugOption(parent)
-        log.error(`${err}`, debug ? { err } : undefined)
+        if (!isCancelledInput(err)) {
+          const log = ctx.logger('critical')
+          const { debug } = getDebugOption(parent)
+          log.error(`${err}`, debug ? { err } : undefined)
+        }
         process.exitCode = 1
       }
       return undefined
@@ -50,4 +52,9 @@ export const getNoColorOption = (parent: Command): { noColor: boolean } => {
 export const getVerboseOption = (parent: Command): { verbose: boolean } => {
   const { verbose } = parent.opts<{ verbose: boolean }>()
   return { verbose }
+}
+
+const isCancelledInput = (err: unknown): boolean => {
+  if (!(err instanceof Error)) return false
+  return err.name === 'InputError' && err.message === 'cancelled'
 }
