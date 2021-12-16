@@ -4,6 +4,7 @@
 
 import * as data from './data'
 import * as stargate from '../stargate'
+import { Stream } from 'stream'
 import { arch } from 'os'
 import { checkVersionHandler } from '../update/cli'
 import config from '../config'
@@ -336,10 +337,8 @@ const startAction = ({ device, logger, ...ctx }: CommandContext) => async () => 
   const targetImage = `${node.image}:${target}`
 
   console.log(`Updating ${node.name} v${target}...`)
-  if (authconfig !== undefined) await docker.pull(targetImage, { authconfig })
-  else await docker.pull(targetImage)
-  const latestImage = await waitForImage(docker, targetImage)
-  log.debug('latest image', { latestImage })
+  if (authconfig !== undefined) await pullImage(docker, targetImage, authconfig)
+  else await pullImage(docker, targetImage)
 
   const containerOptions = createContainerOptions(node, target, env)
   log.debug('creating container', { containerOptions })
@@ -425,12 +424,10 @@ const updateAction = ({ device, logger, ...ctx }: CommandContext) => async () =>
 
   console.log(`Updating ${node.name} v${target}...`)
   const authconfig = getRegistryAuthOptions(ctx.cmd)
-  if (authconfig !== undefined) await docker.pull(targetImage, { authconfig })
-  else await docker.pull(targetImage)
-  const latestImage = await waitForImage(docker, targetImage)
-  log.debug('latest image', { latestImage })
+  if (authconfig !== undefined) await pullImage(docker, targetImage, authconfig)
+  else await pullImage(docker, targetImage)
 
-  console.log()
+  const latestImage = await docker.getImage(targetImage).inspect()
   if (latestImage.Id === currentImage?.Id) {
     console.log(`${node.name} is up to date`)
     return
@@ -467,7 +464,7 @@ type nodeInfo = {
 }
 
 const createContainerOptions = (node: nodeInfo, tag: string, env: string[] | undefined): ContainerCreateOptions => {
-  const containerName = `edge_${node.stake.type}_${Math.random().toString(16).substring(2, 8)}`
+  const containerName = `edge-${node.stake.type}-${Math.random().toString(16).substring(2, 8)}`
   const opts: ContainerCreateOptions = {
     Image: `${node.image}:${tag}`,
     name: containerName,
@@ -560,27 +557,19 @@ const stakeOption = (description = 'stake ID') => new Option('-s, --stake <id>',
 const targetOption = (description = 'node target version') =>
   new Option('--target <version>', description)
 
-/**
- * After running docker pull, the image data is not necessarily immediately available to subsequent calls.
- * This helper function checks for the image periodically until either a valid response is received or the check limit
- * is reached.
- */
-const waitForImage = async (docker: Dockerode, image: string, period = 500, limit = 20) =>
-  new Promise<Dockerode.ImageInspectInfo>((res, rej) => {
-    let n = 0
-    const interval = setInterval(async () => {
-      try {
-        n += 1
-        const info = await docker.getImage(image).inspect()
-        clearInterval(interval)
-        return res(info)
-      }
-      catch (err) {
-        if ((err as { statusCode: number }).statusCode !== 404) return rej(err)
-        if (n >= limit) return rej(new Error(`failed to find image after ${(limit * period)/1000}s`))
-      }
-    }, period)
+const pullImage = async (docker: Dockerode, image: string, authconfig?: AuthConfig) => {
+  await new Promise((resolve, reject) => {
+    let dots = ''
+    docker.pull(image, { authconfig }, (err: unknown, stream: Stream) => {
+      if (err) return reject(err)
+      stream.on('data', () => {
+        dots += '.'
+        console.log(dots)
+      })
+      stream.on('end', resolve)
+    })
   })
+}
 
 export const withContext = (ctx: Context): [Command, Option[]] => {
   const deviceCLI = new Command('device')
