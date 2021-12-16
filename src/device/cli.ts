@@ -467,9 +467,10 @@ type nodeInfo = {
 }
 
 const createContainerOptions = (node: nodeInfo, tag: string, env: string[] | undefined): ContainerCreateOptions => {
+  const containerName = `edge_${node.stake.type}_${Math.random().toString(16).substring(2, 8)}`
   const opts: ContainerCreateOptions = {
     Image: `${node.image}:${tag}`,
-    name: node.containerName,
+    name: containerName,
     AttachStdin: false,
     AttachStdout: false,
     AttachStderr: false,

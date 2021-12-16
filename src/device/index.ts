@@ -70,13 +70,13 @@ const device = ({ logger, wallet, xe, network, parent }: Context, name = 'device
 
     const image = network.registry.imageName(stake.type, arch())
     const name = toUpperCaseFirst(stake.type)
-    const containerName = `edge_${stake.type}_${Math.random().toString(16).substring(2, 8)}`
+    const containerNamePrefix = `edge_${stake.type}`
 
     log.debug('found node', { image, name, stake })
 
     const container = async () => {
-      log.debug('finding container', { containerName })
-      const remoteName = `/${containerName}`
+      log.debug('finding container with prefix', { containerNamePrefix })
+      const remoteName = `/${containerNamePrefix}`
       const info = (await docker().listContainers()).find(c => c.Names.includes(remoteName))
       if (info !== undefined) {
         log.debug('found container', {
@@ -90,7 +90,7 @@ const device = ({ logger, wallet, xe, network, parent }: Context, name = 'device
 
     return {
       container,
-      containerName,
+      containerName: container.name,
       image,
       name,
       stake
