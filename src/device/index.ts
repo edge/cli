@@ -70,7 +70,7 @@ const device = ({ logger, wallet, xe, network, parent }: Context, name = 'device
 
     const image = network.registry.imageName(stake.type, arch())
     const name = toUpperCaseFirst(stake.type)
-    const containerName = `edge_${stake.type}_${address.slice(3, 9)}`
+    const containerName = `edge_${stake.type}_${Math.random().toString(16).substring(2, 8)}`
 
     log.debug('found node', { image, name, stake })
 
