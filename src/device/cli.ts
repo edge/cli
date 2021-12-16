@@ -440,7 +440,6 @@ const updateAction = ({ device, logger, ...ctx }: CommandContext) => async () =>
   if (container === undefined) return
 
   // container is already running, need to stop-start
-  console.log()
   console.log(`Restarting ${node.name}...`)
   log.debug('stopping container', { id: containerInspect?.Id })
   await container.stop()
@@ -479,7 +478,10 @@ const createContainerOptions = (node: nodeInfo, tag: string, env: string[] | und
     OpenStdin: false,
     StdinOnce: false,
     HostConfig: {
-      Binds: [`${config.docker.dataVolume}:/data`],
+      Binds: [
+        '/var/run/docker.sock:/var/run/docker.sock',
+        `${config.docker.dataVolume}:/data`
+      ],
       RestartPolicy: { Name: 'unless-stopped' }
     }
   }
