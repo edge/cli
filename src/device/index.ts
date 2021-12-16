@@ -77,7 +77,8 @@ const device = ({ logger, wallet, xe, network, parent }: Context, name = 'device
     const container = async () => {
       log.debug('finding container with prefix', { containerNamePrefix })
       const remoteName = `/${containerNamePrefix}`
-      const info = (await docker().listContainers()).find(c => c.Names.includes(remoteName))
+      const containers = await docker().listContainers()
+      const info = containers.find(c => c.Names.find(n => n.startsWith(remoteName)))
       if (info !== undefined) {
         log.debug('found container', {
           id: info.Id,
