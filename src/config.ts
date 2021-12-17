@@ -2,20 +2,31 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-export type Config = {
-  docker: Docker
-}
+import dotenv from 'dotenv'
 
-type Docker = {
-  dataVolume: string
-  socketPath: string
-}
+dotenv.config()
 
-const config: Config = {
+export default {
+  blockchain: {
+    defaultTimeout: parseInt(process.env.BLOCKCHAIN_TIMEOUT || '10') * 1000
+  },
   docker: {
     dataVolume: process.env.DOCKER_DATA_VOLUME || 'edge-device-data',
+    edgeRegistry: {
+      address: 'registry.edge.network',
+      defaultImageTag: 'latest',
+      auth: {
+        username: process.env.EDGE_REGISTRY_USERNAME || '',
+        password: process.env.EDGE_REGISTRY_PASSWORD || ''
+      }
+    },
     socketPath: process.env.DOCKER_SOCKET_PATH || '/var/run/docker.sock'
+  },
+  id: {
+    minEntryLength: 3,
+    shortLength: 12
+  },
+  index: {
+    defaultTimeout: parseInt(process.env.INDEX_TIMEOUT || '10') * 1000
   }
 }
-
-export default config

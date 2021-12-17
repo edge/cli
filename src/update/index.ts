@@ -2,55 +2,102 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-import { Network } from '../main'
+import { Context } from '..'
 import { createHash } from 'crypto'
+import { createWriteStream } from 'fs'
+import fs from 'fs/promises'
+import { getDebugOption } from '../edge/cli'
 import { normalizedPlatform } from '../helpers'
 import path from 'path'
 import pkg from '../../package.json'
 import superagent from 'superagent'
 import { SemVer, parse } from 'semver'
 import { arch, tmpdir } from 'os'
-import { createWriteStream, mkdtempSync, readFile } from 'fs'
 
 export type DownloadInfo = {
   checksum: string
   file: string
 }
 
-export type VersionStatus = {
-  current: SemVer
-  latest: SemVer
-  requireUpdate: boolean
-}
+const versionCacheTimeout = 1000 * 60 * 60
 
-const calcDigest = async (file: string): Promise<string> => new Promise<string>((resolve, reject) => {
-  readFile(file, (err, data) => {
-    if (err) return reject(err)
-    resolve(createHash('sha256').update(data).digest('hex'))
-  })
-})
+const calcDigest = async (file: string): Promise<string> => {
+  const data = await fs.readFile(file)
+  return createHash('sha256').update(data).digest('hex')
+}
 
 const downloadURL = async (url: string, file: string) => new Promise<void>((resolve, reject) => {
   const stream = createWriteStream(file)
   const request = superagent.get(url)
+  request.on('end', () => {
+    stream.close()
+    resolve()
+  })
+  request.on('error', err => {
+    stream.close()
+    reject(err)
+  })
   request.pipe(stream)
-  request.on('end', () => resolve())
-  request.on('error', reject)
 })
 
-export const download = async (network: Network): Promise<DownloadInfo> => {
+export const cachedLatestVersion = async ({ network, ...ctx }: Context): Promise<SemVer> => {
+  const { debug } = getDebugOption(ctx.parent)
+  const log = ctx.logger('update.version.cache')
+  const file = tmpdir() + path.sep + '.edge-cli-version'
+  let lv: SemVer|undefined = undefined
+  try {
+    log.debug('reading cache file', { file })
+    const stats = await fs.stat(file)
+    if (stats.mtime.getTime() + versionCacheTimeout > Date.now()) {
+      const data = (await fs.readFile(file)).toString()
+      log.debug('read cache data', { data })
+      const parsed = parse(data)
+      if (parsed !== null) lv = parsed
+    }
+    else log.debug('cache outdated')
+  }
+  catch (err) {
+    if (debug) log.error('Cache read error', { err })
+  }
+  if (lv === undefined) {
+    lv = await latestVersion({ network, ...ctx })
+    try {
+      log.debug('writing cache file', { data: lv.format(), file })
+      await fs.writeFile(file, lv.format())
+      log.debug('wrote file', { file })
+    }
+    catch (err) {
+      if (debug) log.error('Cache write error', { err })
+    }
+  }
+  return lv
+}
+
+export const currentVersion = (): SemVer => {
+  const cv = parse(pkg.version)
+  if (cv === null) throw new Error(`package provided invalid version "${pkg.version}"`)
+  return cv
+}
+
+export const download = async ({ network, ...ctx }: Context): Promise<DownloadInfo> => {
+  const log = ctx.logger('update.download')
   try {
     const csURL = network.files.latestChecksumURL(normalizedPlatform(), arch())
+    log.debug('getting latest checksum', { url: csURL })
     const csResponse = await superagent.get(csURL)
     const checksum = csResponse.text.trim()
+    log.debug('response', { checksum })
 
-    const file = mkdtempSync(path.join(tmpdir(), 'edge-update-')) + path.sep + 'edge'
+    const file = await fs.mkdtemp(path.join(tmpdir(), 'edge-update-')) + path.sep + 'edge'
     const buildURL = network.files.latestBuildURL(normalizedPlatform(), arch(), ext())
+    log.debug('downloading latest build', { url: buildURL, file })
     await downloadURL(buildURL, file)
+    log.debug('downloaded', { file })
 
     const filesum = await calcDigest(file)
+    log.debug('verifying checksum', { checksum, filesum })
     if (checksum === filesum) return { checksum, file }
-    throw new Error(`checksum mismatch (${filesum} vs. ${checksum})`)
+    throw new Error(`checksum mismatch (local = ${filesum}, remote = ${checksum})`)
   }
   catch (err) {
     throw new Error(`failed to download latest binary: ${err}`)
@@ -59,23 +106,18 @@ export const download = async (network: Network): Promise<DownloadInfo> => {
 
 const ext = (): string => normalizedPlatform() === 'windows' ? '.exe' : ''
 
-export const latestVersion = async (network: Network): Promise<SemVer> => {
+export const latestVersion = async ({ network, ...ctx }: Context): Promise<SemVer> => {
+  const log = ctx.logger('update.version.get')
   const url = network.files.latestVersionURL(normalizedPlatform(), arch())
   try {
+    log.debug('getting latest version', { url })
     const response = await superagent.get(url)
-    const sv = parse(response.text.trim())
-    if (sv === null) throw new Error(`server provided invalid version "${response.text}"`)
-    return sv
+    log.debug('response', { response })
+    const lv = parse(response.text.trim())
+    if (lv === null) throw new Error(`server provided invalid version "${response.text}"`)
+    return lv
   }
   catch (err) {
     throw new Error(`unable to retrieve latest version: ${err}`)
   }
-}
-
-export const status = async (network: Network): Promise<VersionStatus> => {
-  const current = parse(pkg.version)
-  if (current === null) throw new Error('invalid package version')
-  const latest = await latestVersion(network)
-  const requireUpdate = latest.compare(current) > 0
-  return { current, latest, requireUpdate }
 }

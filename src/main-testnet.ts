@@ -2,6 +2,7 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+import config from './config'
 import { homedir } from 'os'
 import main from './main'
 import { sep } from 'path'
@@ -27,7 +28,10 @@ main(process.argv, {
     baseURL: 'https://index.test.network'
   },
   registry: {
-    imageName: app => `registry.edge.network/testnet/${app}`
+    imageName: (app, arch) => `${config.docker.edgeRegistry.address}/${app}/testnet-${arch}`
+  },
+  stargate: {
+    serviceURL: app => `https://stargate.test.network/services/${app}`
   },
   wallet: {
     defaultFile: `${homedir}${sep}.edge${sep}wallet${sep}testnet.json`
