@@ -19,8 +19,7 @@ export default {
         username: process.env.EDGE_REGISTRY_USERNAME || '',
         password: process.env.EDGE_REGISTRY_PASSWORD || ''
       }
-    },
-    socketPath: process.env.DOCKER_SOCKET_PATH || '/var/run/docker.sock'
+    }
   },
   id: {
     minEntryLength: 3,
