@@ -498,7 +498,7 @@ const createContainerOptions = (node: nodeInfo, tag: string, env: string[] | und
 }
 
 export const dockerSocketPathOption = (description = 'Docker socket path'): Option =>
-  new Option('--docker-socket-path', description)
+  new Option('--docker-socket-path <path>', description)
 
 export const getDockerOptions = (cmd: Command): DockerOptions => {
   const opts = cmd.opts<{
