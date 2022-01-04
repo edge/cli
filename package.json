@@ -1,6 +1,6 @@
 {
   "name": "@edge/cli",
-  "version": "1.5.0",
+  "version": "1.5.2",
   "description": "Command line interface for the Edge network",
   "private": true,
   "author": "Edge Network <core@edge.network>",

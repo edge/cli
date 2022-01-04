@@ -112,7 +112,7 @@ export const latestVersion = async ({ network, ...ctx }: Context): Promise<SemVe
   try {
     log.debug('getting latest version', { url })
     const response = await superagent.get(url)
-    log.debug('response', { response })
+    log.debug('response', { status: response.status, text: response.text })
     const lv = parse(response.text.trim())
     if (lv === null) throw new Error(`server provided invalid version "${response.text}"`)
     return lv
