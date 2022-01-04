@@ -214,7 +214,13 @@ const infoHelp = [
 const removeAction = ({ device, logger, wallet, xe, ...ctx }: CommandContext) => async () => {
   const log = logger()
 
-  const opts = await getPassphraseOption(ctx.cmd)
+  const opts = {
+    ...await getPassphraseOption(ctx.cmd),
+    ...(() => {
+      const { containerOnly } = ctx.cmd.opts()
+      return { containerOnly }
+    })()
+  }
   const { yes } = getYesOption(ctx.cmd)
 
   const { verbose } = getVerboseOption(ctx.parent)
@@ -236,6 +242,12 @@ const removeAction = ({ device, logger, wallet, xe, ...ctx }: CommandContext) =>
     console.log(`You are removing this device from Edge ${toUpperCaseFirst(ctx.network.name)}.`)
     console.log()
     if (stake === undefined) console.log('This device is not assigned to any stake.')
+    else if (opts.containerOnly) {
+      console.log([
+        `The Docker container for this ${nodeName} node will be stopped and removed. `,
+        `This device's assignment to stake ${printID(stake.id)} (${nodeName}) will not be removed.`
+      ].join(''))
+    }
     else console.log(`This will remove this device's assignment to stake ${printID(stake.id)} (${nodeName}).`)
     console.log()
     if (await askLetter('Remove this device?', 'yn') === 'n') return
@@ -243,37 +255,41 @@ const removeAction = ({ device, logger, wallet, xe, ...ctx }: CommandContext) =>
   }
 
   if (stake !== undefined) {
-    // if required, create unassignment tx
-    await askToSignTx(opts)
-    const userWallet = await storage.read(opts.passphrase as string)
-    const onChainWallet = await xeClient.walletWithNextNonce(userWallet.address)
+    if (!opts.containerOnly) {
+      // if required, create unassignment tx
+      await askToSignTx(opts)
+      const userWallet = await storage.read(opts.passphrase as string)
+      const onChainWallet = await xeClient.walletWithNextNonce(userWallet.address)
 
-    const tx = xeTx.sign({
-      timestamp: Date.now(),
-      sender: userWallet.address,
-      recipient: userWallet.address,
-      amount: 0,
-      data: {
-        action: 'unassign_device',
-        memo: 'Unassign Device',
-        stake: stake.hash
-      },
-      nonce: onChainWallet.nonce
-    }, userWallet.privateKey)
+      const tx = xeTx.sign({
+        timestamp: Date.now(),
+        sender: userWallet.address,
+        recipient: userWallet.address,
+        amount: 0,
+        data: {
+          action: 'unassign_device',
+          memo: 'Unassign Device',
+          stake: stake.hash
+        },
+        nonce: onChainWallet.nonce
+      }, userWallet.privateKey)
 
-    console.log('Unassigning stake...')
-    console.log()
-    const result = await xeClient.createTransaction(tx)
-    if (!handleCreateTxResult(ctx.network, result)) {
-      process.exitCode = 1
-      return
+      console.log('Unassigning stake...')
+      console.log()
+      const result = await xeClient.createTransaction(tx)
+      if (!handleCreateTxResult(ctx.network, result)) {
+        process.exitCode = 1
+        return
+      }
+      console.log()
     }
-    console.log()
 
     // if node is running, stop it
-    log.debug('finding node')
-    const imageName = ctx.network.registry.imageName(stake.type, arch())
-    const info = (await docker.listContainers()).find(c => c.Image === imageName)
+    const containerNamePrefix = `edge-${stake.type}`
+    log.debug('finding container with prefix', { containerNamePrefix })
+    const remoteName = `/${containerNamePrefix}`
+    const containers = await docker.listContainers()
+    const info = containers.find(c => c.Names.find(n => n.startsWith(remoteName)))
     if (info !== undefined) {
       log.debug('found container', { name: toUpperCaseFirst(stake.type), id: info.Id })
       const container = docker.getContainer(info.Id)
@@ -284,7 +300,7 @@ const removeAction = ({ device, logger, wallet, xe, ...ctx }: CommandContext) =>
     }
   }
 
-  await volume.remove()
+  if (!opts.containerOnly) await volume.remove()
 
   console.log(`This device has been removed from Edge ${toUpperCaseFirst(ctx.network.name)}.`)
 }
@@ -597,6 +613,7 @@ export const withContext = (ctx: Context): [Command, Option[]] => {
   const remove = new Command('remove')
     .description('remove this device from the network')
     .addHelpText('after', removeHelp)
+    .option('--container-only', 'only remove Docker container, preserving stake')
     .addOption(yesOption())
   remove.action(errorHandler(ctx, checkVersionHandler(ctx, removeAction({ ...ctx, cmd: remove }))))
 
