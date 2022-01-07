@@ -21,8 +21,8 @@ export const createEmpty = (): Device => ({
   network: ''
 })
 
-const createTransferContainer = (docker: Docker, volume: VolumeInspectInfo, path: string): Promise<Container> =>
-  docker.createContainer({
+const createTransferContainer = async (docker: Docker, volume: VolumeInspectInfo, path: string) => {
+  return docker.createContainer({
     // using Alpine Linux because of small footprint
     Image: 'docker.io/library/alpine:latest',
     // three-second sleep is generous, SIGKILL will cancel it
@@ -31,6 +31,7 @@ const createTransferContainer = (docker: Docker, volume: VolumeInspectInfo, path
       Binds: [`${volume.Name}:${path}`]
     }
   })
+}
 
 export const keys: (keyof Device)[] = ['address', 'network', 'privateKey', 'publicKey']
 
@@ -194,6 +195,28 @@ const writeThroughContainer = async (docker: Docker, volume: VolumeInspectInfo, 
     await container.kill()
     await container.remove()
   }
+}
+
+export const IMAGE_NAME = 'alpine:latest'
+export const imageExists = async (docker: Docker) => {
+  const alpineImage = docker.getImage(IMAGE_NAME)
+  try {
+    await alpineImage.inspect()
+  } catch (err) {
+    // @ts-ignore
+    if (err.statusCode === 404) return false
+  }
+  return true
+}
+
+export const pullImage = async (docker: Docker, onProgress: (obj: any) => void) => {
+  const pullStream = await docker.pull(IMAGE_NAME)
+
+  const waitForPull = new Promise(res => {
+    docker.modem.followProgress(pullStream, res, onProgress)
+  })
+
+  await waitForPull
 }
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
