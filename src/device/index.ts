@@ -33,6 +33,7 @@ const device = ({ logger, wallet, xe, network, parent }: Context, name = 'device
 
   const volume = async (canCreate = false) => {
     const d = docker()
+
     const vol = data.withVolume(d, await data.volume(d, canCreate))
 
     const read = async () => {
@@ -47,7 +48,7 @@ const device = ({ logger, wallet, xe, network, parent }: Context, name = 'device
       return vol.remove()
     }
 
-    const write = async(data: data.Device) => {
+    const write = async (data: data.Device) => {
       log.debug('writing to volume', { data: secure(data) })
       return vol.write(data)
     }
