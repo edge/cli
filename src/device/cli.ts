@@ -505,9 +505,7 @@ export const getDockerOptions = (cmd: Command): DockerOptions => {
     dockerSocketPath?: string
   }>()
 
-  if (opts.dockerSocketPath) {
-    return { socketPath: opts.dockerSocketPath }
-  }
+  if (opts.dockerSocketPath) return { socketPath: opts.dockerSocketPath }
 
   // return empty options and let docker-modem set default options for windows or linux
   return {}
