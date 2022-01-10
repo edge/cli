@@ -37,15 +37,6 @@ const createTransferContainer = (docker: Docker, volume: VolumeInspectInfo, path
 
 export const keys: (keyof Device)[] = ['address', 'network', 'privateKey', 'publicKey']
 
-const pullTransferContainerImage = async (docker: Docker): Promise<void> => {
-  if (await image.exists(docker, TRANSFER_CONTAINER_IMAGE)) return
-  let dots = ''
-  await image.pull(docker, TRANSFER_CONTAINER_IMAGE, undefined, () => {
-    dots += '.'
-    console.log(dots)
-  })
-}
-
 /**
  * Read device data from a volume (typically the data volume).
  */
@@ -82,7 +73,8 @@ const readDirect = async (volume: VolumeInspectInfo) => new Promise<Device>((res
  */
 const readThroughContainer = async (docker: Docker, volume: VolumeInspectInfo): Promise<Device> => {
   const path = '/data'
-  await pullTransferContainerImage(docker)
+  // eslint-disable-next-line max-len
+  if (!await image.exists(docker, TRANSFER_CONTAINER_IMAGE)) await image.pullVisible(docker, TRANSFER_CONTAINER_IMAGE, undefined)
   const container = await createTransferContainer(docker, volume, path)
 
   await container.start()
@@ -191,7 +183,8 @@ const writeDirect = async (volume: VolumeInspectInfo, device: Device) => new Pro
  */
 const writeThroughContainer = async (docker: Docker, volume: VolumeInspectInfo, device: Device): Promise<void> => {
   const path = '/data'
-  await pullTransferContainerImage(docker)
+  // eslint-disable-next-line max-len
+  if (!await image.exists(docker, TRANSFER_CONTAINER_IMAGE)) await image.pullVisible(docker, TRANSFER_CONTAINER_IMAGE, undefined)
   const container = await createTransferContainer(docker, volume, path)
 
   await container.start()

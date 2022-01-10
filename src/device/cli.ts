@@ -331,14 +331,15 @@ const startAction = ({ device, logger, ...ctx }: CommandContext) => async () => 
   }
 
   console.log(`Checking ${node.name} version...`)
-  const authconfig = getRegistryAuthOptions(ctx.cmd)
   const { target } = await getTargetOption(ctx, ctx.cmd, node.stake.type)
   log.debug('got target version', { target })
   const targetImage = `${node.image}:${target}`
 
   console.log(`Updating ${node.name} v${target}...`)
-  if (authconfig !== undefined) await pullImage(docker, targetImage, authconfig)
-  else await pullImage(docker, targetImage)
+  const authconfig = getRegistryAuthOptions(ctx.cmd)
+  const { debug } = getDebugOption(ctx.parent)
+  if (authconfig !== undefined) await image.pullVisible(docker, targetImage, authconfig, debug)
+  else await image.pullVisible(docker, targetImage, authconfig, debug)
 
   const containerOptions = createContainerOptions(node, target, env)
   log.debug('creating container', { containerOptions })
@@ -423,9 +424,10 @@ const updateAction = ({ device, logger, ...ctx }: CommandContext) => async () =>
   if (currentImage !== undefined) log.debug('current image', { currentImage })
 
   console.log(`Updating ${node.name} v${target}...`)
+  const { debug } = getDebugOption(ctx.parent)
   const authconfig = getRegistryAuthOptions(ctx.cmd)
-  if (authconfig !== undefined) await pullImage(docker, targetImage, authconfig)
-  else await pullImage(docker, targetImage)
+  if (authconfig !== undefined) await image.pullVisible(docker, targetImage, authconfig, debug)
+  else await image.pullVisible(docker, targetImage, authconfig, debug)
 
   const latestImage = await docker.getImage(targetImage).inspect()
   if (latestImage.Id === currentImage?.Id) {
@@ -558,14 +560,6 @@ const stakeOption = (description = 'stake ID') => new Option('-s, --stake <id>',
 
 const targetOption = (description = 'node target version') =>
   new Option('--target <version>', description)
-
-const pullImage = async (docker: Dockerode, imageName: string, authconfig?: AuthConfig) => {
-  let dots = ''
-  await image.pull(docker, imageName, authconfig, () => {
-    dots += '.'
-    console.log(dots)
-  })
-}
 
 export const withContext = (ctx: Context): [Command, Option[]] => {
   const deviceCLI = new Command('device')
