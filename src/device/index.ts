@@ -34,15 +34,6 @@ const device = ({ logger, wallet, xe, network, parent }: Context, name = 'device
   const volume = async (canCreate = false) => {
     const d = docker()
 
-    const imageExists = await data.imageExists(d)
-    if (!imageExists) {
-      log.debug(`Image [${data.IMAGE_NAME}] not found. Pulling...`)
-
-      await data.pullImage(d, (data) => {
-        log.debug(data.status)
-      })
-    }
-
     const vol = data.withVolume(d, await data.volume(d, canCreate))
 
     const read = async () => {

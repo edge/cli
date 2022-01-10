@@ -3,8 +3,8 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as data from './data'
+import * as image from './image'
 import * as stargate from '../stargate'
-import { Stream } from 'stream'
 import { arch } from 'os'
 import { checkVersionHandler } from '../update/cli'
 import config from '../config'
@@ -561,17 +561,11 @@ const stakeOption = (description = 'stake ID') => new Option('-s, --stake <id>',
 const targetOption = (description = 'node target version') =>
   new Option('--target <version>', description)
 
-const pullImage = async (docker: Dockerode, image: string, authconfig?: AuthConfig) => {
-  await new Promise((resolve, reject) => {
-    let dots = ''
-    docker.pull(image, { authconfig }, (err: unknown, stream: Stream) => {
-      if (err) return reject(err)
-      stream.on('data', () => {
-        dots += '.'
-        console.log(dots)
-      })
-      stream.on('end', resolve)
-    })
+const pullImage = async (docker: Dockerode, imageName: string, authconfig?: AuthConfig) => {
+  let dots = ''
+  await image.pull(docker, imageName, authconfig, () => {
+    dots += '.'
+    console.log(dots)
   })
 }
 
