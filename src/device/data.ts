@@ -2,6 +2,7 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+import * as image from './image'
 import * as xe from '@edge/xe-utils'
 import config from '../config'
 import { normalizedPlatform } from '../helpers'
@@ -14,6 +15,8 @@ export type Device = xe.wallet.Wallet & {
   network: string
 }
 
+const TRANSFER_CONTAINER_IMAGE = 'docker.io/library/alpine:latest'
+
 export const createEmpty = (): Device => ({
   address: '',
   publicKey: '',
@@ -24,7 +27,7 @@ export const createEmpty = (): Device => ({
 const createTransferContainer = (docker: Docker, volume: VolumeInspectInfo, path: string): Promise<Container> =>
   docker.createContainer({
     // using Alpine Linux because of small footprint
-    Image: 'docker.io/library/alpine:latest',
+    Image: TRANSFER_CONTAINER_IMAGE,
     // three-second sleep is generous, SIGKILL will cancel it
     Cmd: ['sleep', '3'],
     HostConfig: {
@@ -33,6 +36,15 @@ const createTransferContainer = (docker: Docker, volume: VolumeInspectInfo, path
   })
 
 export const keys: (keyof Device)[] = ['address', 'network', 'privateKey', 'publicKey']
+
+const pullTransferContainerImage = async (docker: Docker): Promise<void> => {
+  if (await image.exists(docker, TRANSFER_CONTAINER_IMAGE)) return
+  let dots = ''
+  await image.pull(docker, TRANSFER_CONTAINER_IMAGE, undefined, () => {
+    dots += '.'
+    console.log(dots)
+  })
+}
 
 /**
  * Read device data from a volume (typically the data volume).
@@ -70,6 +82,7 @@ const readDirect = async (volume: VolumeInspectInfo) => new Promise<Device>((res
  */
 const readThroughContainer = async (docker: Docker, volume: VolumeInspectInfo): Promise<Device> => {
   const path = '/data'
+  await pullTransferContainerImage(docker)
   const container = await createTransferContainer(docker, volume, path)
 
   await container.start()
@@ -178,6 +191,7 @@ const writeDirect = async (volume: VolumeInspectInfo, device: Device) => new Pro
  */
 const writeThroughContainer = async (docker: Docker, volume: VolumeInspectInfo, device: Device): Promise<void> => {
   const path = '/data'
+  await pullTransferContainerImage(docker)
   const container = await createTransferContainer(docker, volume, path)
 
   await container.start()
