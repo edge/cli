@@ -140,6 +140,7 @@ const addAction = ({ device, index, network, wallet, xe, ...ctx }: CommandContex
       action: 'assign_device',
       device: deviceWallet.address,
       memo: 'Assign Device',
+      signature: xeWallet.generateSignature(deviceWallet.privateKey, deviceWallet.address),
       stake: stake.hash
     },
     nonce: onChainWallet.nonce
