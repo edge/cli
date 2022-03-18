@@ -45,9 +45,11 @@ pipeline {
     stage('Check version') {
       steps {
         script {
+          def uname = sh(script: "uname -a", returnStdout: true).trim()
+          println "Running on $uname"
+
           def versionCheckUrl = 'https://files.edge.network/cli/$NETWORK/linux/x64/latest/version'
           def latestVersion = sh(script: "curl -s $versionCheckUrl", returnStdout: true).trim()
-
           println "Latest version: $latestVersion"
 
           version = sh(script: 'cat package.json | jq -r .version', returnStdout: true).trim()
