@@ -39,7 +39,7 @@ def version
 
 pipeline {
   agent {
-    label 'arch-x64'
+    label 'local'
   }
   stages {
     stage('Check version') {
