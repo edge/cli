@@ -47,6 +47,9 @@ pipeline {
         script {
           def versionCheckUrl = 'https://files.edge.network/cli/$NETWORK/linux/x64/latest/version'
           def latestVersion = sh(script: "curl -s $versionCheckUrl", returnStdout: true).trim()
+
+          println "Latest version: $latestVersion"
+
           version = sh(script: 'cat package.json | jq -r .version', returnStdout: true).trim()
 
           if (semver_compare(version, latestVersion) <= 0 && FORCE_UPDATE == 'false') {
