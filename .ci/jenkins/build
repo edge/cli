@@ -57,6 +57,13 @@ pipeline {
       }
     }
 
+    stage('Cleanup workspace') {
+      steps {
+        sh 'ls -l'
+        sh 'sudo rm -rf ./*'
+      }
+    }
+
     stage('Build') {
       failFast true
       when {
