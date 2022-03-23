@@ -320,6 +320,7 @@ const startAction = ({ device, logger, ...ctx }: CommandContext) => async () => 
   const log = logger()
 
   const { env } = getNodeEnvOption(ctx.cmd)
+  const { network } = getNodeNetworksOption(ctx.cmd)
 
   const userDevice = device()
   const docker = userDevice.docker()
@@ -342,7 +343,7 @@ const startAction = ({ device, logger, ...ctx }: CommandContext) => async () => 
   if (authconfig !== undefined) await image.pullVisible(docker, targetImage, authconfig, debug)
   else await image.pullVisible(docker, targetImage, authconfig, debug)
 
-  const containerOptions = createContainerOptions(node, target, env)
+  const containerOptions = createContainerOptions(node, target, env, network)
   log.debug('creating container', { containerOptions })
   const container = await docker.createContainer(containerOptions)
   log.debug('starting container')
@@ -447,6 +448,14 @@ const updateAction = ({ device, logger, ...ctx }: CommandContext) => async () =>
   await container.remove()
 
   const containerOptions = createContainerOptions(node, target, containerInspect?.Config.Env)
+  if (containerInspect && Object.keys(containerInspect.NetworkSettings.Networks).length > 0) {
+    const endpoints: Dockerode.EndpointsConfig = {}
+    Object.keys(containerInspect.NetworkSettings.Networks).forEach(n => {
+      endpoints[n] = containerInspect.NetworkSettings.Networks[n]
+    })
+    containerOptions.NetworkingConfig = { EndpointsConfig: endpoints }
+  }
+
   log.debug('creating container', { containerOptions })
   container = await docker.createContainer(containerOptions)
   log.debug('starting container')
@@ -466,7 +475,12 @@ type nodeInfo = {
   stake: xeStake.Stake
 }
 
-const createContainerOptions = (node: nodeInfo, tag: string, env: string[] | undefined): ContainerCreateOptions => {
+const createContainerOptions = (
+  node: nodeInfo,
+  tag: string,
+  env: string[] | undefined,
+  networks?: string[]
+): ContainerCreateOptions => {
   const containerName = `edge-${node.stake.type}-${Math.random().toString(16).substring(2, 8)}`
   const opts: ContainerCreateOptions = {
     Image: `${node.image}:${tag}`,
@@ -497,6 +511,14 @@ const createContainerOptions = (node: nodeInfo, tag: string, env: string[] | und
       '443/tcp': {}
     }
   }
+  if (networks?.length) {
+    opts.NetworkingConfig = {
+      EndpointsConfig: networks.reduce((e, n) => {
+        e[n] = {}
+        return e
+      }, <Dockerode.EndpointsConfig>{})
+    }
+  }
   return opts
 }
 
@@ -519,6 +541,11 @@ const getNodeEnvOption = (cmd: Command): { env: string[] } => {
   return {
     env: env !== undefined ? env : []
   }
+}
+
+const getNodeNetworksOption = (cmd: Command): { network?: string[] } => {
+  const { network } = cmd.opts<{ network?: string[] }>()
+  return { network }
 }
 
 const getRegistryAuthOptions = (cmd: Command): AuthConfig|undefined => {
@@ -550,6 +577,8 @@ const getTargetOption = async ({ network }: Pick<Context, 'network'>, cmd: Comma
 
 const nodeEnvOption = (description = 'set environment variable(s) for node') =>
   new Option('-e, --env <var...>', description)
+
+const nodeNetworkOption = (description = 'set network(s) for node') => new Option('--network <var...>', description)
 
 const registryPasswordOption = (description = 'Edge Docker registry password') =>
   new Option('--registry-password <password>', description)
@@ -599,6 +628,7 @@ export const withContext = (ctx: Context): [Command, Option[]] => {
     .addHelpText('after', startHelp(ctx.network))
     .addOption(targetOption())
     .addOption(nodeEnvOption())
+    .addOption(nodeNetworkOption())
     .addOption(registryUsernameOption())
     .addOption(registryPasswordOption())
   start.action(errorHandler(ctx, checkVersionHandler(ctx, startAction({ ...ctx, cmd: start }))))

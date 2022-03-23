@@ -39,14 +39,19 @@ def version
 
 pipeline {
   agent {
-    label 'arch-x64'
+    label 'local'
   }
   stages {
-    stage('Check version') {
+    stage('Check Version') {
       steps {
         script {
+          def uname = sh(script: "uname -a", returnStdout: true).trim()
+          println "[Check Version] Running on $uname"
+
           def versionCheckUrl = 'https://files.edge.network/cli/$NETWORK/linux/x64/latest/version'
-          def latestVersion = sh(script: "curl -s $versionCheckUrl", returnStdout: true).trim()
+          def latestVersion = sh(script: "curl -sk $versionCheckUrl", returnStdout: true).trim()
+          println "Latest version: $latestVersion"
+
           version = sh(script: 'cat package.json | jq -r .version', returnStdout: true).trim()
 
           if (semver_compare(version, latestVersion) <= 0 && FORCE_UPDATE == 'false') {
@@ -71,6 +76,9 @@ pipeline {
           }
           steps {
             script {
+              def uname = sh(script: "uname -a", returnStdout: true).trim()
+              println "[Build x64] Running on $uname"
+
               def args = "--file .ci/docker/build --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE --build-arg ARCH=x64"
               buildAndPushImage(REGISTRY_CREDENTIAL, "internal/cli-x64:$NETWORK", args)
             }
@@ -82,6 +90,9 @@ pipeline {
           }
           steps {
             script {
+              def uname = sh(script: "uname -a", returnStdout: true).trim()
+              println "[Build arm64] Running on $uname"
+
               def args = "--file .ci/docker/build --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE --build-arg ARCH=arm64"
               buildAndPushImage(REGISTRY_CREDENTIAL, "internal/cli-arm64:$NETWORK", args)
             }
@@ -101,6 +112,9 @@ pipeline {
       }
       steps {
         script {
+          def uname = sh(script: "uname -a", returnStdout: true).trim()
+          println "[Package] Running on $uname"
+
           // Ensure required images are up to date
           sh "docker pull registry.edge.network/internal/cli-x64:$NETWORK"
           sh "docker pull registry.edge.network/internal/cli-arm64:$NETWORK"
@@ -122,6 +136,9 @@ pipeline {
       }
       steps {
         script {
+          def uname = sh(script: "uname -a", returnStdout: true).trim()
+          println "[Deploy] Running on $uname"
+
           def sshPort = env.SSH_PORT != null ? env.SSH_PORT : 22
           def ssh = "ssh -o ServerAliveInterval=120 -o ServerAliveCountMax=5 -o StrictHostKeyChecking=no -p ${sshPort} jenkins@${DEPLOY_TARGET} "
           def filename = "deploy_${UUID.randomUUID().toString()}.sh"
