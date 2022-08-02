@@ -12,6 +12,7 @@ export default {
   },
   docker: {
     dataVolume: process.env.DOCKER_DATA_VOLUME || 'edge-device-data',
+    directReadWrite: process.env.DOCKER_DIRECT_RW === 'true',
     edgeRegistry: {
       address: 'registry.edge.network',
       defaultImageTag: 'latest',

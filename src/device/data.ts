@@ -43,7 +43,7 @@ export const keys: (keyof Device)[] = ['address', 'network', 'privateKey', 'publ
 export const read = async (docker: Docker, volume: VolumeInspectInfo): Promise<Device> => {
   const p = normalizedPlatform()
   if (p === 'macos' || p === 'windows') return readThroughContainer(docker, volume)
-  return readDirect(volume)
+  return config.docker.directReadWrite ? readDirect(volume) : readThroughContainer(docker, volume)
 }
 
 /**
@@ -153,7 +153,7 @@ export const volume = async (docker: Docker, canCreate?: boolean): Promise<Volum
 export const write = async (docker: Docker, volume: VolumeInspectInfo, device: Device): Promise<void> => {
   const p = normalizedPlatform()
   if (p === 'macos' || p === 'windows') return writeThroughContainer(docker, volume, device)
-  return writeDirect(volume, device)
+  return config.docker.directReadWrite ? writeDirect(volume, device) : writeThroughContainer(docker, volume, device)
 }
 
 /**
