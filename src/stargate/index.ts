@@ -5,6 +5,9 @@
 import { Network } from '../'
 import superagent from 'superagent'
 
+/**
+ * Get the published version of a service (node type) from a Stargate.
+ */
 export const getServiceVersion = async (network: Network, name: string): Promise<string> => {
   const res = await superagent.get(network.stargate.serviceURL(name))
   const data = res.body as { name: string, version: string }

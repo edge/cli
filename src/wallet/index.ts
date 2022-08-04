@@ -7,12 +7,18 @@ import { Context } from '..'
 import { Wallet } from './wallet'
 import { getWalletOption } from './cli'
 
+/** Secure wallet data by obscuring its keypair. */
 const secure = (w: storage.FileWallet | Wallet): Wallet => ({
   address: w.address,
   publicKey: '****',
   privateKey: '****'
 })
 
+/**
+ * Create a wallet object.
+ *
+ * This provides simplified read/write access to the host wallet on disk.
+ */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export const wallet = ({ logger, parent, network }: Context) => {
   const log = logger('wallet')

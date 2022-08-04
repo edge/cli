@@ -6,6 +6,9 @@ import { Network } from '..'
 import { askSecure } from '../input'
 import { tx as xeTx } from '@edge/xe-utils'
 
+/**
+ * Transaction signing request handler.
+ */
 export const askToSignTx = async (opts: { passphrase?: string }): Promise<void> => {
   if (!opts.passphrase) {
     console.log('This transaction must be signed with your private key.')
@@ -22,6 +25,9 @@ export const askToSignTx = async (opts: { passphrase?: string }): Promise<void> 
   }
 }
 
+/**
+ * Transaction creation handler.
+ */
 export const handleCreateTxResult = (network: Network, result: xeTx.CreateResponse): boolean => {
   if (result.metadata.accepted !== 1) {
     const reason = result.results.find(r => r)?.reason || 'unknown reason'

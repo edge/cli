@@ -15,6 +15,7 @@ import { findOne, types } from '.'
 import { getPassphraseOption, passphraseFileOption, passphraseOption } from '../wallet/cli'
 import { printData, toDays, toUpperCaseFirst } from '../helpers'
 
+/** Format a timestamp to (almost) ISO 8601 standard. */
 const formatTime = (t: number): string => {
   const d = new Date(t)
   const [yyyy, mm, dd, h, m, s] = [
@@ -28,17 +29,22 @@ const formatTime = (t: number): string => {
   return `${yyyy}-${mm}-${dd} ${h}:${m}:${s}`
 }
 
-// wrapper for xe.vars; returns the original error in --debug CLI, otherwise generic error message
+/**
+ * Wrapper for xe.vars; throws the original error in --debug CLI, otherwise generic error message.
+ */
 const xeVars = async (xe: XEClientProvider, debug: boolean) => {
   try {
     return await xe().vars()
   }
   catch (err) {
     if (debug) throw err
-    throw new Error('staking is currently unavailable. Please try again later.')
+    throw new Error('Staking is currently unavailable. Please try again later.')
   }
 }
 
+/**
+ * Create a stake (`stake create`).
+ */
 const createAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (nodeType: string) => {
   if (!types.includes(nodeType)) throw new Error(`invalid node type "${nodeType}"`)
   const log = logger()
@@ -98,6 +104,7 @@ const createAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (
   if (!handleCreateTxResult(ctx.network, result)) process.exitCode = 1
 }
 
+/** Help text for the `stake create` command. */
 const createHelp = (network: Network) => [
   '\n',
   'This command will create a stake on the blockchain.\n\n',
@@ -105,6 +112,9 @@ const createHelp = (network: Network) => [
   `Run '${network.appName} device add --help' for more information.`
 ].join('')
 
+/**
+ * Display on-chain staking info (`stake info`).
+ */
 const infoAction = ({ xe, ...ctx }: CommandContext) => async () => {
   const { debug } = getDebugOption(ctx.parent)
 
@@ -124,8 +134,12 @@ const infoAction = ({ xe, ...ctx }: CommandContext) => async () => {
   console.log(`  Host:     ${hostAmt}`)
 }
 
+/** Help text for the `stake info` command. */
 const infoHelp = '\nDisplays current staking amounts.'
 
+/**
+ * List stakes associated with the host wallet (`stake list`).
+ */
 const listAction = ({ index, wallet, ...ctx }: CommandContext) => async () => {
   const { verbose } = getVerboseOption(ctx.parent)
   const printID = (id: string) => verbose ? id : id.slice(0, config.id.shortLength)
@@ -165,8 +179,13 @@ const listAction = ({ index, wallet, ...ctx }: CommandContext) => async () => {
   })
 }
 
+/** Help text for the `stake list` command. */
 const listHelp = '\nDisplays all stakes associated with your wallet.'
 
+/**
+ * Release a stake (`stake release`).
+ * The stake must first be unlocked; see `unlockAction()`.
+ */
 const releaseAction = ({ index, wallet, xe, ...ctx }: CommandContext) => async (id: string) => {
   const opts = {
     ...getDebugOption(ctx.parent),
@@ -245,6 +264,7 @@ const releaseAction = ({ index, wallet, xe, ...ctx }: CommandContext) => async (
   if (!handleCreateTxResult(ctx.network, result)) process.exitCode = 1
 }
 
+/** Help text for the `stake release` command. */
 const releaseHelp = [
   '\n',
   'Release a stake.\n\n',
@@ -252,6 +272,9 @@ const releaseHelp = [
   'release of funds, rather than waiting for the unlock period to conclude.'
 ].join('')
 
+/**
+ * Unlock a stake (`stake unlock`).
+ */
 const unlockAction = ({ index, logger, wallet, xe, ...ctx }: CommandContext) => async (id: string) => {
   const log = logger()
 
@@ -309,18 +332,24 @@ const unlockAction = ({ index, logger, wallet, xe, ...ctx }: CommandContext) => 
   if (!handleCreateTxResult(ctx.network, result)) process.exitCode = 1
 }
 
+/** Help text for the `stake unlock` command. */
 const unlockHelp = [
   '\n',
   'Unlock a stake.'
 ].join('')
 
+/** Get express release flag from user command. */
 const getExpressOption = (cmd: Command): { express: boolean } => {
   const opts = cmd.opts<{ express: boolean }>()
   return { express: !!opts.express }
 }
 
+/** Create express release option for CLI. */
 const expressOption = (description = 'express release') => new Option('-e, --express', description)
 
+/**
+ * Configure `stake` commands with root context.
+ */
 export const withContext = (ctx: Context): Command => {
   const stakeCLI = new Command('stake')
     .description('manage stakes')

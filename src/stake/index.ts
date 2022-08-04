@@ -6,14 +6,22 @@ import config from '../config'
 import { namedError } from '../helpers'
 import { stake } from '@edge/index-utils'
 
+/** Ambiguous ID error. */
 export const ambiguousIDError = namedError('AmbiguousIDError')
 
+/** Check whether a stake can be assigned to a device. */
 export const canAssign = (stake: stake.AddressedStake): boolean => {
   if (stake.released) return false
   if (stake.unlockRequested) return false
   return true
 }
 
+/**
+ * Find a single stake from a list based on a partial or full ID.
+ *
+ * If a partial ID is particularly short and the host wallet has a lot of stakes, there may be multiple matches.
+ * In this instance, an AmbiguousIDError is thrown and the user should be prompted to try again with a longer input.
+ */
 export const findOne = (stakes: stake.AddressedStake[], id: string): stake.AddressedStake => {
   if (id.length < config.id.minEntryLength) throw new Error('stake ID must be at least 3 characters')
   const ss = Object.values(stakes).filter(s => s.id.slice(0, id.length) === id)
@@ -25,9 +33,14 @@ export const findOne = (stakes: stake.AddressedStake[], id: string): stake.Addre
   return ss[0]
 }
 
+/**
+ * Map of node types to precedence represented by a number.
+ * This can be used to sort nodes, stakes etc. by node type.
+ */
 export const precedence = ['stargate', 'gateway', 'host'].reduce((o, v, i) => {
   o[v] = i
   return o
 }, {} as Record<string, number>)
 
+/** Simple list of node types. */
 export const types = ['host', 'gateway', 'stargate']

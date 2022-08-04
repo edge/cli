@@ -14,6 +14,11 @@ import { formatXE, parseAmount } from './xe'
 import { getPassphraseOption, passphraseFileOption, passphraseOption } from '../wallet/cli'
 import { tx as xeTx, wallet as xeWallet } from '@edge/xe-utils'
 
+/**
+ * Format an index transaction for printing in terminal.
+ *
+ * @todo move to a table format https://github.com/edge/cli/issues/50
+ */
 const formatIndexTx = (address: string, tx: indexTx.Tx): string => {
   const data: Record<string, string> = {
     Tx: tx.hash,
@@ -29,6 +34,7 @@ const formatIndexTx = (address: string, tx: indexTx.Tx): string => {
   return printData(data)
 }
 
+/** Format a transaction timestamp to (almost) ISO 8601 standard. */
 const formatTimestamp = (d: Date): string => {
   const year = d.getFullYear().toString()
   const month = d.getMonth().toString().padStart(2, '0')
@@ -39,6 +45,11 @@ const formatTimestamp = (d: Date): string => {
   return `${year}-${month}-${day} ${h}:${m}:${s}`
 }
 
+/**
+ * Format a blockchain transaction for printing in terminal.
+ *
+ * @todo move to a table format https://github.com/edge/cli/issues/50
+ */
 const formatTx = (address: string, tx: xeTx.Tx): string => {
   const data: Record<string, string> = {
     Tx: tx.hash,
@@ -53,6 +64,9 @@ const formatTx = (address: string, tx: xeTx.Tx): string => {
   return printData(data)
 }
 
+/**
+ * List transactions for the host wallet (`transaction list`).
+ */
 const listAction = ({ index, wallet, ...ctx }: CommandContext) => async () => {
   const address = await wallet().address()
   const { results, metadata } = await index().transactions(address, getPaginationOptions(ctx.cmd))
@@ -71,11 +85,13 @@ const listAction = ({ index, wallet, ...ctx }: CommandContext) => async () => {
   })
 }
 
+/** Help text for the `transaction list` command. */
 const listHelp = [
   '\n',
   'This command queries the index and displays your transactions.'
 ].join('')
 
+/** List pending transactions for the host wallet (`transaction list-pending`). */
 const listPendingAction = ({ wallet, xe }: CommandContext) => async () => {
   const address = await wallet().address()
 
@@ -92,11 +108,15 @@ const listPendingAction = ({ wallet, xe }: CommandContext) => async () => {
     })
 }
 
+/** Help text for the `transaction list-pending` command. */
 const listPendingHelp = [
   '\n',
   'This command queries the blockchain and displays all of your pending transactions.'
 ].join('')
 
+/**
+ * Send an XE transaction via the blockchain (`transaction send`).
+ */
 // eslint-disable-next-line max-len
 const sendAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (amountInput: string, recipient: string) => {
   const log = logger()
@@ -151,13 +171,7 @@ const sendAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (am
   if (!handleCreateTxResult(ctx.network, result)) process.exitCode = 1
 }
 
-const getMemoOption = (cmd: Command): { memo?: string } => {
-  const { memo } = cmd.opts<{ memo?: string }>()
-  return { memo }
-}
-
-const memoOption = (description = 'attach a memo to the transaction') => new Option('-m, --memo <text>', description)
-
+/** Help text for the `transaction send` command. */
 const sendHelp = [
   '\n',
   'This command sends an XE transaction to any address you choose. ',
@@ -168,6 +182,18 @@ const sendHelp = [
   'You must provide a passphrase to decrypt your private key.'
 ].join('')
 
+/** Get transaction memo from user command. */
+const getMemoOption = (cmd: Command): { memo?: string } => {
+  const { memo } = cmd.opts<{ memo?: string }>()
+  return { memo }
+}
+
+/** Create transaction memo option for CLI. */
+const memoOption = (description = 'attach a memo to the transaction') => new Option('-m, --memo <text>', description)
+
+/**
+ * Configure `transaction` commands with root context.
+ */
 export const withContext = (ctx: Context): Command => {
   const transactionCLI = new Command('transaction')
     .alias('tx')

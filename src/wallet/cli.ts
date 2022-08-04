@@ -23,6 +23,9 @@ export type WalletOption = {
   wallet: string
 }
 
+/**
+ * Query the current host wallet balance (`wallet balance`).
+ */
 const balanceAction = ({ wallet, xe }: Context) => async () => {
   const address = await wallet().address()
   const { balance } = await xe().wallet(address)
@@ -31,6 +34,9 @@ const balanceAction = ({ wallet, xe }: Context) => async () => {
   console.log(`Balance: ${formatXE(balance)}`)
 }
 
+/**
+ * Create a new XE wallet and save it to the host, referred to elsewhere as the host wallet (`wallet create`).
+ */
 const createAction = ({ logger, wallet, ...ctx }: CommandContext) => async () => {
   const log = logger()
 
@@ -99,6 +105,7 @@ const createAction = ({ logger, wallet, ...ctx }: CommandContext) => async () =>
   }
 }
 
+/** Help text for the `wallet create` command. */
 const createHelp = [
   '\n',
   'This command will create a new wallet.\n\n',
@@ -108,6 +115,9 @@ const createHelp = [
   'This should be copied to a secure location and kept secret.'
 ].join('')
 
+/**
+ * Display host wallet information (`wallet info`).
+ */
 const infoAction = ({ wallet, ...ctx }: CommandContext) => async () => {
   const storage = wallet()
   console.log(`Address: ${await storage.address()}`)
@@ -124,12 +134,16 @@ const infoAction = ({ wallet, ...ctx }: CommandContext) => async () => {
   }
 }
 
+/** Help text for the `wallet info` command. */
 const infoHelp = [
   '\n',
   'This command displays information about your wallet.\n\n',
   'If a passphrase is provided, this command will also decrypt and display your private key.'
 ].join('')
 
+/**
+ * Forget (remove) the host wallet (`wallet forget`).
+ */
 const forgetAction = ({ wallet, ...ctx }: CommandContext) => async () => {
   const storage = wallet()
   if (!await storage.check()) {
@@ -149,11 +163,15 @@ const forgetAction = ({ wallet, ...ctx }: CommandContext) => async () => {
   console.log('Your wallet is forgotten.')
 }
 
+/** Help text for the `wallet forget` command. */
 const forgetHelp = [
   '\n',
   'This command deletes your wallet from disk.'
 ].join('')
 
+/**
+ * Restore an XE wallet to the host using a private key (`wallet restore`).
+ */
 const restoreAction = ({ logger, wallet, ...ctx }: CommandContext) => async () => {
   const log = logger()
 
@@ -196,6 +214,7 @@ const restoreAction = ({ logger, wallet, ...ctx }: CommandContext) => async () =
   console.log(`Wallet ${userWallet.address} restored.`)
 }
 
+/** Help text for the `wallet restore` command. */
 const restoreHelp = [
   '\n',
   'This command will restore an existing wallet using a private key you already have.\n\n',
@@ -203,11 +222,16 @@ const restoreHelp = [
   'The passphrase is also required later to decrypt the wallet for certain actions, such as signing transactions.'
 ].join('')
 
+/** Get wallet overwrite option from user command. */
 const getOverwriteOption = (cmd: Command) => {
   const opts = cmd.opts<{ overwrite?: boolean }>()
   return { overwrite: !!opts.overwrite }
 }
 
+/**
+ * Get passphrase option from user command.
+ * This checks both the `--passphrase` option (insecure) and the `--passphraseFile` option.
+ */
 export const getPassphraseOption = async (cmd: Command): Promise<PassphraseOption> => {
   type Input = Record<'passphrase' | 'passphraseFile', string|undefined>
   const { passphrase, passphraseFile: file } = cmd.opts<Input>()
@@ -221,6 +245,10 @@ export const getPassphraseOption = async (cmd: Command): Promise<PassphraseOptio
   return {}
 }
 
+/**
+ * Get private key option from user command.
+ * This checks both the `--privateKey` option (insecure) and the `--privateKeyFile` option.
+ */
 export const getPrivateKeyOption = async (cmd: Command): Promise<PrivateKeyOption> => {
   type Input = Record<'privateKey' | 'privateKeyFile', string|undefined>
   const { privateKey, privateKeyFile: file } = cmd.opts<Input>()
@@ -234,31 +262,39 @@ export const getPrivateKeyOption = async (cmd: Command): Promise<PrivateKeyOptio
   return {}
 }
 
+/** Get private key file option from user command. */
 const getPrivateKeyFileOption = (cmd: Command) => {
   const { privateKeyFile } = cmd.opts<{ privateKeyFile: string }>()
   return { privateKeyFile }
 }
 
+/** Get wallet [file] option from user command. */
 export const getWalletOption = (parent: Command, network: Network): WalletOption => {
   const { wallet } = parent.opts<Partial<WalletOption>>()
   return { wallet: wallet || network.wallet.defaultFile }
 }
 
+/** Create wallet overwrite option for CLI. */
 const overwriteOption = (description = 'overwrite existing wallet if one exists') =>
   new Option('-f, --overwrite', description)
 
+/** Create private key option for CLI. */
 export const privateKeyOption = (): Option => new Option('-k, --private-key <string>', 'wallet private key')
+/** Create private key file option for CLI. */
 export const privateKeyFileOption = (): Option => new Option(
   '-K, --private-key-file <path>',
   'file containing wallet private key'
 )
 
+/** Create passphrase option for CLI. */
 export const passphraseOption = (): Option => new Option('-p, --passphrase <string>', 'wallet passphrase')
+/** Create passphrase file option for CLI. */
 export const passphraseFileOption = (): Option => new Option(
   '-P, --passphrase-file <path>',
   'file containing wallet passphrase'
 )
 
+/** Configure `wallet` commands with root context. */
 export const withContext = (ctx: Context): [Command, Option] => {
   const walletCLI = new Command('wallet')
     .description('manage wallet')

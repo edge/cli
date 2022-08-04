@@ -19,6 +19,11 @@ import { errorHandler, getDebugOption, getVerboseOption } from '../edge/cli'
 import { printData, toUpperCaseFirst } from '../helpers'
 import { stake as xeStake, tx as xeTx, wallet as xeWallet } from '@edge/xe-utils'
 
+/**
+ * Add a device to the network (`device add`).
+ *
+ * This initializes the device as necessary, including creating a device data volume.
+ */
 const addAction = ({ device, index, network, wallet, xe, ...ctx }: CommandContext) => async () => {
   const opts = {
     ...await getPassphraseOption(ctx.cmd),
@@ -162,6 +167,7 @@ const addAction = ({ device, index, network, wallet, xe, ...ctx }: CommandContex
   console.log(`You can then run '${network.appName} device start' to start a ${nodeName} node on this device.`)
 }
 
+/** Help text for the `device add` command. */
 const addHelp = (network: Network) => [
   '\n',
   'This command will add this device to the network, allowing it to operate as a node.\n\n',
@@ -175,6 +181,9 @@ const addHelp = (network: Network) => [
   `If you do not already have a stake, you can run '${network.appName} stake create' to get one.`
 ].join('')
 
+/**
+ * Display device information (`device info`).
+ */
 const infoAction = ({ device, logger, wallet, xe, ...ctx }: CommandContext) => async () => {
   const log = logger()
 
@@ -207,11 +216,19 @@ const infoAction = ({ device, logger, wallet, xe, ...ctx }: CommandContext) => a
   console.log(printData(toPrint))
 }
 
+/** Help text for the `device info` command. */
 const infoHelp = [
   '\n',
   'This command displays information about your device and the stake it is assigned to.'
 ].join('')
 
+/**
+ * Remove a device from the network (`device remove`).
+ *
+ * If the device is assigned to a stake, its assignment will be removed.
+ * If the device is running, it will be stopped.
+ * Afterwards, the data volume is removed, effectively 'destroying' the device.
+ */
 const removeAction = ({ device, logger, wallet, xe, ...ctx }: CommandContext) => async () => {
   const log = logger()
 
@@ -290,6 +307,7 @@ const removeAction = ({ device, logger, wallet, xe, ...ctx }: CommandContext) =>
   console.log(`This device has been removed from Edge ${toUpperCaseFirst(ctx.network.name)}.`)
 }
 
+/** Help text for the `device remove` command. */
 const removeHelp = [
   '\n',
   'This command removes this device from the network.\n\n',
@@ -299,6 +317,11 @@ const removeHelp = [
   '  - Destroy the device\'s identity\n'
 ].join('')
 
+/**
+ * Restart a running device (`device restart`).
+ *
+ * If the device is not running, nothing happens.
+ */
 const restartAction = ({ device }: CommandContext) => async () => {
   const userDevice = device()
   const docker = userDevice.docker()
@@ -314,8 +337,16 @@ const restartAction = ({ device }: CommandContext) => async () => {
   console.log(`${node.name} restarted`)
 }
 
+/** Help text for the `device restart` command. */
 const restartHelp = '\nRestart the node, if it is running.'
 
+/**
+ * Start a device (`device start`).
+ *
+ * If the device is already running, nothing happens.
+ *
+ * Before starting, we check whether an update is available and if so, download it first.
+ */
 const startAction = ({ device, logger, ...ctx }: CommandContext) => async () => {
   const log = logger()
 
@@ -354,12 +385,19 @@ const startAction = ({ device, logger, ...ctx }: CommandContext) => async () => 
   console.log(`${node.name} started`)
 }
 
+/** Help text for the `device start` command. */
 const startHelp = (network: Network) => [
   '\n',
   'Start the node. Your device must be added to the network first. ',
   `Run '${network.appName} device add --help' for more information.`
 ].join('')
 
+/**
+ * Display the device status (`device status`).
+ *
+ * This only reports whether the device is running or not.
+ * For more information about the device, use `device info` instead.
+ */
 const statusAction = ({ device }: CommandContext) => async () => {
   const userDevice = device()
   const node = await userDevice.node()
@@ -368,8 +406,14 @@ const statusAction = ({ device }: CommandContext) => async () => {
   else console.log(`${node.name} is running`)
 }
 
+/** Help text for the `device status` command. */
 const statusHelp = '\nDisplay the status of the node (whether it is running or not).'
 
+/**
+ * Stop a device (`device stop`).
+ *
+ * If the device is already stopped, nothing happens.
+ */
 const stopAction = ({ device, logger }: CommandContext) => async () => {
   const log = logger()
 
@@ -391,8 +435,14 @@ const stopAction = ({ device, logger }: CommandContext) => async () => {
   console.log(`${node.name} stopped`)
 }
 
+/** Help text for the `device stop` command. */
 const stopHelp = '\nStop the node, if it is running.'
 
+/**
+ * Update a device (`device update`).
+ *
+ * If the device is running, it will be restarted after the update.
+ */
 const updateAction = ({ device, logger, ...ctx }: CommandContext) => async () => {
   const log = logger()
 
@@ -467,6 +517,7 @@ const updateAction = ({ device, logger, ...ctx }: CommandContext) => async () =>
   console.log(`${node.name} restarted`)
 }
 
+/** Help text for the `device update` command. */
 const updateHelp = '\nUpdate the node, if an update is available.'
 
 type nodeInfo = {
@@ -475,6 +526,9 @@ type nodeInfo = {
   stake: xeStake.Stake
 }
 
+/**
+ * Build a container options object for a new Docker container.
+ */
 const createContainerOptions = (
   node: nodeInfo,
   tag: string,
@@ -522,9 +576,15 @@ const createContainerOptions = (
   return opts
 }
 
+/**
+ * Create a CLI option for the Docker socket path.
+ */
 export const dockerSocketPathOption = (description = 'Docker socket path'): Option =>
   new Option('--docker-socket-path <path>', description)
 
+/**
+ * Get Docker options from user command, including the socket path.
+ */
 export const getDockerOptions = (cmd: Command): DockerOptions => {
   const opts = cmd.opts<{
     dockerSocketPath?: string
@@ -536,6 +596,9 @@ export const getDockerOptions = (cmd: Command): DockerOptions => {
   return {}
 }
 
+/**
+ * Get Docker ENV inputs from user command.
+ */
 const getNodeEnvOption = (cmd: Command): { env: string[] } => {
   const { env } = cmd.opts<{ env?: string[] }>()
   return {
@@ -543,11 +606,18 @@ const getNodeEnvOption = (cmd: Command): { env: string[] } => {
   }
 }
 
+/**
+ * Get Docker networks from user command.
+ * This allows the device to join user-defined networks rather than the default bridge.
+ */
 const getNodeNetworksOption = (cmd: Command): { network?: string[] } => {
   const { network } = cmd.opts<{ network?: string[] }>()
   return { network }
 }
 
+/**
+ * Get Edge Registry authentication options from user command or environment.
+ */
 const getRegistryAuthOptions = (cmd: Command): AuthConfig|undefined => {
   const opts = cmd.opts<{
     registryUsername?: string
@@ -563,11 +633,18 @@ const getRegistryAuthOptions = (cmd: Command): AuthConfig|undefined => {
   return undefined
 }
 
+/**
+ * Get stake hash from user command.
+ */
 const getStakeOption = (cmd: Command) => {
   const { stake } = cmd.opts<{ stake?: string }>()
   return { stake }
 }
 
+/**
+ * Get target version option from user command.
+ * This allows a particular version of the device software to be specified for use.
+ */
 const getTargetOption = async ({ network }: Pick<Context, 'network'>, cmd: Command, name: string) => {
   const { target } = cmd.opts<{ target?: string }>()
   return {
@@ -575,22 +652,31 @@ const getTargetOption = async ({ network }: Pick<Context, 'network'>, cmd: Comma
   }
 }
 
+/** Create ENV option for CLI. */
 const nodeEnvOption = (description = 'set environment variable(s) for node') =>
   new Option('-e, --env <var...>', description)
 
+/** Create Docker network option for CLI. */
 const nodeNetworkOption = (description = 'set network(s) for node') => new Option('--network <var...>', description)
 
+/** Create Docker registry password option for CLI. */
 const registryPasswordOption = (description = 'Edge Docker registry password') =>
   new Option('--registry-password <password>', description)
 
+/** Create Docker username option for CLI. */
 const registryUsernameOption = (description = 'Edge Docker registry username') =>
   new Option('--registry-username <username>', description)
 
+/** Create stake option for CLI. */
 const stakeOption = (description = 'stake ID') => new Option('-s, --stake <id>', description)
 
+/** Create target version option for CLI. */
 const targetOption = (description = 'node target version') =>
   new Option('--target <version>', description)
 
+/**
+ * Configure `device` commands with root context.
+ */
 export const withContext = (ctx: Context): [Command, Option[]] => {
   const deviceCLI = new Command('device')
     .description('manage device')

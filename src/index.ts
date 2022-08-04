@@ -9,21 +9,36 @@ import indexClient from './api'
 import { wallet } from './wallet'
 import xeClient from './api/xe'
 
+/**
+ * Context provided to a CLI command.
+ * Essentially identical to the normal global context, but including the command itself.
+ */
 export type CommandContext = Context & {
   cmd: Command
 }
 
+/**
+ * Global context.
+ * This is passed around code to provide access to common objects, getters (providers), CLI options, etc.
+ */
 export type Context = Providers & {
   parent: Command
   network: Network
 }
 
+/** Provider for a device object. */
 export type DeviceProvider = (name?: string) => ReturnType<typeof device>
 
+/** Provider for an index API client. */
 export type IndexClientProvider = (name?: string) => ReturnType<typeof indexClient>
 
+/** Provider for the logger. */
 export type LoggerProvider = (name?: string) => Log
 
+/**
+ * Network configuration.
+ * Defines standard structure for per-network config.
+ */
 export type Network = {
   appName: string
   name: string
@@ -53,6 +68,9 @@ export type Network = {
   }
 }
 
+/**
+ * Providers for all key objects.
+ */
 export type Providers = {
   device: DeviceProvider
   index: IndexClientProvider
@@ -61,6 +79,8 @@ export type Providers = {
   xe: XEClientProvider
 }
 
+/** Provider for the host wallet. */
 export type WalletProvider = () => ReturnType<typeof wallet>
 
+/** Provider for an XE blockchain API client. */
 export type XEClientProvider = (name?: string) => ReturnType<typeof xeClient>
