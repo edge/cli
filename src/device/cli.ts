@@ -33,7 +33,7 @@ const addAction = ({ device, index, network, wallet, xe, ...ctx }: CommandContex
   const { yes } = getYesOption(ctx.cmd)
 
   const { verbose } = getVerboseOption(ctx.parent)
-  const printAddr = (id: string) => verbose ? id : id.slice(0, 9) + '...'
+  const printAddr = (id: string) => verbose ? id : id.slice(0, config.address.shortLength) + '...'
   const printID = (id: string) => verbose ? id : id.slice(0, config.id.shortLength)
 
   const userDevice = device(opts.prefix)

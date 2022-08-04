@@ -42,5 +42,13 @@ export const precedence = ['stargate', 'gateway', 'host'].reduce((o, v, i) => {
   return o
 }, {} as Record<string, number>)
 
+/**
+ * Function to `sort()` by precedence, which sub-sorts by created timestamp for the same node type.
+ */
+export const byPrecedence = (a: stake.AddressedStake, b: stake.AddressedStake): number => {
+  const posDiff = precedence[a.type] - precedence[b.type]
+  return posDiff !== 0 ? posDiff : a.created - b.created
+}
+
 /** Simple list of node types. */
 export const types = ['host', 'gateway', 'stargate']

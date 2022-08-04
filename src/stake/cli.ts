@@ -2,6 +2,7 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+import { AddressedStake } from '@edge/index-utils/dist/lib/stake'
 import { checkVersionHandler } from '../update/cli'
 import config from '../config'
 import { formatXE } from '../transaction/xe'
@@ -10,24 +11,10 @@ import { Command, Option } from 'commander'
 import { CommandContext, Context, Network, XEClientProvider } from '..'
 import { askLetter, getYesOption, yesOption } from '../input'
 import { askToSignTx, handleCreateTxResult } from '../transaction'
+import { byPrecedence, findOne, types } from '.'
 import { errorHandler, getDebugOption, getVerboseOption } from '../edge/cli'
-import { findOne, types } from '.'
+import { formatTime, printTable, toDays, toUpperCaseFirst } from '../helpers'
 import { getPassphraseOption, passphraseFileOption, passphraseOption } from '../wallet/cli'
-import { printData, toDays, toUpperCaseFirst } from '../helpers'
-
-/** Format a timestamp to (almost) ISO 8601 standard. */
-const formatTime = (t: number): string => {
-  const d = new Date(t)
-  const [yyyy, mm, dd, h, m, s] = [
-    d.getUTCFullYear(),
-    (1 + d.getUTCMonth()).toString().padStart(2, '0'),
-    (1 + d.getUTCDate()).toString().padStart(2, '0'),
-    d.getUTCHours().toString().padStart(2, '0'),
-    d.getUTCMinutes().toString().padStart(2, '0'),
-    d.getUTCSeconds().toString().padStart(2, '0')
-  ]
-  return `${yyyy}-${mm}-${dd} ${h}:${m}:${s}`
-}
 
 /**
  * Wrapper for xe.vars; throws the original error in --debug CLI, otherwise generic error message.
@@ -142,41 +129,32 @@ const infoHelp = '\nDisplays current staking amounts.'
  */
 const listAction = ({ index, wallet, ...ctx }: CommandContext) => async () => {
   const { verbose } = getVerboseOption(ctx.parent)
-  const printID = (id: string) => verbose ? id : id.slice(0, config.id.shortLength)
 
   const storage = wallet()
   const address = await storage.address()
   const { results: stakes } = await index().stakes(address, { limit: 999 })
 
-  Object.values(stakes).forEach(stake => {
-    const data: Record<string, string> = {
-      ID: printID(stake.id),
-      Hash: printID(stake.hash),
-      Tx: stake.transaction,
-      Created: formatTime(stake.created),
-      ...(() => {
-        if (stake.device !== undefined) {
-          return {
-            Device: stake.device,
-            Assigned: formatTime(stake.deviceAssigned as number)
-          }
+  const table = printTable<AddressedStake>(
+    ['Type', 'ID', 'Hash', 'Created', 'Tx', 'Amount', 'Status'],
+    stake => [
+      toUpperCaseFirst(stake.type),
+      verbose ? stake.id : stake.id.slice(0, config.id.shortLength),
+      verbose ? stake.hash : stake.hash.slice(0, config.hash.shortLength),
+      formatTime(stake.created),
+      verbose ? stake.transaction : stake.transaction.slice(0, config.hash.shortLength),
+      formatXE(stake.amount),
+      (() => {
+        if (stake.released !== undefined) return 'Released'
+        if (stake.unlockRequested !== undefined) {
+          const unlockAt = stake.unlockRequested + stake.unlockPeriod
+          if (unlockAt > Date.now()) return `Unlocking (unlocks at ${formatTime(unlockAt)})`
+          return 'Unlocked'
         }
-      })(),
-      Amount: formatXE(stake.amount),
-      Type: toUpperCaseFirst(stake.type)
-    }
-
-    if (stake.released !== undefined) data.Status = 'Released'
-    else if (stake.unlockRequested !== undefined) {
-      const unlockAt = stake.unlockRequested + stake.unlockPeriod
-      if (unlockAt > Date.now()) data.Status = `Unlocking (unlocks at ${formatTime(unlockAt)})`
-      else data.Status = 'Unlocked'
-    }
-    else data.Status = 'Active'
-
-    console.log(printData(data))
-    console.log()
-  })
+        return 'Active'
+      })()
+    ]
+  )
+  console.log(table(stakes.sort(byPrecedence)))
 }
 
 /** Help text for the `stake list` command. */
