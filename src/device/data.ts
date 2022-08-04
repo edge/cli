@@ -127,10 +127,12 @@ export const remove = async (docker: Docker, volume: VolumeInspectInfo): Promise
  * Get information about the data volume.
  *
  * By default, if the volume does not exist, an error will be thrown.
- * Pass `true` as a second argument to silence this error and create the volume on the fly instead.
+ * Pass `true` as a third argument to silence this error and create the volume on the fly instead.
  */
-export const volume = async (docker: Docker, canCreate?: boolean): Promise<VolumeInspectInfo> => {
-  let volume = docker.getVolume(config.docker.dataVolume)
+export const volume = async (docker: Docker, suffix?: string, canCreate?: boolean): Promise<VolumeInspectInfo> => {
+  let name = config.docker.dataVolume
+  if (suffix) name = `${name}-${suffix}`
+  let volume = docker.getVolume(name)
   try {
     return await volume.inspect()
   }
@@ -141,7 +143,7 @@ export const volume = async (docker: Docker, canCreate?: boolean): Promise<Volum
     if (!canCreate) throw new Error('device has not been initialized')
   }
   volume = await docker.createVolume({
-    Name: config.docker.dataVolume
+    Name: name
   })
   return await volume.inspect()
 }

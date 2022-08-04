@@ -23,7 +23,7 @@ const secure = (device: data.Device): data.Device => ({
  * This provides simplified getters for the Docker service, device node, and data volume.
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-const device = ({ logger, wallet, xe, network, parent }: Context, name = 'device') => {
+const device = ({ logger, wallet, xe, network, parent }: Context, prefix: string | undefined, name = 'device') => {
   const log = logger(name)
 
   let dockerInstance: Docker | undefined
@@ -42,7 +42,7 @@ const device = ({ logger, wallet, xe, network, parent }: Context, name = 'device
   const volume = async (canCreate = false) => {
     const d = docker()
 
-    const vol = data.withVolume(d, await data.volume(d, canCreate))
+    const vol = data.withVolume(d, await data.volume(d, prefix, canCreate))
 
     const read = async () => {
       log.debug('reading volume')
@@ -80,7 +80,7 @@ const device = ({ logger, wallet, xe, network, parent }: Context, name = 'device
 
     const image = network.registry.imageName(stake.type, arch())
     const name = toUpperCaseFirst(stake.type)
-    const containerNamePrefix = `edge-${stake.type}`
+    const containerNamePrefix = ['edge', stake.type, prefix].filter(Boolean).join('-') + '-'
 
     log.debug('found node', { image, name, stake })
 
@@ -88,7 +88,16 @@ const device = ({ logger, wallet, xe, network, parent }: Context, name = 'device
       log.debug('finding container with prefix', { containerNamePrefix })
       const remoteName = `/${containerNamePrefix}`
       const containers = await docker().listContainers()
-      const info = containers.find(c => c.Names.find(n => n.startsWith(remoteName)))
+      const infos = containers.filter(c => c.Names.find(n => n.startsWith(remoteName)))
+      let info: Docker.ContainerInfo | undefined
+      if (infos.length === 0) return undefined
+      else if (infos.length === 1) info = infos[0]
+      else {
+        // multiple matches; if prefix is set, this is unexpected and a problem
+        if (prefix) throw new Error('ambiguous prefix')
+        // otherwise, resolve to the un-prefixed node (if any)
+        info = containers.find(c => c.Names.filter(n => n.split('-').length === 3))
+      }
       if (info !== undefined) {
         log.debug('found container', {
           id: info.Id,
