@@ -7,6 +7,9 @@ import { homedir } from 'os'
 import main from './main'
 import { sep } from 'path'
 
+/**
+ * Start mainnet CLI.
+ */
 main(process.argv, {
   appName: 'edge',
   name: 'mainnet',

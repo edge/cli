@@ -8,6 +8,9 @@ import pkg from '../../package.json'
 import { toUpperCaseFirst } from '../helpers'
 import { Context, Network } from '..'
 
+/**
+ * Create root CLI command.
+ */
 export const create = (network: Network): Command => {
   const version = `Edge CLI v${pkg.version} (${toUpperCaseFirst(network.name)})`
   const desc = `Edge CLI (${toUpperCaseFirst(network.name)})`
@@ -22,6 +25,10 @@ export const create = (network: Network): Command => {
   return parent
 }
 
+/**
+ * Global error handler.
+ * Catches and cleanly prints any error that may arise from sub-commands.
+ */
 export const errorHandler =
   <T>({ parent, ...ctx }: Context, f: (...args: any[]) => Promise<T>) =>
     async (...args: any[]): Promise<T|undefined> => {
@@ -39,21 +46,34 @@ export const errorHandler =
       return undefined
     }
 
+/**
+ * Get global debug flag from user command.
+ * If set, debug messages are printed.
+ */
 export const getDebugOption = (parent: Command): { debug: boolean } => {
   const { debug } = parent.opts<{ debug: boolean }>()
   return { debug }
 }
 
+/**
+ * Get global 'no colour' flag from user command.
+ * If set, terminal colors are not printed.
+ */
 export const getNoColorOption = (parent: Command): { noColor: boolean } => {
   const { noColor } = parent.opts<{ noColor: boolean }>()
   return { noColor }
 }
 
+/**
+ * Get global verbose output flag from user command.
+ * If set, more detail is provided in printed output e.g. full hashes.
+ */
 export const getVerboseOption = (parent: Command): { verbose: boolean } => {
   const { verbose } = parent.opts<{ verbose: boolean }>()
   return { verbose }
 }
 
+/** Helper to distinguish whether an error reflects cancelled input (from C-c). */
 const isCancelledInput = (err: unknown): boolean => {
   if (!(err instanceof Error)) return false
   return err.name === 'InputError' && err.message === 'cancelled'

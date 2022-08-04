@@ -7,6 +7,9 @@ import { Context } from '..'
 import { SuperAgentRequest } from 'superagent'
 import config from '../config'
 
+/**
+ * Create an Index API client.
+ */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 const client = ({ logger, network }: Pick<Context, 'logger' | 'network'>, name = 'index') => {
   const host = network.index.baseURL

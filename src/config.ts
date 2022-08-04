@@ -6,6 +6,11 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
+/**
+ * Global configuration.
+ * Some properties can be specified in the shell environment.
+ * However, it's normally best to leave these alone unless debugging or Edge Core Team advises changes.
+ */
 export default {
   blockchain: {
     defaultTimeout: parseInt(process.env.BLOCKCHAIN_TIMEOUT || '10') * 1000

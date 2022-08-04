@@ -16,6 +16,7 @@ import { wallet } from './wallet'
 import xeClient from './api/xe'
 import { Context, Network } from '.'
 
+/** Add providers to the global context. */
 const addProviders = (inputCtx: Pick<Context, 'parent' | 'network'>): Context => {
   const ctx = inputCtx as Context
   ctx.device = (name?: string) => device(ctx, name)
@@ -26,6 +27,10 @@ const addProviders = (inputCtx: Pick<Context, 'parent' | 'network'>): Context =>
   return ctx
 }
 
+/**
+ * CLI application entrypoint.
+ * See `main-mainnet.ts` and `main-testnet.ts` for usage.
+ */
 const main = (argv: string[], network: Network): void => {
   const parent = createCLI(network)
   aboutCLI.commands().forEach(cmd => parent.addCommand(cmd))

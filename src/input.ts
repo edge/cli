@@ -7,8 +7,12 @@ import { namedError } from './helpers'
 import readline from 'readline'
 import { Command, Option } from 'commander'
 
+/** Input error. */
 const inputError = namedError('InputError')
 
+/**
+ * Ask for input from the user.
+ */
 export const ask = (question: string): Promise<string> =>
   new Promise((resolve, reject) => {
     if (!process.stdout.isTTY) return reject(inputError('tty required'))
@@ -29,6 +33,9 @@ export const ask = (question: string): Promise<string> =>
     })
   })
 
+/**
+ * Ask for a single-letter input from the user e.g. `y/n`
+ */
 export const askLetter = async (question: string, allowChars: string): Promise<string> => {
   if (!process.stdout.isTTY) throw inputError('tty required')
   const allow = allowChars.split('')
@@ -40,6 +47,10 @@ export const askLetter = async (question: string, allowChars: string): Promise<s
   return answer
 }
 
+/**
+ * Ask for secure input from the user.
+ * This prevents the input from being displayed.
+ */
 export const askSecure = (question: string): Promise<string> =>
   new Promise((resolve, reject) => {
     if (!process.stdout.isTTY) return reject(inputError('tty required'))
@@ -65,6 +76,7 @@ export const askSecure = (question: string): Promise<string> =>
     })
   })
 
+/** Get pagination options from user command. */
 export const getPaginationOptions = (cmd: Command): { limit: number, page: number } => {
   const { limit, page } = cmd.opts<{ limit: string, page: string }>()
   return {
@@ -73,16 +85,23 @@ export const getPaginationOptions = (cmd: Command): { limit: number, page: numbe
   }
 }
 
+/**
+ * Get 'yes' flag from user command.
+ * This skips interactive confirmations.
+ */
 export const getYesOption = (cmd: Command): { yes: boolean } => {
   const opts = cmd.opts()
   return { yes: !!opts.yes }
 }
 
+/** Create [pagination] limit option for CLI. */
 export const limitOption = (description = 'items per page'): Option =>
   new Option('-l, --limit <n>', description).default('10')
 
+/** Create [pagination] page option for CLI. */
 export const pageOption = (description = 'page number'): Option =>
   new Option('-p, --page <n>', description).default('1')
 
+/** Create 'yes' option for CLI. */
 export const yesOption = (description = 'do not ask for confirmation'): Option =>
   new Option('-y, --yes', description)

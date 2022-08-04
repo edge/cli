@@ -19,13 +19,19 @@ export type DownloadInfo = {
   file: string
 }
 
+/**
+ * One-hour timeout for the version cache.
+ * This is used to mitigate load on the update server.
+ */
 const versionCacheTimeout = 1000 * 60 * 60
 
+/** Calculate the SHA-256 digest of a [CLI update] file. */
 const calcDigest = async (file: string): Promise<string> => {
   const data = await fs.readFile(file)
   return createHash('sha256').update(data).digest('hex')
 }
 
+/** Download a [CLI update] file. */
 const downloadURL = async (url: string, file: string) => new Promise<void>((resolve, reject) => {
   const stream = createWriteStream(file)
   const request = superagent.get(url)
@@ -40,6 +46,10 @@ const downloadURL = async (url: string, file: string) => new Promise<void>((reso
   request.pipe(stream)
 })
 
+/**
+ * Poll the latest version of CLI, reading from/updating the local cache as applicable.
+ * The cache timeout is specified by `versionCacheTimeout`.
+ */
 export const cachedLatestVersion = async ({ network, ...ctx }: Context): Promise<SemVer> => {
   const { debug } = getDebugOption(ctx.parent)
   const log = ctx.logger('update.version.cache')
@@ -73,12 +83,16 @@ export const cachedLatestVersion = async ({ network, ...ctx }: Context): Promise
   return lv
 }
 
+/**
+ * Get the current version of CLI from `package.json`.
+ */
 export const currentVersion = (): SemVer => {
   const cv = parse(pkg.version)
   if (cv === null) throw new Error(`package provided invalid version "${pkg.version}"`)
   return cv
 }
 
+/** Download and validate the latest version of CLI. */
 export const download = async ({ network, ...ctx }: Context): Promise<DownloadInfo> => {
   const log = ctx.logger('update.download')
   try {

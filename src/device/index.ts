@@ -9,6 +9,7 @@ import { arch } from 'os'
 import { getDockerOptions } from './cli'
 import { toUpperCaseFirst } from '../helpers'
 
+/** Secure device data by obscuring its keypair. */
 const secure = (device: data.Device): data.Device => ({
   network: device.network,
   address: device.address,
@@ -16,12 +17,18 @@ const secure = (device: data.Device): data.Device => ({
   privateKey: '****'
 })
 
+/**
+ * Create a device object.
+ *
+ * This provides simplified getters for the Docker service, device node, and data volume.
+ */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 const device = ({ logger, wallet, xe, network, parent }: Context, name = 'device') => {
   const log = logger(name)
 
   let dockerInstance: Docker | undefined
 
+  // get docker instance. automatically initializes if not already connected
   const docker = () => {
     if (dockerInstance === undefined) {
       const options = getDockerOptions(parent)
@@ -31,6 +38,7 @@ const device = ({ logger, wallet, xe, network, parent }: Context, name = 'device
     return dockerInstance
   }
 
+  // get simple volume representation object with read, write, and delete methods
   const volume = async (canCreate = false) => {
     const d = docker()
 
@@ -60,6 +68,7 @@ const device = ({ logger, wallet, xe, network, parent }: Context, name = 'device
     }
   }
 
+  // get device node information including the assigned stake and, if running, the Docker container
   const node = async () => {
     const address = await wallet().address()
     const deviceWallet = await (await volume()).read()

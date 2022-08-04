@@ -4,10 +4,13 @@
 
 import { formatXe } from '@edge/wallet-utils'
 
+/** Regular expression for validating and parsing an input XE amount. */
 const xeAmountRegexp = /^(?<amount>\d+) ?(?<unit>m?xe)?$/i
 
+/** Format XE amount for printing. */
 export const formatXE = (mxeAmount: number): string => formatXe(mxeAmount / 1e6, true) + ' XE'
 
+/** Parse XE amount from input. */
 export const parseAmount = (input: string): number => {
   const match = input.match(xeAmountRegexp)
   if (match === null) throw new Error(`invalid amount "${input}"`)

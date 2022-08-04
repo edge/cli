@@ -10,6 +10,9 @@ import { cachedLatestVersion, currentVersion, download, latestVersion } from '.'
 import { chmodSync, copyFileSync, renameSync, unlinkSync } from 'fs'
 import { errorHandler, getDebugOption, getNoColorOption } from '../edge/cli'
 
+/**
+ * Check Edge Network Files for a newer version of CLI, relative to the current CLI (`update check`).
+ */
 const checkAction = (ctx: Context) => async (): Promise<void> => {
   const cv = currentVersion()
   const lv = await latestVersion(ctx)
@@ -22,11 +25,16 @@ const checkAction = (ctx: Context) => async (): Promise<void> => {
   else console.log('Edge CLI is up to date.')
 }
 
+/** Help text for the `update check` command. */
 const checkHelp = [
   '\n',
   'Check for an update to Edge CLI.'
 ].join('')
 
+/**
+ * Handler to check for any CLI updates.
+ * This wraps any command to provide a background poll capability, displaying a CTA if an update is available.
+ */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const checkVersionHandler =
   <T>(ctx: Context, f: (...args: any[]) => Promise<T>) =>
@@ -58,6 +66,9 @@ export const checkVersionHandler =
       return result
     }
 
+/**
+ * Update CLI (`update`).
+ */
 const updateAction = (ctx: Context, argv: string[]) => async (): Promise<void> => {
   const log = ctx.logger()
 
@@ -81,7 +92,7 @@ const updateAction = (ctx: Context, argv: string[]) => async (): Promise<void> =
 
   // After downloading the file, we move the current binary to a temporary
   // location, move the new file to the current binary location, and then
-  // attempt to remove the previous binary. This may fail on windows.
+  // attempt to remove the previous binary. This may fail on Windows.
   console.log(`Updating from v${cv} to v${lv}`)
   chmodSync(file, 0o755)
   renameSync(selfPath, tmpFilename)
@@ -98,12 +109,14 @@ const updateAction = (ctx: Context, argv: string[]) => async (): Promise<void> =
   console.log(`Updated Edge CLI to v${lv}`)
 }
 
+/** Help text for the `update` command. */
 const updateHelp = (network: Network) => [
   '\n',
   'Update Edge CLI to the latest version.\n\n',
   `To check for a new version without updating Edge CLI, use '${network.appName} update check' instead.`
 ].join('')
 
+/** Configure `update` commands with root context. */
 export const withContext = (ctx: Context, argv: string[]): Command => {
   const updateCLI = new Command('update')
     .description('update Edge CLI')

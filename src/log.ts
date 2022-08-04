@@ -10,6 +10,10 @@ import { Adaptor, Log, LogLevel } from '@edge/log'
 import { getDebugOption, getNoColorOption } from './edge/cli'
 import { stderr, stdout } from 'process'
 
+/**
+ * Simple logging adapter to print customised output for CLI.
+ * This is similar to the `StdioAdaptor` in `@edge/log` but omits timestamps and pretty-prints context data.
+ */
 export class SimpleAdapter implements Adaptor {
   private useColors: boolean
   private out: Writable

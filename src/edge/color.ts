@@ -4,6 +4,9 @@
 
 import chalk from 'chalk'
 
+/**
+ * Standard colours for log output.
+ */
 export default {
   context: chalk.gray,
   debug: chalk.blue,

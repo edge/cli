@@ -4,6 +4,9 @@
 
 import { Command } from 'commander'
 
+/**
+ * Display community/further reading links in CLI.
+ */
 const communityAction = () => async () => {
   console.log([
     'Browse public Edge code on GitHub:\n',
@@ -21,6 +24,7 @@ const communityAction = () => async () => {
   ].join(''))
 }
 
+/** Configure about commands. */
 export const commands = (): Command[] => {
   const community = new Command('community')
     .description('show community links')

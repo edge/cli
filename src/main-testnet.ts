@@ -7,6 +7,9 @@ import { homedir } from 'os'
 import main from './main'
 import { sep } from 'path'
 
+/**
+ * Start testnet CLI.
+ */
 main(process.argv, {
   appName: 'edgetest',
   name: 'testnet',
