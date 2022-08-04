@@ -76,45 +76,44 @@ const readThroughContainer = async (docker: Docker, volume: VolumeInspectInfo): 
   // eslint-disable-next-line max-len
   if (!await image.exists(docker, TRANSFER_CONTAINER_IMAGE)) await image.pullVisible(docker, TRANSFER_CONTAINER_IMAGE, undefined)
   const container = await createTransferContainer(docker, volume, path)
-
   await container.start()
 
   let tmpArchive: NodeJS.ReadableStream
   try {
     tmpArchive = await container.getArchive({ path })
+
+    return await new Promise<Device>((resolve, reject) => {
+      const device = createEmpty()
+      let wait = keys.length
+
+      const archive = tar.extract()
+      archive.on('entry', (h, s, next) => {
+        const name = h.name.replace(/^\/?data\//, '') as keyof Device
+        s.on('end', () => next())
+        if (keys.includes(name)) {
+          s.on('readable', () => {
+            const txt = s.read()
+            if (txt === null) return reject(new Error(`no data for ${name}`))
+            device[name] = (txt as Buffer).toString()
+            --wait
+          })
+        }
+        s.resume()
+      })
+
+      archive.on('finish', () => {
+        if (wait === 0) return resolve(device)
+        if (wait === keys.length) return reject(new Error('device is not initialized'))
+        return reject(new Error('incomplete data'))
+      })
+
+      tmpArchive.pipe(archive)
+    })
   }
   finally {
     await container.kill()
     await container.remove()
   }
-
-  return await new Promise<Device>((resolve, reject) => {
-    const device = createEmpty()
-    let wait = keys.length
-
-    const archive = tar.extract()
-    archive.on('entry', (h, s, next) => {
-      const name = h.name.replace(/^\/?data\//, '') as keyof Device
-      s.on('end', () => next())
-      if (keys.includes(name)) {
-        s.on('readable', () => {
-          const txt = s.read()
-          if (txt === null) return reject(new Error(`no data for ${name}`))
-          device[name] = (txt as Buffer).toString()
-          --wait
-        })
-      }
-      s.resume()
-    })
-
-    archive.on('finish', () => {
-      if (wait === 0) return resolve(device)
-      if (wait === keys.length) return reject(new Error('device is not initialized'))
-      return reject(new Error('incomplete data'))
-    })
-
-    tmpArchive.pipe(archive)
-  })
 }
 
 /**
