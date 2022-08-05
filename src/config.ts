@@ -12,6 +12,9 @@ dotenv.config()
  * However, it's normally best to leave these alone unless debugging or Edge Core Team advises changes.
  */
 export default {
+  address: {
+    shortLength: 9
+  },
   blockchain: {
     defaultTimeout: parseInt(process.env.BLOCKCHAIN_TIMEOUT || '10') * 1000
   },
@@ -27,11 +30,17 @@ export default {
       }
     }
   },
+  hash: {
+    shortLength: 8
+  },
   id: {
     minEntryLength: 3,
     shortLength: 12
   },
   index: {
     defaultTimeout: parseInt(process.env.INDEX_TIMEOUT || '10') * 1000
+  },
+  signature: {
+    shortLength: 12
   }
 }

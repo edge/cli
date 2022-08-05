@@ -3,71 +3,24 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import { checkVersionHandler } from '../update/cli'
-import { errorHandler } from '../edge/cli'
+import config from '../config'
 import { tx as indexTx } from '@edge/index-utils'
-import { printData } from '../helpers'
 import { Command, Option } from 'commander'
 import { CommandContext, Context } from '..'
 import { askLetter, getPaginationOptions, getYesOption, limitOption, pageOption, yesOption } from '../input'
 import { askToSignTx, handleCreateTxResult } from './index'
+import { errorHandler, getVerboseOption } from '../edge/cli'
+import { formatTime, printTable } from '../helpers'
 import { formatXE, parseAmount } from './xe'
 import { getPassphraseOption, passphraseFileOption, passphraseOption } from '../wallet/cli'
 import { tx as xeTx, wallet as xeWallet } from '@edge/xe-utils'
 
 /**
- * Format an index transaction for printing in terminal.
- *
- * @todo move to a table format https://github.com/edge/cli/issues/50
- */
-const formatIndexTx = (address: string, tx: indexTx.Tx): string => {
-  const data: Record<string, string> = {
-    Tx: tx.hash,
-    Nonce: tx.nonce.toString(),
-    Block: tx.block.height.toString(),
-    At: formatTimestamp(new Date(tx.timestamp))
-  }
-  if (tx.sender === address) data.To = tx.recipient
-  else data.From = tx.sender
-  data.Amount = formatXE(tx.amount)
-  if (tx.data.memo !== undefined) data.Memo = tx.data.memo
-  data.Signature = tx.signature
-  return printData(data)
-}
-
-/** Format a transaction timestamp to (almost) ISO 8601 standard. */
-const formatTimestamp = (d: Date): string => {
-  const year = d.getFullYear().toString()
-  const month = d.getMonth().toString().padStart(2, '0')
-  const day = d.getDay().toString().padStart(2, '0')
-  const h = d.getHours().toString().padStart(2, '0')
-  const m = d.getMinutes().toString().padStart(2, '0')
-  const s = d.getSeconds().toString().padStart(2, '0')
-  return `${year}-${month}-${day} ${h}:${m}:${s}`
-}
-
-/**
- * Format a blockchain transaction for printing in terminal.
- *
- * @todo move to a table format https://github.com/edge/cli/issues/50
- */
-const formatTx = (address: string, tx: xeTx.Tx): string => {
-  const data: Record<string, string> = {
-    Tx: tx.hash,
-    Nonce: tx.nonce.toString(),
-    At: formatTimestamp(new Date(tx.timestamp))
-  }
-  if (tx.sender === address) data.To = tx.recipient
-  else data.From = tx.sender
-  data.Amount = formatXE(tx.amount)
-  if (tx.data.memo !== undefined) data.Memo = tx.data.memo
-  data.Signature = tx.signature
-  return printData(data)
-}
-
-/**
  * List transactions for the host wallet (`transaction list`).
  */
 const listAction = ({ index, wallet, ...ctx }: CommandContext) => async () => {
+  const { verbose } = getVerboseOption(ctx.parent)
+
   const address = await wallet().address()
   const { results, metadata } = await index().transactions(address, getPaginationOptions(ctx.cmd))
   if (results.length === 0) {
@@ -79,10 +32,21 @@ const listAction = ({ index, wallet, ...ctx }: CommandContext) => async () => {
   console.log(`Page ${metadata.page}/${numPages}`)
   console.log()
 
-  results.map(tx => formatIndexTx(address, tx)).forEach(tx => {
-    console.log(tx)
-    console.log()
-  })
+  const table = printTable<indexTx.Tx>(
+    ['Time', 'Block', 'Tx', 'From', 'To', 'Amount', 'Memo', 'Nonce', 'Signature'],
+    tx => [
+      formatTime(tx.timestamp),
+      tx.block.height.toString(),
+      verbose ? tx.hash : tx.hash.slice(0, config.hash.shortLength),
+      verbose ? tx.sender : tx.sender.slice(0, config.address.shortLength),
+      verbose ? tx.recipient : tx.recipient.slice(0, config.address.shortLength),
+      formatXE(tx.amount),
+      tx.data.memo || '',
+      tx.nonce.toString(),
+      verbose ? tx.signature : tx.signature.slice(0, config.signature.shortLength)
+    ]
+  )
+  console.log(table(results))
 }
 
 /** Help text for the `transaction list` command. */
@@ -92,7 +56,9 @@ const listHelp = [
 ].join('')
 
 /** List pending transactions for the host wallet (`transaction list-pending`). */
-const listPendingAction = ({ wallet, xe }: CommandContext) => async () => {
+const listPendingAction = ({ wallet, xe, ...ctx }: CommandContext) => async () => {
+  const { verbose } = getVerboseOption(ctx.parent)
+
   const address = await wallet().address()
 
   const txs = await xe().pendingTransactions(address)
@@ -101,11 +67,20 @@ const listPendingAction = ({ wallet, xe }: CommandContext) => async () => {
     return
   }
 
-  txs.map(tx => formatTx(address, tx))
-    .forEach(tx => {
-      console.log(tx)
-      console.log()
-    })
+  const table = printTable<xeTx.Tx>(
+    ['Time', 'Tx', 'From', 'To', 'Amount', 'Memo', 'Nonce', 'Signature'],
+    tx => [
+      formatTime(tx.timestamp),
+      verbose ? tx.hash : tx.hash.slice(0, config.hash.shortLength),
+      verbose ? tx.sender : tx.sender.slice(0, config.address.shortLength),
+      verbose ? tx.recipient : tx.recipient.slice(0, config.address.shortLength),
+      formatXE(tx.amount),
+      tx.data.memo || '',
+      tx.nonce.toString(),
+      verbose ? tx.signature : tx.signature.slice(0, config.signature.shortLength)
+    ]
+  )
+  console.log(table(txs))
 }
 
 /** Help text for the `transaction list-pending` command. */

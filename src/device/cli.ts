@@ -27,15 +27,16 @@ import { stake as xeStake, tx as xeTx, wallet as xeWallet } from '@edge/xe-utils
 const addAction = ({ device, index, network, wallet, xe, ...ctx }: CommandContext) => async () => {
   const opts = {
     ...await getPassphraseOption(ctx.cmd),
+    ...getPrefixOption(ctx.cmd),
     ...getStakeOption(ctx.cmd)
   }
   const { yes } = getYesOption(ctx.cmd)
 
   const { verbose } = getVerboseOption(ctx.parent)
-  const printAddr = (id: string) => verbose ? id : id.slice(0, 9) + '...'
+  const printAddr = (id: string) => verbose ? id : id.slice(0, config.address.shortLength) + '...'
   const printID = (id: string) => verbose ? id : id.slice(0, config.id.shortLength)
 
-  const userDevice = device()
+  const userDevice = device(opts.prefix)
 
   // get device data. if none, initialize device on the fly
   const deviceWallet = await (async () => {
@@ -188,10 +189,11 @@ const infoAction = ({ device, logger, wallet, xe, ...ctx }: CommandContext) => a
   const log = logger()
 
   const { debug } = getDebugOption(ctx.parent)
+  const { prefix } = getPrefixOption(ctx.cmd)
   const { verbose } = getVerboseOption(ctx.parent)
   const printID = (id: string) => verbose ? id: id.slice(0, config.id.shortLength)
 
-  const userDevice = device()
+  const userDevice = device(prefix)
   const deviceWallet = await (await userDevice.volume()).read()
 
   const toPrint: Record<string, string> = {
@@ -232,13 +234,16 @@ const infoHelp = [
 const removeAction = ({ device, logger, wallet, xe, ...ctx }: CommandContext) => async () => {
   const log = logger()
 
-  const opts = await getPassphraseOption(ctx.cmd)
+  const opts = {
+    ...await getPassphraseOption(ctx.cmd),
+    ...getPrefixOption(ctx.cmd)
+  }
   const { yes } = getYesOption(ctx.cmd)
 
   const { verbose } = getVerboseOption(ctx.parent)
   const printID = (id: string) => verbose ? id : id.slice(0, config.id.shortLength)
 
-  const userDevice = device()
+  const userDevice = device(opts.prefix)
   const docker = userDevice.docker()
   const volume = await userDevice.volume()
   const deviceWallet = await volume.read()
@@ -322,8 +327,9 @@ const removeHelp = [
  *
  * If the device is not running, nothing happens.
  */
-const restartAction = ({ device }: CommandContext) => async () => {
-  const userDevice = device()
+const restartAction = ({ device, ...ctx }: CommandContext) => async () => {
+  const { prefix } = getPrefixOption(ctx.cmd)
+  const userDevice = device(prefix)
   const docker = userDevice.docker()
   const node = await userDevice.node()
 
@@ -350,10 +356,13 @@ const restartHelp = '\nRestart the node, if it is running.'
 const startAction = ({ device, logger, ...ctx }: CommandContext) => async () => {
   const log = logger()
 
-  const { env } = getNodeEnvOption(ctx.cmd)
-  const { network } = getNodeNetworksOption(ctx.cmd)
+  const opts = {
+    ...getNodeEnvOption(ctx.cmd),
+    ...getNodeNetworksOption(ctx.cmd),
+    ...getPrefixOption(ctx.cmd)
+  }
 
-  const userDevice = device()
+  const userDevice = device(opts.prefix)
   const docker = userDevice.docker()
   const node = await userDevice.node()
 
@@ -374,7 +383,7 @@ const startAction = ({ device, logger, ...ctx }: CommandContext) => async () => 
   if (authconfig !== undefined) await image.pullVisible(docker, targetImage, authconfig, debug)
   else await image.pullVisible(docker, targetImage, authconfig, debug)
 
-  const containerOptions = createContainerOptions(node, target, env, network)
+  const containerOptions = createContainerOptions(node, target, opts.env, opts.prefix, opts.network)
   log.debug('creating container', { containerOptions })
   const container = await docker.createContainer(containerOptions)
   log.debug('starting container')
@@ -398,8 +407,10 @@ const startHelp = (network: Network) => [
  * This only reports whether the device is running or not.
  * For more information about the device, use `device info` instead.
  */
-const statusAction = ({ device }: CommandContext) => async () => {
-  const userDevice = device()
+const statusAction = ({ device, ...ctx }: CommandContext) => async () => {
+  const { prefix } = getPrefixOption(ctx.cmd)
+
+  const userDevice = device(prefix)
   const node = await userDevice.node()
   const info = await node.container()
   if (info === undefined) console.log(`${node.name} is not running`)
@@ -414,10 +425,12 @@ const statusHelp = '\nDisplay the status of the node (whether it is running or n
  *
  * If the device is already stopped, nothing happens.
  */
-const stopAction = ({ device, logger }: CommandContext) => async () => {
+const stopAction = ({ device, logger, ...ctx }: CommandContext) => async () => {
   const log = logger()
 
-  const userDevice = device()
+  const { prefix } = getPrefixOption(ctx.cmd)
+
+  const userDevice = device(prefix)
   const docker = userDevice.docker()
   const node = await userDevice.node()
 
@@ -446,7 +459,9 @@ const stopHelp = '\nStop the node, if it is running.'
 const updateAction = ({ device, logger, ...ctx }: CommandContext) => async () => {
   const log = logger()
 
-  const userDevice = device()
+  const { prefix } = getPrefixOption(ctx.cmd)
+
+  const userDevice = device(prefix)
   const docker = userDevice.docker()
   const node = await userDevice.node()
 
@@ -533,9 +548,16 @@ const createContainerOptions = (
   node: nodeInfo,
   tag: string,
   env: string[] | undefined,
+  prefix?: string | undefined,
   networks?: string[]
 ): ContainerCreateOptions => {
-  const containerName = `edge-${node.stake.type}-${Math.random().toString(16).substring(2, 8)}`
+  const containerName = [
+    'edge',
+    node.stake.type,
+    prefix,
+    Math.random().toString(16).substring(2, 8)
+  ].filter(Boolean).join('-')
+
   const opts: ContainerCreateOptions = {
     Image: `${node.image}:${tag}`,
     name: containerName,
@@ -616,6 +638,19 @@ const getNodeNetworksOption = (cmd: Command): { network?: string[] } => {
 }
 
 /**
+ * Get entity prefix from user command.
+ * This can be used to access a named node in Docker, and/or manage multiple nodes on the same Docker instance.
+ */
+const getPrefixOption = (cmd: Command): { prefix?: string } => {
+  const { prefix } = cmd.opts<{ prefix?: string }>()
+  if (prefix) {
+    const format = /^[a-z0-9]+$/
+    if (!format.test(prefix)) throw new Error('prefix may only contain lowercase alphanumeric characters')
+  }
+  return { prefix }
+}
+
+/**
  * Get Edge Registry authentication options from user command or environment.
  */
 const getRegistryAuthOptions = (cmd: Command): AuthConfig|undefined => {
@@ -659,6 +694,9 @@ const nodeEnvOption = (description = 'set environment variable(s) for node') =>
 /** Create Docker network option for CLI. */
 const nodeNetworkOption = (description = 'set network(s) for node') => new Option('--network <var...>', description)
 
+const prefixOption = (description = 'Docker entity prefix') =>
+  new Option('--prefix <prefix>', description)
+
 /** Create Docker registry password option for CLI. */
 const registryPasswordOption = (description = 'Edge Docker registry password') =>
   new Option('--registry-password <password>', description)
@@ -685,6 +723,7 @@ export const withContext = (ctx: Context): [Command, Option[]] => {
   const add = new Command('add')
     .description('add this device to the network')
     .addHelpText('after', addHelp(ctx.network))
+    .addOption(prefixOption())
     .addOption(stakeOption())
     .addOption(yesOption())
   add.action(errorHandler(ctx, checkVersionHandler(ctx, addAction({ ...ctx, cmd: add }))))
@@ -693,12 +732,14 @@ export const withContext = (ctx: Context): [Command, Option[]] => {
   const info = new Command('info')
     .description('display device/stake information')
     .addHelpText('after', infoHelp)
+    .addOption(prefixOption())
   info.action(errorHandler(ctx, checkVersionHandler(ctx, infoAction({ ...ctx, cmd: info }))))
 
   // edge device remove
   const remove = new Command('remove')
     .description('remove this device from the network')
     .addHelpText('after', removeHelp)
+    .addOption(prefixOption())
     .addOption(yesOption())
   remove.action(errorHandler(ctx, checkVersionHandler(ctx, removeAction({ ...ctx, cmd: remove }))))
 
@@ -706,6 +747,7 @@ export const withContext = (ctx: Context): [Command, Option[]] => {
   const restart = new Command('restart')
     .description('restart node')
     .addHelpText('after', restartHelp)
+    .addOption(prefixOption())
   restart.action(errorHandler(ctx, checkVersionHandler(ctx, restartAction({ ...ctx, cmd: restart }))))
 
   // edge device start
@@ -715,6 +757,7 @@ export const withContext = (ctx: Context): [Command, Option[]] => {
     .addOption(targetOption())
     .addOption(nodeEnvOption())
     .addOption(nodeNetworkOption())
+    .addOption(prefixOption())
     .addOption(registryUsernameOption())
     .addOption(registryPasswordOption())
   start.action(errorHandler(ctx, checkVersionHandler(ctx, startAction({ ...ctx, cmd: start }))))
@@ -723,12 +766,14 @@ export const withContext = (ctx: Context): [Command, Option[]] => {
   const status = new Command('status')
     .description('display node status')
     .addHelpText('after', statusHelp)
+    .addOption(prefixOption())
   status.action(errorHandler(ctx, checkVersionHandler(ctx, statusAction({ ...ctx, cmd: status }))))
 
   // edge device stop
   const stop = new Command('stop')
     .description('stop node')
     .addHelpText('after', stopHelp)
+    .addOption(prefixOption())
   stop.action(errorHandler(ctx, checkVersionHandler(ctx, stopAction({ ...ctx, cmd: stop }))))
 
   // edge device update
@@ -736,6 +781,7 @@ export const withContext = (ctx: Context): [Command, Option[]] => {
     .description('update node')
     .addHelpText('after', updateHelp)
     .addOption(targetOption())
+    .addOption(prefixOption())
     .addOption(registryUsernameOption())
     .addOption(registryPasswordOption())
   update.action(errorHandler(ctx, checkVersionHandler(ctx, updateAction({ ...ctx, cmd: update }))))

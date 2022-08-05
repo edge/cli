@@ -26,8 +26,14 @@ export type Context = Providers & {
   network: Network
 }
 
-/** Provider for a device object. */
-export type DeviceProvider = (name?: string) => ReturnType<typeof device>
+/**
+ * Provider for a device object.
+ *
+ * `prefix` determines which device/node should be accessed; if undefined, it will default to an un-prefixed
+ * (single) device/node.
+ * `name` is used in logging.
+ */
+export type DeviceProvider = (prefix: string | undefined, name?: string) => ReturnType<typeof device>
 
 /** Provider for an index API client. */
 export type IndexClientProvider = (name?: string) => ReturnType<typeof indexClient>
