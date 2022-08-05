@@ -558,6 +558,9 @@ const createContainerOptions = (
     Math.random().toString(16).substring(2, 8)
   ].filter(Boolean).join('-')
 
+  let volumeName = config.docker.dataVolume
+  if (prefix) volumeName = `${volumeName}-${prefix}`
+
   const opts: ContainerCreateOptions = {
     Image: `${node.image}:${tag}`,
     name: containerName,
@@ -571,7 +574,7 @@ const createContainerOptions = (
     HostConfig: {
       Binds: [
         '/var/run/docker.sock:/var/run/docker.sock',
-        `${config.docker.dataVolume}:/data`
+        `${volumeName}:/data`
       ],
       RestartPolicy: { Name: 'unless-stopped' }
     }
