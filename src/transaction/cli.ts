@@ -110,7 +110,7 @@ const sendAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (am
   const address = await storage.address()
 
   const xeClient = xe()
-  const onChainWallet = await xeClient.walletWithNextNonce(address)
+  let onChainWallet = await xeClient.wallet(address)
 
   const resultBalance = onChainWallet.balance - amount
   // eslint-disable-next-line max-len
@@ -130,6 +130,7 @@ const sendAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (am
 
   await askToSignTx(opts)
   const userWallet = await storage.read(opts.passphrase as string)
+  onChainWallet = await xeClient.walletWithNextNonce(address)
 
   const data: xeTx.TxData = {}
   if (opts.memo) data.memo = opts.memo
