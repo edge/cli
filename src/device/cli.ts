@@ -266,7 +266,21 @@ const removeAction = ({ device, logger, wallet, xe, ...ctx }: CommandContext) =>
   }
 
   if (stake !== undefined) {
-    // if required, create unassignment tx
+    // if node is running, stop it
+    const imageName = ctx.network.registry.imageName(stake.type, arch())
+    log.debug('finding node', { imageName })
+    const node = await userDevice.node()
+    const info = await node.container()
+    if (info !== undefined) {
+      log.debug('found container', { name: toUpperCaseFirst(stake.type), id: info.Id })
+      const container = docker.getContainer(info.Id)
+      console.log(`Stopping ${nodeName}...`)
+      await container.stop()
+      await container.remove()
+      console.log()
+    }
+
+    // create unassignment tx
     await askToSignTx(opts)
     const userWallet = await storage.read(opts.passphrase as string)
     const onChainWallet = await xeClient.walletWithNextNonce(userWallet.address)
@@ -292,19 +306,6 @@ const removeAction = ({ device, logger, wallet, xe, ...ctx }: CommandContext) =>
       return
     }
     console.log()
-
-    // if node is running, stop it
-    log.debug('finding node')
-    const imageName = ctx.network.registry.imageName(stake.type, arch())
-    const info = (await docker.listContainers()).find(c => c.Image === imageName)
-    if (info !== undefined) {
-      log.debug('found container', { name: toUpperCaseFirst(stake.type), id: info.Id })
-      const container = docker.getContainer(info.Id)
-      console.log(`Stopping ${nodeName}...`)
-      await container.stop()
-      await container.remove()
-      console.log()
-    }
   }
 
   await volume.remove()

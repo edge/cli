@@ -47,7 +47,7 @@ const createAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (
   const address = await storage.address()
 
   const xeClient = xe()
-  const onChainWallet = await xeClient.walletWithNextNonce(address)
+  let onChainWallet = await xeClient.wallet(address)
 
   const vars = await xeVars(xe, opts.debug)
   // fallback 0 is just for typing - nodeType is checked at top of func, so it should never be used
@@ -74,6 +74,7 @@ const createAction = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (
 
   await askToSignTx(opts)
   const userWallet = await storage.read(opts.passphrase as string)
+  onChainWallet = await xeClient.walletWithNextNonce(address)
 
   const tx = xeTx.sign({
     timestamp: Date.now(),
