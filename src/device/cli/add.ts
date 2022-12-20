@@ -91,7 +91,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
     console.log()
     let sel = 0
     while (sel === 0) {
-      const selstr = await repl.ask(`Enter a number: (1-${numberedStakes.length}) `)
+      const selstr = await repl.ask(`Enter a number: (1-${numberedStakes.length})`)
       const tmpsel = parseInt(selstr)
       if (tmpsel > 0 && tmpsel <= numberedStakes.length) sel = tmpsel
       else console.log(`Please enter a number between 1 and ${numberedStakes.length}.`)

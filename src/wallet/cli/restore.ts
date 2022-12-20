@@ -26,7 +26,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
   }
 
   if (!opts.privateKey) {
-    const privateKey = await repl.askSecure('Please enter a private key: ')
+    const privateKey = await repl.askSecure('Please enter a private key:')
     if (privateKey.length === 0) throw new Error('private key required')
     if (!xe.wallet.validatePrivateKey(privateKey)) throw new Error('invalid private key')
     opts.privateKey = privateKey
@@ -37,9 +37,9 @@ export const action = (ctx: Context) => async (): Promise<void> => {
     console.log('To ensure your wallet is secure it will be encrypted locally using a passphrase.')
     // console.log('For more information, see https://wiki.edge.network/TODO')
     console.log()
-    const passphrase = await repl.askSecure('Please enter a passphrase: ')
+    const passphrase = await repl.askSecure('Please enter a passphrase:')
     if (passphrase.length === 0) throw new Error('passphrase required')
-    const confirmKey = await repl.askSecure('Please confirm passphrase: ')
+    const confirmKey = await repl.askSecure('Please confirm passphrase:')
     if (confirmKey !== passphrase) throw new Error('passphrases do not match')
     opts.passphrase = passphrase
     console.log()

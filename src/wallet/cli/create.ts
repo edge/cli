@@ -31,9 +31,9 @@ export const action = (ctx: Context) => async (): Promise<void> => {
     console.log('To ensure your wallet is secure it will be encrypted locally using a passphrase.')
     // console.log('For more information, see https://wiki.edge.network/TODO')
     console.log()
-    const passphrase = await repl.askSecure('Please enter a passphrase: ')
+    const passphrase = await repl.askSecure('Please enter a passphrase:')
     if (passphrase.length === 0) throw new Error('passphrase required')
-    const confirmKey = await repl.askSecure('Please confirm passphrase: ')
+    const confirmKey = await repl.askSecure('Please confirm passphrase:')
     if (confirmKey !== passphrase) throw new Error('passphrases do not match')
     opts.passphrase = passphrase
     console.log()
@@ -59,7 +59,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
   let pkFile = opts.privateKeyFile || ''
   if (pkFile.length === 0) {
     while (pkFile.length === 0) {
-      const input = await repl.ask('Enter filename to export private key to: ')
+      const input = await repl.ask('Enter filename to export private key to:')
       if (input.length) pkFile = input
     }
     console.log()

@@ -18,7 +18,7 @@ export const askToSignTx = async (opts: { passphrase?: string }): Promise<void> 
     )
     // console.log('For more information, see https://wiki.edge.network/TODO')
     console.log()
-    const passphrase = await repl.askSecure('Passphrase: ')
+    const passphrase = await repl.askSecure('Passphrase:')
     if (passphrase.length === 0) throw new Error('passphrase required')
     opts.passphrase = passphrase
     console.log()
