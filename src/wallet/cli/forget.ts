@@ -5,12 +5,12 @@
 import * as cli from '../../cli'
 import * as repl from '../../repl'
 import { Command } from 'commander'
+import { Context } from '../..'
 import { checkVersionHandler } from '../../update/cli'
 import { errorHandler } from '../../cli'
-import { CommandContext, Context } from '../..'
 
 /** Forget (remove) the host wallet. */
-export const action = (ctx: CommandContext) => async (): Promise<void> => {
+export const action = (ctx: Context) => async (): Promise<void> => {
   const opts = {
     ...cli.yes.read(ctx.cmd)
   }

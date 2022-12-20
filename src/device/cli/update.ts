@@ -5,10 +5,10 @@
 import * as cli from '../../cli'
 import * as image from '../image'
 import { Command } from 'commander'
+import { Context } from '../..'
 import { checkVersionHandler } from '../../update/cli'
 import { createContainerOptions } from '.'
 import { errorHandler } from '../../cli'
-import { CommandContext, Context } from '../..'
 import { EndpointsConfig, ImageInspectInfo } from 'dockerode'
 
 /**
@@ -16,7 +16,7 @@ import { EndpointsConfig, ImageInspectInfo } from 'dockerode'
  *
  * If the device is running, it will be restarted after the update.
  */
-export const action = (ctx: CommandContext) => async (): Promise<void> => {
+export const action = (ctx: Context) => async (): Promise<void> => {
   const opts = {
     ...cli.docker.readPrefix(ctx.cmd)
   }

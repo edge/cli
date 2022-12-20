@@ -6,16 +6,16 @@ import * as cli from '../../cli'
 import * as repl from '../../repl'
 import * as xeUtils from '@edge/xe-utils'
 import { Command } from 'commander'
+import { Context } from '../..'
 import { checkVersionHandler } from '../../update/cli'
 import { errorHandler } from '../../cli'
 import { findOne } from '..'
 import { formatXE } from '../../transaction/xe'
-import { CommandContext, Context } from '../..'
 import { askToSignTx, handleCreateTxResult } from '../../transaction'
 import { formatTime, toDays, toUpperCaseFirst } from '../../helpers'
 
 /** Unlock a stake. */
-export const action = (ctx: CommandContext) => async (id: string): Promise<void> => {
+export const action = (ctx: Context) => async (id: string): Promise<void> => {
   const opts = {
     ...await cli.passphrase.read(ctx.cmd),
     ...cli.yes.read(ctx.cmd)

@@ -4,9 +4,9 @@
 
 import * as cli from '../../cli'
 import { Command } from 'commander'
+import { Context } from '../..'
 import { checkVersionHandler } from '../../update/cli'
 import { errorHandler } from '../../cli'
-import { CommandContext, Context } from '../..'
 
 /**
  * Display the device status.
@@ -14,7 +14,7 @@ import { CommandContext, Context } from '../..'
  * This only reports whether the device is running or not.
  * For more information about the device, use `device info` instead.
  */
-export const action = (ctx: CommandContext) => async (): Promise<void> => {
+export const action = (ctx: Context) => async (): Promise<void> => {
   const opts = {
     ...cli.docker.readPrefix(ctx.cmd)
   }

@@ -8,7 +8,7 @@ import { Command } from 'commander'
 import { checkVersionHandler } from '../../update/cli'
 import { createContainerOptions } from '.'
 import { errorHandler } from '../../cli'
-import { CommandContext, Context, Network } from '../..'
+import { Context, Network } from '../..'
 
 /**
  * Start a device.
@@ -17,7 +17,7 @@ import { CommandContext, Context, Network } from '../..'
  *
  * Before starting, we check whether an update is available and if so, download it first.
  */
-export const action = (ctx: CommandContext) => async (): Promise<void> => {
+export const action = (ctx: Context) => async (): Promise<void> => {
   const opts = {
     ...cli.docker.readEnv(ctx.cmd),
     ...cli.docker.readNetworks(ctx.cmd),

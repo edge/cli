@@ -11,18 +11,11 @@ import indexClient from './api'
 import { wallet } from './wallet'
 
 /**
- * Context provided to a CLI command.
- * Essentially identical to the normal global context, but including the command itself.
- */
-export type CommandContext = Context & {
-  cmd: Command
-}
-
-/**
  * Global context.
  * This is passed around code to provide access to common objects, getters (providers), CLI options, etc.
  */
 export type Context = Providers & {
+  cmd: Command
   parent: Command
   network: Network
 }

@@ -5,16 +5,16 @@
 import * as cli from '../../cli'
 import * as indexUtils from '@edge/index-utils'
 import { Command } from 'commander'
+import { Context } from '../..'
 import { byPrecedence } from '..'
 import { checkVersionHandler } from '../../update/cli'
 import config from '../../config'
 import { errorHandler } from '../../cli'
 import { formatXE } from '../../transaction/xe'
-import { CommandContext, Context } from '../..'
 import { formatTime, printTable, toUpperCaseFirst } from '../../helpers'
 
 /** List stakes associated with the host wallet. */
-export const action = (ctx: CommandContext) => async (): Promise<void> => {
+export const action = (ctx: Context) => async (): Promise<void> => {
   const opts = {
     ...cli.verbose.read(ctx.parent)
   }

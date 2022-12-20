@@ -11,7 +11,7 @@ import { checkVersionHandler } from '../../update/cli'
 import config from '../../config'
 import { errorHandler } from '../../cli'
 import { toUpperCaseFirst } from '../../helpers'
-import { CommandContext, Context, Network } from '../..'
+import { Context, Network } from '../..'
 import { askToSignTx, handleCreateTxResult } from '../../transaction'
 import { canAssign, findOne, precedence as nodeTypePrecedence } from '../../stake'
 
@@ -20,7 +20,7 @@ import { canAssign, findOne, precedence as nodeTypePrecedence } from '../../stak
  *
  * This initializes the device as necessary, including creating a device data volume.
  */
-export const action = (ctx: CommandContext) => async (): Promise<void> => {
+export const action = (ctx: Context) => async (): Promise<void> => {
   const opts = {
     ...await cli.passphrase.read(ctx.cmd),
     ...cli.docker.readPrefix(ctx.cmd),

@@ -4,16 +4,16 @@
 
 import * as cli from '../../cli'
 import { Command } from 'commander'
+import { Context } from '../..'
 import { checkVersionHandler } from '../../update/cli'
 import config from '../../config'
 import { errorHandler } from '../../cli'
-import { CommandContext, Context } from '../..'
 import { printData, toUpperCaseFirst } from '../../helpers'
 
 /**
  * Display device information.
  */
-export const action = (ctx: CommandContext) => async (): Promise<void> => {
+export const action = (ctx: Context) => async (): Promise<void> => {
   const opts = {
     ...cli.debug.read(ctx.parent),
     ...cli.docker.readPrefix(ctx.cmd),

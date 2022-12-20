@@ -12,11 +12,11 @@ import { formatXE } from '../../transaction/xe'
 import { toUpperCaseFirst } from '../../helpers'
 import { types } from '..'
 import { xeVars } from '.'
-import { CommandContext, Context, Network } from '../..'
+import { Context, Network } from '../..'
 import { askToSignTx, handleCreateTxResult } from '../../transaction'
 
 /** Create a stake. */
-export const action = (ctx: CommandContext) => async (nodeType: string): Promise<void> => {
+export const action = (ctx: Context) => async (nodeType: string): Promise<void> => {
   const opts = {
     ...cli.debug.read(ctx.parent),
     ...await cli.passphrase.read(ctx.cmd),

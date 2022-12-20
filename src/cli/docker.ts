@@ -4,7 +4,7 @@
 
 import * as sg from '@edge/stargate-utils'
 import { Command } from 'commander'
-import { CommandContext } from '..'
+import { Context } from '..'
 import config from '../config'
 import { AuthConfig, DockerOptions } from 'dockerode'
 
@@ -111,7 +111,7 @@ export const readPrefix = (cmd: Command): PrefixOption => {
 }
 
 /** Read Docker image tag options from a command. */
-export const readTarget = async ({ cmd, network }: CommandContext, name: string): Promise<TargetOption> => {
+export const readTarget = async ({ cmd, network }: Context, name: string): Promise<TargetOption> => {
   const opts = cmd.opts()
   return {
     target: opts.target || (await sg.service.get(network.stargate.host, name)).version

@@ -6,12 +6,12 @@ import * as cli from '../../cli'
 import * as repl from '../../repl'
 import * as xeUtils from '@edge/xe-utils'
 import { Command } from 'commander'
+import { Context } from '../..'
 import { checkVersionHandler } from '../../update/cli'
 import { errorHandler } from '../../cli'
 import { findOne } from '..'
 import { formatXE } from '../../transaction/xe'
 import { xeVars } from '.'
-import { CommandContext, Context } from '../..'
 import { askToSignTx, handleCreateTxResult } from '../../transaction'
 import { formatTime, toUpperCaseFirst } from '../../helpers'
 
@@ -20,7 +20,7 @@ import { formatTime, toUpperCaseFirst } from '../../helpers'
  *
  * The stake must first be unlocked.
  */
-export const action = (ctx: CommandContext) => async (id: string): Promise<void> => {
+export const action = (ctx: Context) => async (id: string): Promise<void> => {
   const opts = {
     ...cli.debug.read(ctx.parent),
     ...await cli.passphrase.read(ctx.cmd),

@@ -6,13 +6,13 @@ import * as cli from '../../cli'
 import * as repl from '../../repl'
 import * as xe from '@edge/xe-utils'
 import { Command } from 'commander'
+import { Context } from '../..'
 import { checkVersionHandler } from '../../update/cli'
 import { errorHandler } from '../../cli'
 import { writeFile } from 'fs/promises'
-import { CommandContext, Context } from '../..'
 
 /** Create a new host wallet. */
-export const action = (ctx: CommandContext) => async (): Promise<void> => {
+export const action = (ctx: Context) => async (): Promise<void> => {
   const opts = {
     ...cli.overwrite.read(ctx.cmd),
     ...await cli.passphrase.read(ctx.cmd),

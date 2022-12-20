@@ -4,12 +4,12 @@
 
 import * as cli from '../../cli'
 import { Command } from 'commander'
+import { Context } from '../..'
 import { checkVersionHandler } from '../../update/cli'
 import { errorHandler } from '../../cli'
-import { CommandContext, Context } from '../..'
 
 /** Display host wallet. */
-export const action = (ctx: CommandContext) => async (): Promise<void> => {
+export const action = (ctx: Context) => async (): Promise<void> => {
   const opts = {
     ...await cli.passphrase.read(ctx.cmd)
   }

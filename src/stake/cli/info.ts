@@ -4,14 +4,14 @@
 
 import * as cli from '../../cli'
 import { Command } from 'commander'
+import { Context } from '../..'
 import { checkVersionHandler } from '../../update/cli'
 import { errorHandler } from '../../cli'
 import { formatXE } from '../../transaction/xe'
 import { xeVars } from '.'
-import { CommandContext, Context } from '../..'
 
 /** Display on-chain staking info. */
-export const action = (ctx: CommandContext) => async (): Promise<void> => {
+export const action = (ctx: Context) => async (): Promise<void> => {
   const opts = {
     ...cli.debug.read(ctx.parent)
   }
