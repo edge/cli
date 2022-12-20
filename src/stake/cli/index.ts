@@ -4,19 +4,20 @@
 
 import * as xeUtils from '@edge/xe-utils'
 import { Command } from 'commander'
+import { Context } from '../..'
+import { XEClient } from '../../api/xe'
 import { command as create } from './create'
 import { command as info } from './info'
 import { command as list } from './list'
 import { command as release } from './release'
 import { command as unlock } from './unlock'
-import { Context, XEClientProvider } from '../..'
 
 /**
  * Wrapper for xe.vars; throws the original error in --debug CLI, otherwise generic error message.
  */
-export const xeVars = async (xe: XEClientProvider, debug: boolean): Promise<xeUtils.Vars> => {
+export const xeVars = async (xeClient: XEClient, debug: boolean): Promise<xeUtils.Vars> => {
   try {
-    return await xe().vars()
+    return await xeClient.vars()
   }
   catch (err) {
     if (debug) throw err

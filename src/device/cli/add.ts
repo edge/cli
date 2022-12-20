@@ -1,7 +1,7 @@
 import * as cli from '../../cli'
 import * as data from '../data'
 import * as repl from '../../repl'
-import * as xeUtils from '@edge/xe-utils'
+import * as xe from '@edge/xe-utils'
 import { Command } from 'commander'
 import { checkVersionHandler } from '../../update/cli'
 import config from '../../config'
@@ -16,21 +16,19 @@ import { canAssign, findOne, precedence as nodeTypePrecedence } from '../../stak
  *
  * This initializes the device as necessary, including creating a device data volume.
  */
-// eslint-disable-next-line max-len
-export const action = ({ cmd, device, index, network, parent, wallet, xe }: CommandContext) => async (): Promise<void> => {
+export const action = (ctx: CommandContext) => async (): Promise<void> => {
   const opts = {
-    ...await cli.passphrase.read(cmd),
-    ...cli.docker.readPrefix(cmd),
-    ...cli.stake.read(cmd),
-    ...cli.yes.read(cmd)
+    ...await cli.passphrase.read(ctx.cmd),
+    ...cli.docker.readPrefix(ctx.cmd),
+    ...cli.stake.read(ctx.cmd),
+    ...cli.verbose.read(ctx.parent),
+    ...cli.yes.read(ctx.cmd)
   }
-  const { yes } = cli.yes.read(cmd)
 
-  const { verbose } = cli.verbose.read(parent)
-  const printAddr = (id: string) => verbose ? id : id.slice(0, config.address.shortLength) + '...'
-  const printID = (id: string) => verbose ? id : id.slice(0, config.id.shortLength)
+  const printAddr = (id: string) => opts.verbose ? id : id.slice(0, config.address.shortLength) + '...'
+  const printID = (id: string) => opts.verbose ? id : id.slice(0, config.id.shortLength)
 
-  const userDevice = device(opts.prefix)
+  const userDevice = ctx.device(opts.prefix)
 
   // get device data. if none, initialize device on the fly
   const deviceWallet = await (async () => {
@@ -41,7 +39,7 @@ export const action = ({ cmd, device, index, network, parent, wallet, xe }: Comm
     }
     catch (err) {
       console.log('Initializing device...')
-      w = { ...xeUtils.wallet.create(), network: network.name }
+      w = { ...xe.wallet.create(), network: ctx.network.name }
       await volume.write(w)
       console.log()
     }
@@ -49,21 +47,21 @@ export const action = ({ cmd, device, index, network, parent, wallet, xe }: Comm
   })()
 
   // get user stakes, check whether device already assigned
-  const storage = wallet()
+  const storage = ctx.wallet()
   const address = await storage.address()
-  const { results: stakes } = await index().stakes(address, { limit: 999 })
+  const { results: stakes } = await ctx.indexClient().stakes(address, { limit: 999 })
   if (Object.keys(stakes).length === 0) throw new Error('no stakes')
 
   const assigned = Object.values(stakes).find(s => s.device === deviceWallet.address)
   if (assigned !== undefined) {
     console.log([
       `This device is already assigned to stake ${printID(assigned.id)} `,
-      `(${toUpperCaseFirst(assigned.type)}) on Edge ${toUpperCaseFirst(network.name)}.`
+      `(${toUpperCaseFirst(assigned.type)}) on Edge ${toUpperCaseFirst(ctx.network.name)}.`
     ].join(''))
     console.log()
     console.log([
-      `To reassign this device, run '${network.appName} device remove' first to remove it from the network, `,
-      `then run '${network.appName} device add' again to add it back.`
+      `To reassign this device, run '${ctx.network.appName} device remove' first to remove it from the network, `,
+      `then run '${ctx.network.appName} device add' again to add it back.`
     ].join(''))
     process.exitCode = 1
     return
@@ -105,8 +103,8 @@ export const action = ({ cmd, device, index, network, parent, wallet, xe }: Comm
 
   // confirm user intent
   const nodeName = toUpperCaseFirst(stake.type)
-  if (!yes) {
-    console.log(`You are adding this device to Edge ${toUpperCaseFirst(network.name)}.`)
+  if (!opts.yes) {
+    console.log(`You are adding this device to Edge ${toUpperCaseFirst(ctx.network.name)}.`)
     console.log()
     console.log([
       `This device will be assigned to stake ${printID(stake.id)}, `,
@@ -128,10 +126,10 @@ export const action = ({ cmd, device, index, network, parent, wallet, xe }: Comm
   await askToSignTx(opts)
   const userWallet = await storage.read(opts.passphrase as string)
 
-  const xeClient = xe()
+  const xeClient = ctx.xeClient()
   const onChainWallet = await xeClient.walletWithNextNonce(userWallet.address)
 
-  const tx = xeUtils.tx.sign({
+  const tx = xe.tx.sign({
     timestamp: Date.now(),
     sender: userWallet.address,
     recipient: userWallet.address,
@@ -140,14 +138,14 @@ export const action = ({ cmd, device, index, network, parent, wallet, xe }: Comm
       action: 'assign_device',
       device: deviceWallet.address,
       memo: 'Assign Device',
-      signature: xeUtils.wallet.generateSignature(deviceWallet.privateKey, deviceWallet.address),
+      signature: xe.wallet.generateSignature(deviceWallet.privateKey, deviceWallet.address),
       stake: stake.hash
     },
     nonce: onChainWallet.nonce
   }, userWallet.privateKey)
 
   const result = await xeClient.createTransaction(tx)
-  if (!handleCreateTxResult(network, result)) {
+  if (!handleCreateTxResult(ctx.network, result)) {
     process.exitCode = 1
     return
   }
@@ -155,11 +153,11 @@ export const action = ({ cmd, device, index, network, parent, wallet, xe }: Comm
   // next steps advice
   console.log()
   console.log([
-    `You may run '${network.appName} tx lsp' to check progress of your pending transaction. `,
+    `You may run '${ctx.network.appName} tx lsp' to check progress of your pending transaction. `,
     'When your stake transaction has been processed it will no longer be listed as pending.'
   ].join(''))
   console.log()
-  console.log(`You can then run '${network.appName} device start' to start a ${nodeName} node on this device.`)
+  console.log(`You can then run '${ctx.network.appName} device start' to start a ${nodeName} node on this device.`)
 }
 
 export const command = (ctx: Context): Command => {

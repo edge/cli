@@ -1,6 +1,6 @@
 import * as stargate from '../stargate'
 import { Command } from 'commander'
-import { Context } from '..'
+import { CommandContext } from '..'
 import config from '../config'
 import { AuthConfig, DockerOptions } from 'dockerode'
 
@@ -110,8 +110,7 @@ export const readPrefix = (cmd: Command): PrefixOption => {
  * Get target version option from user command.
  * This allows a particular version of the device software to be specified for use.
  */
-// eslint-disable-next-line max-len
-export const readTarget = async ({ network }: Pick<Context, 'network'>, cmd: Command, name: string): Promise<TargetOption> => {
+export const readTarget = async ({ cmd, network }: CommandContext, name: string): Promise<TargetOption> => {
   const opts = cmd.opts()
   return {
     target: opts.target || await stargate.getServiceVersion(network, name)

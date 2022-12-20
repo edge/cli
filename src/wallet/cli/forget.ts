@@ -6,8 +6,12 @@ import { errorHandler } from '../../cli'
 import { CommandContext, Context } from '../..'
 
 /** Forget (remove) the host wallet. */
-export const action = ({ wallet, ...ctx }: CommandContext) => async (): Promise<void> => {
-  const storage = wallet()
+export const action = (ctx: CommandContext) => async (): Promise<void> => {
+  const opts = {
+    ...cli.yes.read(ctx.cmd)
+  }
+
+  const storage = ctx.wallet()
   if (!await storage.check()) {
     console.log('No wallet found.')
     return
@@ -15,7 +19,7 @@ export const action = ({ wallet, ...ctx }: CommandContext) => async (): Promise<
 
   console.log(`Address: ${await storage.address()}`)
 
-  if (!cli.yes.read(ctx.cmd).yes) {
+  if (!opts.yes) {
     console.log()
     if (await repl.askLetter('Are you sure you want to forget this wallet?', 'yn') === 'n') return
     console.log()

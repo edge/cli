@@ -23,10 +23,10 @@ import { Context, Network } from '.'
 const addProviders = (inputCtx: Pick<Context, 'parent' | 'network'>): Context => {
   const ctx = inputCtx as Context
   ctx.device = (name?: string) => device(ctx, name)
-  ctx.index = (name?: string) => indexClient(ctx, name)
+  ctx.indexClient = (name?: string) => indexClient(ctx, name)
   ctx.logger = (name?: string) => logger(ctx, name)
   ctx.wallet = () => wallet(ctx)
-  ctx.xe = (name?: string) => xeClient(ctx, name)
+  ctx.xeClient = (name?: string) => xeClient(ctx, name)
   return ctx
 }
 

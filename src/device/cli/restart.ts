@@ -9,9 +9,12 @@ import { CommandContext, Context } from '../..'
  *
  * If the device is not running, nothing happens.
  */
-export const action = ({ device, ...ctx }: CommandContext) => async (): Promise<void> => {
-  const { prefix } = cli.docker.readPrefix(ctx.cmd)
-  const userDevice = device(prefix)
+export const action = (ctx: CommandContext) => async (): Promise<void> => {
+  const opts = {
+    ...cli.docker.readPrefix(ctx.cmd)
+  }
+
+  const userDevice = ctx.device(opts.prefix)
   const docker = userDevice.docker()
   const node = await userDevice.node()
 

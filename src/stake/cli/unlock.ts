@@ -13,17 +13,14 @@ import { formatTime, toDays, toUpperCaseFirst } from '../../helpers'
 /**
  * Unlock a stake (`stake unlock`).
  */
-export const action = ({ index, logger, wallet, xe, ...ctx }: CommandContext) => async (id: string): Promise<void> => {
-  const log = logger()
-
+export const action = (ctx: CommandContext) => async (id: string): Promise<void> => {
   const opts = {
     ...await cli.passphrase.read(ctx.cmd),
     ...cli.yes.read(ctx.cmd)
   }
-  log.debug('options', opts)
 
-  const storage = wallet()
-  const { results: stakes } = await index().stakes(await storage.address(), { limit: 999 })
+  const storage = ctx.wallet()
+  const { results: stakes } = await ctx.indexClient().stakes(await storage.address(), { limit: 999 })
   const stake = findOne(stakes, id)
 
   if (stake.unlockRequested !== undefined) {
@@ -50,7 +47,7 @@ export const action = ({ index, logger, wallet, xe, ...ctx }: CommandContext) =>
   await askToSignTx(opts)
   const userWallet = await storage.read(opts.passphrase as string)
 
-  const xeClient = xe()
+  const xeClient = ctx.xeClient()
   const onChainWallet = await xeClient.walletWithNextNonce(userWallet.address)
 
   const tx = xeUtils.tx.sign({

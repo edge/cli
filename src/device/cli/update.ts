@@ -12,17 +12,18 @@ import { EndpointsConfig, ImageInspectInfo } from 'dockerode'
  *
  * If the device is running, it will be restarted after the update.
  */
-export const action = ({ device, logger, ...ctx }: CommandContext) => async (): Promise<void> => {
-  const log = logger()
+export const action = (ctx: CommandContext) => async (): Promise<void> => {
+  const opts = {
+    ...cli.docker.readPrefix(ctx.cmd)
+  }
 
-  const { prefix } = cli.docker.readPrefix(ctx.cmd)
-
-  const userDevice = device(prefix)
+  const log = ctx.logger()
+  const userDevice = ctx.device(opts.prefix)
   const docker = userDevice.docker()
   const node = await userDevice.node()
 
   console.log(`Checking ${node.name} version...`)
-  const { target } = await cli.docker.readTarget(ctx, ctx.cmd, node.stake.type)
+  const { target } = await cli.docker.readTarget(ctx, node.stake.type)
   log.debug('got target version', { target })
   const targetImage = `${node.image}:${target}`
 

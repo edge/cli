@@ -17,31 +17,31 @@ import { askToSignTx, handleCreateTxResult } from '../../transaction'
  * If the device is running, it will be stopped.
  * Afterwards, the data volume is removed, effectively 'destroying' the device.
  */
-export const action = ({ device, logger, wallet, xe, ...ctx }: CommandContext) => async (): Promise<void> => {
-  const log = logger()
-
+export const action = (ctx: CommandContext) => async (): Promise<void> => {
   const opts = {
     ...await cli.passphrase.read(ctx.cmd),
-    ...cli.docker.readPrefix(ctx.cmd)
+    ...cli.docker.readPrefix(ctx.cmd),
+    ...cli.verbose.read(ctx.parent),
+    ...cli.yes.read(ctx.cmd)
   }
-  const { yes } = cli.yes.read(ctx.cmd)
 
-  const { verbose } = cli.verbose.read(ctx.parent)
-  const printID = (id: string) => verbose ? id : id.slice(0, config.id.shortLength)
+  const log = ctx.logger()
 
-  const userDevice = device(opts.prefix)
+  const printID = (id: string) => opts.verbose ? id : id.slice(0, config.id.shortLength)
+
+  const userDevice = ctx.device(opts.prefix)
   const docker = userDevice.docker()
   const volume = await userDevice.volume()
   const deviceWallet = await volume.read()
 
-  const storage = wallet()
+  const storage = ctx.wallet()
   const address = await storage.address()
-  const xeClient = xe()
+  const xeClient = ctx.xeClient()
   const stake = Object.values(await xeClient.stakes(address)).find(s => s.device === deviceWallet.address)
   const nodeName = stake !== undefined ? toUpperCaseFirst(stake.type) : ''
 
   // confirm user intent
-  if (!yes) {
+  if (!opts.yes) {
     console.log(`You are removing this device from Edge ${toUpperCaseFirst(ctx.network.name)}.`)
     console.log()
     if (stake === undefined) console.log('This device is not assigned to any stake.')

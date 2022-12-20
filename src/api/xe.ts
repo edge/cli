@@ -7,6 +7,8 @@ import { Context } from '..'
 import { SuperAgentRequest } from 'superagent'
 import config from '../config'
 
+export type XEClient = ReturnType<typeof client>
+
 /**
  * Create an XE blockchain API client.
  */

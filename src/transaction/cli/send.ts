@@ -12,23 +12,20 @@ import { formatXE, parseAmount } from '../xe'
  * Send an XE transaction via the blockchain (`transaction send`).
  */
 // eslint-disable-next-line max-len
-export const action = ({ cmd, logger, network, wallet, xe }: CommandContext) => async (amountInput: string, recipient: string): Promise<void> => {
-  const log = logger()
-
+export const action = (ctx: CommandContext) => async (amountInput: string, recipient: string): Promise<void> => {
   const opts = {
-    ...await cli.passphrase.read(cmd),
-    ...cli.memo.read(cmd),
-    ...cli.yes.read(cmd)
+    ...await cli.passphrase.read(ctx.cmd),
+    ...cli.memo.read(ctx.cmd),
+    ...cli.yes.read(ctx.cmd)
   }
-  log.debug('options', opts)
 
   const amount = parseAmount(amountInput)
   if (!xeUtils.wallet.validateAddress(recipient)) throw new Error('invalid recipient')
 
-  const storage = wallet()
+  const storage = ctx.wallet()
   const address = await storage.address()
 
-  const xeClient = xe()
+  const xeClient = ctx.xeClient()
   let onChainWallet = await xeClient.wallet(address)
 
   const resultBalance = onChainWallet.balance - amount
@@ -63,7 +60,7 @@ export const action = ({ cmd, logger, network, wallet, xe }: CommandContext) => 
   }, userWallet.privateKey)
 
   const result = await xeClient.createTransaction(tx)
-  if (!handleCreateTxResult(network, result)) process.exitCode = 1
+  if (!handleCreateTxResult(ctx.network, result)) process.exitCode = 1
 }
 
 export const command = (ctx: Context): Command => {

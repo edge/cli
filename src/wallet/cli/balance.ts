@@ -5,9 +5,9 @@ import { errorHandler } from '../../cli'
 import { formatXE } from '../../transaction/xe'
 
 /** Display the current balance of the host wallet. */
-export const action = ({ wallet, xe }: Context) => async (): Promise<void> => {
-  const address = await wallet().address()
-  const { balance } = await xe().wallet(address)
+export const action = (ctx: Context) => async (): Promise<void> => {
+  const address = await ctx.wallet().address()
+  const { balance } = await ctx.xeClient().wallet(address)
 
   console.log(`Address: ${address}`)
   console.log(`Balance: ${formatXE(balance)}`)

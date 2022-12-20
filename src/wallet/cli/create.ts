@@ -8,17 +8,15 @@ import { writeFile } from 'fs/promises'
 import { CommandContext, Context } from '../..'
 
 /** Create a new host wallet. */
-export const action = ({ cmd, logger, wallet }: CommandContext) => async (): Promise<void> => {
-  const log = logger()
-
+export const action = (ctx: CommandContext) => async (): Promise<void> => {
   const opts = {
-    ...cli.overwrite.read(cmd),
-    ...await cli.passphrase.read(cmd),
-    ...cli.privateKey.readFile(cmd)
+    ...cli.overwrite.read(ctx.cmd),
+    ...await cli.passphrase.read(ctx.cmd),
+    ...cli.privateKey.readFile(ctx.cmd)
   }
-  log.debug('options', opts)
 
-  const storage = wallet()
+  const log = ctx.logger()
+  const storage = ctx.wallet()
 
   if (await storage.check() && !opts.overwrite) {
     if (await repl.askLetter('A wallet already exists. Overwrite?', 'yn') === 'n') return

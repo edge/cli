@@ -10,10 +10,12 @@ import { CommandContext, Context } from '../..'
  * This only reports whether the device is running or not.
  * For more information about the device, use `device info` instead.
  */
-export const action = ({ device, ...ctx }: CommandContext) => async (): Promise<void> => {
-  const { prefix } = cli.docker.readPrefix(ctx.cmd)
+export const action = (ctx: CommandContext) => async (): Promise<void> => {
+  const opts = {
+    ...cli.docker.readPrefix(ctx.cmd)
+  }
 
-  const userDevice = device(prefix)
+  const userDevice = ctx.device(opts.prefix)
   const node = await userDevice.node()
   const info = await node.container()
   if (info === undefined) console.log(`${node.name} is not running`)

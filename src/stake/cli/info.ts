@@ -9,10 +9,12 @@ import { CommandContext, Context } from '../..'
 /**
  * Display on-chain staking info (`stake info`).
  */
-export const action = ({ xe, ...ctx }: CommandContext) => async (): Promise<void> => {
-  const { debug } = cli.debug.read(ctx.parent)
+export const action = (ctx: CommandContext) => async (): Promise<void> => {
+  const opts = {
+    ...cli.debug.read(ctx.parent)
+  }
 
-  const vars = await xeVars(xe, debug)
+  const vars = await xeVars(ctx.xeClient(), opts.debug)
 
   const amounts = [
     vars.host_stake_amount,

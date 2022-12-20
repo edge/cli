@@ -9,12 +9,14 @@ import { CommandContext, Context } from '../..'
 import { formatTime, printTable } from '../../helpers'
 
 /** List pending transactions for the host wallet (`transaction list-pending`). */
-export const action = ({ wallet, xe, ...ctx }: CommandContext) => async (): Promise<void> => {
-  const { verbose } = cli.verbose.read(ctx.parent)
+export const action = (ctx: CommandContext) => async (): Promise<void> => {
+  const opts = {
+    ...cli.verbose.read(ctx.parent)
+  }
 
-  const address = await wallet().address()
+  const address = await ctx.wallet().address()
 
-  const txs = await xe().pendingTransactions(address)
+  const txs = await ctx.xeClient().pendingTransactions(address)
   if (txs.length === 0) {
     console.log('No pending transactions')
     return
@@ -24,13 +26,13 @@ export const action = ({ wallet, xe, ...ctx }: CommandContext) => async (): Prom
     ['Time', 'Tx', 'From', 'To', 'Amount', 'Memo', 'Nonce', 'Signature'],
     tx => [
       formatTime(tx.timestamp),
-      verbose ? tx.hash : tx.hash.slice(0, config.hash.shortLength),
-      verbose ? tx.sender : tx.sender.slice(0, config.address.shortLength),
-      verbose ? tx.recipient : tx.recipient.slice(0, config.address.shortLength),
+      opts.verbose ? tx.hash : tx.hash.slice(0, config.hash.shortLength),
+      opts.verbose ? tx.sender : tx.sender.slice(0, config.address.shortLength),
+      opts.verbose ? tx.recipient : tx.recipient.slice(0, config.address.shortLength),
       formatXE(tx.amount),
       tx.data.memo || '',
       tx.nonce.toString(),
-      verbose ? tx.signature : tx.signature.slice(0, config.signature.shortLength)
+      opts.verbose ? tx.signature : tx.signature.slice(0, config.signature.shortLength)
     ]
   )
   console.log(table(txs))

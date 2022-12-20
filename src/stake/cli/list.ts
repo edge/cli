@@ -12,21 +12,23 @@ import { formatTime, printTable, toUpperCaseFirst } from '../../helpers'
 /**
  * List stakes associated with the host wallet (`stake list`).
  */
-export const action = ({ index, wallet, ...ctx }: CommandContext) => async (): Promise<void> => {
-  const { verbose } = cli.verbose.read(ctx.parent)
+export const action = (ctx: CommandContext) => async (): Promise<void> => {
+  const opts = {
+    ...cli.verbose.read(ctx.parent)
+  }
 
-  const storage = wallet()
+  const storage = ctx.wallet()
   const address = await storage.address()
-  const { results: stakes } = await index().stakes(address, { limit: 999 })
+  const { results: stakes } = await ctx.indexClient().stakes(address, { limit: 999 })
 
   const table = printTable<indexUtils.stake.AddressedStake>(
     ['Type', 'ID', 'Hash', 'Created', 'Tx', 'Amount', 'Status'],
     stake => [
       toUpperCaseFirst(stake.type),
-      verbose ? stake.id : stake.id.slice(0, config.id.shortLength),
-      verbose ? stake.hash : stake.hash.slice(0, config.hash.shortLength),
+      opts.verbose ? stake.id : stake.id.slice(0, config.id.shortLength),
+      opts.verbose ? stake.hash : stake.hash.slice(0, config.hash.shortLength),
       formatTime(stake.created),
-      verbose ? stake.transaction : stake.transaction.slice(0, config.hash.shortLength),
+      opts.verbose ? stake.transaction : stake.transaction.slice(0, config.hash.shortLength),
       formatXE(stake.amount),
       (() => {
         if (stake.released !== undefined) return 'Released'

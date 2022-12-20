@@ -13,16 +13,15 @@ import { CommandContext, Context, Network } from '../..'
  *
  * Before starting, we check whether an update is available and if so, download it first.
  */
-export const action = ({ device, logger, ...ctx }: CommandContext) => async (): Promise<void> => {
-  const log = logger()
-
+export const action = (ctx: CommandContext) => async (): Promise<void> => {
   const opts = {
     ...cli.docker.readEnv(ctx.cmd),
     ...cli.docker.readNetworks(ctx.cmd),
     ...cli.docker.readPrefix(ctx.cmd)
   }
 
-  const userDevice = device(opts.prefix)
+  const log = ctx.logger()
+  const userDevice = ctx.device(opts.prefix)
   const docker = userDevice.docker()
   const node = await userDevice.node()
 
@@ -33,7 +32,7 @@ export const action = ({ device, logger, ...ctx }: CommandContext) => async (): 
   }
 
   console.log(`Checking ${node.name} version...`)
-  const { target } = await cli.docker.readTarget(ctx, ctx.cmd, node.stake.type)
+  const { target } = await cli.docker.readTarget(ctx, node.stake.type)
   log.debug('got target version', { target })
   const targetImage = `${node.image}:${target}`
 

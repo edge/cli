@@ -5,14 +5,17 @@ import { errorHandler } from '../../cli'
 import { CommandContext, Context } from '../..'
 
 /** Display host wallet. */
-export const action = ({ wallet, ...ctx }: CommandContext) => async (): Promise<void> => {
-  const storage = wallet()
+export const action = (ctx: CommandContext) => async (): Promise<void> => {
+  const opts = {
+    ...await cli.passphrase.read(ctx.cmd)
+  }
+
+  const storage = ctx.wallet()
   console.log(`Address: ${await storage.address()}`)
 
-  const { passphrase } = await cli.passphrase.read(ctx.cmd)
-  if (passphrase) {
+  if (opts.passphrase) {
     try {
-      const userWallet = await storage.read(passphrase)
+      const userWallet = await storage.read(opts.passphrase)
       console.log(`Private key: ${userWallet.privateKey}`)
     }
     catch (err) {

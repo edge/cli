@@ -7,17 +7,14 @@ import { errorHandler } from '../../cli'
 import { CommandContext, Context } from '../..'
 
 /** Restore a host wallet using a private key. */
-export const action = ({ cmd, logger, wallet }: CommandContext) => async (): Promise<void> => {
-  const log = logger()
-
+export const action = (ctx: CommandContext) => async (): Promise<void> => {
   const opts = {
-    ...cli.overwrite.read(cmd),
-    ...await cli.passphrase.read(cmd),
-    ...await cli.privateKey.read(cmd)
+    ...cli.overwrite.read(ctx.cmd),
+    ...await cli.passphrase.read(ctx.cmd),
+    ...await cli.privateKey.read(ctx.cmd)
   }
-  log.debug('options', opts)
 
-  const storage = wallet()
+  const storage = ctx.wallet()
 
   if (await storage.check() && !opts.overwrite) {
     if (await repl.askLetter('A wallet already exists. Overwrite?', 'yn') === 'n') return

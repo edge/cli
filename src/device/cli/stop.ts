@@ -9,12 +9,13 @@ import { CommandContext, Context } from '../..'
  *
  * If the device is already stopped, nothing happens.
  */
-export const action = ({ device, logger, ...ctx }: CommandContext) => async (): Promise<void> => {
-  const log = logger()
+export const action = (ctx: CommandContext) => async (): Promise<void> => {
+  const opts = {
+    ...cli.docker.readPrefix(ctx.cmd)
+  }
 
-  const { prefix } = cli.docker.readPrefix(ctx.cmd)
-
-  const userDevice = device(prefix)
+  const log = ctx.logger()
+  const userDevice = ctx.device(opts.prefix)
   const docker = userDevice.docker()
   const node = await userDevice.node()
 

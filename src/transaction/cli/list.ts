@@ -11,11 +11,13 @@ import { formatTime, printTable } from '../../helpers'
 /**
  * List transactions for the host wallet (`transaction list`).
  */
-export const action = ({ index, wallet, ...ctx }: CommandContext) => async (): Promise<void> => {
-  const { verbose } = cli.verbose.read(ctx.parent)
+export const action = (ctx: CommandContext) => async (): Promise<void> => {
+  const opts = {
+    ...cli.verbose.read(ctx.parent)
+  }
 
-  const address = await wallet().address()
-  const { results, metadata } = await index().transactions(address, cli.pagination.read(ctx.cmd))
+  const address = await ctx.wallet().address()
+  const { results, metadata } = await ctx.indexClient().transactions(address, cli.pagination.read(ctx.cmd))
   if (results.length === 0) {
     console.log('No transactions')
     return
@@ -30,13 +32,13 @@ export const action = ({ index, wallet, ...ctx }: CommandContext) => async (): P
     tx => [
       formatTime(tx.timestamp),
       tx.block.height.toString(),
-      verbose ? tx.hash : tx.hash.slice(0, config.hash.shortLength),
-      verbose ? tx.sender : tx.sender.slice(0, config.address.shortLength),
-      verbose ? tx.recipient : tx.recipient.slice(0, config.address.shortLength),
+      opts.verbose ? tx.hash : tx.hash.slice(0, config.hash.shortLength),
+      opts.verbose ? tx.sender : tx.sender.slice(0, config.address.shortLength),
+      opts.verbose ? tx.recipient : tx.recipient.slice(0, config.address.shortLength),
       formatXE(tx.amount),
       tx.data.memo || '',
       tx.nonce.toString(),
-      verbose ? tx.signature : tx.signature.slice(0, config.signature.shortLength)
+      opts.verbose ? tx.signature : tx.signature.slice(0, config.signature.shortLength)
     ]
   )
   console.log(table(results))

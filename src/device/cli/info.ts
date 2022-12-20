@@ -9,15 +9,18 @@ import { printData, toUpperCaseFirst } from '../../helpers'
 /**
  * Display device information (`device info`).
  */
-export const action = ({ cmd, device, logger, parent, wallet, xe }: CommandContext) => async (): Promise<void> => {
-  const log = logger()
+export const action = (ctx: CommandContext) => async (): Promise<void> => {
+  const opts = {
+    ...cli.debug.read(ctx.parent),
+    ...cli.docker.readPrefix(ctx.cmd),
+    ...cli.verbose.read(ctx.parent)
+  }
 
-  const { debug } = cli.debug.read(parent)
-  const { prefix } = cli.docker.readPrefix(cmd)
-  const { verbose } = cli.verbose.read(parent)
-  const printID = (id: string) => verbose ? id: id.slice(0, config.id.shortLength)
+  const log = ctx.logger()
 
-  const userDevice = device(prefix)
+  const printID = (id: string) => opts.verbose ? id: id.slice(0, config.id.shortLength)
+
+  const userDevice = ctx.device(opts.prefix)
   const deviceWallet = await (await userDevice.volume()).read()
 
   const toPrint: Record<string, string> = {
@@ -26,8 +29,8 @@ export const action = ({ cmd, device, logger, parent, wallet, xe }: CommandConte
   }
 
   try {
-    const address = await wallet().address()
-    const stake = Object.values(await xe().stakes(address)).find(s => s.device === deviceWallet.address)
+    const address = await ctx.wallet().address()
+    const stake = Object.values(await ctx.xeClient().stakes(address)).find(s => s.device === deviceWallet.address)
     if (stake !== undefined) {
       toPrint.Type = toUpperCaseFirst(stake.type)
       toPrint.Stake = printID(stake.id)
@@ -35,7 +38,7 @@ export const action = ({ cmd, device, logger, parent, wallet, xe }: CommandConte
     else toPrint.Stake = 'Unassigned'
   }
   catch (err) {
-    if (debug) log.error(`${err}`, { err })
+    if (opts.debug) log.error(`${err}`, { err })
     toPrint.Stake = 'Unassigned (no wallet)'
   }
 

@@ -14,24 +14,22 @@ import { askToSignTx, handleCreateTxResult } from '../../transaction'
 /**
  * Create a stake (`stake create`).
  */
-export const action = ({ logger, wallet, xe, ...ctx }: CommandContext) => async (nodeType: string): Promise<void> => {
-  if (!types.includes(nodeType)) throw new Error(`invalid node type "${nodeType}"`)
-  const log = logger()
-
+export const action = (ctx: CommandContext) => async (nodeType: string): Promise<void> => {
   const opts = {
     ...cli.debug.read(ctx.parent),
     ...await cli.passphrase.read(ctx.cmd),
     ...cli.yes.read(ctx.cmd)
   }
-  log.debug('options', opts)
 
-  const storage = wallet()
+  if (!types.includes(nodeType)) throw new Error(`invalid node type "${nodeType}"`)
+
+  const storage = ctx.wallet()
   const address = await storage.address()
 
-  const xeClient = xe()
+  const xeClient = ctx.xeClient()
   let onChainWallet = await xeClient.wallet(address)
 
-  const vars = await xeVars(xe, opts.debug)
+  const vars = await xeVars(xeClient, opts.debug)
   // fallback 0 is just for typing - nodeType is checked at top of func, so it should never be used
   const amount =
     nodeType === 'host' ? vars.host_stake_amount :
@@ -43,7 +41,6 @@ export const action = ({ logger, wallet, xe, ...ctx }: CommandContext) => async 
   if (resultBalance < 0) throw new Error(`insufficient balance to stake ${nodeType}: your wallet only contains ${formatXE(onChainWallet.balance)} (${formatXE(amount)} required)`)
 
   if (!opts.yes) {
-    // eslint-disable-next-line max-len
     console.log(`You are staking ${formatXE(amount)} to run a ${toUpperCaseFirst(nodeType)}.`)
     console.log(
       `${formatXE(amount)} will be deducted from your available balance.`,

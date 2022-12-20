@@ -4,10 +4,10 @@
 
 import { Command } from 'commander'
 import { Log } from '@edge/log'
+import { XEClient } from './api/xe'
 import device from './device'
 import indexClient from './api'
 import { wallet } from './wallet'
-import xeClient from './api/xe'
 
 /**
  * Context provided to a CLI command.
@@ -79,14 +79,14 @@ export type Network = {
  */
 export type Providers = {
   device: DeviceProvider
-  index: IndexClientProvider
+  indexClient: IndexClientProvider
   logger: LoggerProvider
   wallet: WalletProvider
-  xe: XEClientProvider
+  xeClient: XEClientProvider
 }
 
 /** Provider for the host wallet. */
 export type WalletProvider = () => ReturnType<typeof wallet>
 
 /** Provider for an XE blockchain API client. */
-export type XEClientProvider = (name?: string) => ReturnType<typeof xeClient>
+export type XEClientProvider = (name?: string) => XEClient

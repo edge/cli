@@ -15,7 +15,7 @@ import { formatTime, toUpperCaseFirst } from '../../helpers'
  * Release a stake (`stake release`).
  * The stake must first be unlocked; see `unlockAction()`.
  */
-export const action = ({ index, wallet, xe, ...ctx }: CommandContext) => async (id: string): Promise<void> => {
+export const action = (ctx: CommandContext) => async (id: string): Promise<void> => {
   const opts = {
     ...cli.debug.read(ctx.parent),
     ...await cli.passphrase.read(ctx.cmd),
@@ -23,8 +23,8 @@ export const action = ({ index, wallet, xe, ...ctx }: CommandContext) => async (
     ...cli.yes.read(ctx.cmd)
   }
 
-  const storage = wallet()
-  const { results: stakes } = await index().stakes(await storage.address(), { limit: 999 })
+  const storage = ctx.wallet()
+  const { results: stakes } = await ctx.indexClient().stakes(await storage.address(), { limit: 999 })
   const stake = findOne(stakes, id)
 
   if (stake.released !== undefined) {
@@ -37,10 +37,12 @@ export const action = ({ index, wallet, xe, ...ctx }: CommandContext) => async (
     return
   }
 
+  const xeClient = ctx.xeClient()
+
   const unlockAt = stake.unlockRequested + stake.unlockPeriod
   const needUnlock = unlockAt > Date.now()
   if (needUnlock && !opts.express) {
-    const { stake_express_release_fee } = await xeVars(xe, opts.debug)
+    const { stake_express_release_fee } = await xeVars(xeClient, opts.debug)
     const releaseFee = stake_express_release_fee * stake.amount
     const releasePc = stake_express_release_fee * 100
     console.log(`This stake has not unlocked yet. It unlocks at ${formatTime(unlockAt)}.`)
@@ -54,7 +56,7 @@ export const action = ({ index, wallet, xe, ...ctx }: CommandContext) => async (
     // eslint-disable-next-line max-len
     console.log(`You are releasing a ${toUpperCaseFirst(stake.type)} stake.`)
     if (needUnlock) {
-      const { stake_express_release_fee } = await xeVars(xe, opts.debug)
+      const { stake_express_release_fee } = await xeVars(xeClient, opts.debug)
       const releaseFee = stake_express_release_fee * stake.amount
       const releasePc = stake_express_release_fee * 100
       console.log([
@@ -71,7 +73,6 @@ export const action = ({ index, wallet, xe, ...ctx }: CommandContext) => async (
   await askToSignTx(opts)
   const userWallet = await storage.read(opts.passphrase as string)
 
-  const xeClient = xe()
   const onChainWallet = await xeClient.walletWithNextNonce(userWallet.address)
 
   const data: xeUtils.tx.TxData = {

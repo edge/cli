@@ -9,8 +9,9 @@ import { currentVersion, download, latestVersion } from '..'
 /** Update CLI. */
 export const action = (ctx: Context, argv: string[]) => async (): Promise<void> => {
   const log = ctx.logger()
-
-  const { debug } = cli.debug.read(ctx.parent)
+  const opts = {
+    ...cli.debug.read(ctx.parent)
+  }
 
   const cv = currentVersion()
   const lv = await latestVersion(ctx)
@@ -41,7 +42,7 @@ export const action = (ctx: Context, argv: string[]) => async (): Promise<void> 
     unlinkSync(tmpFilename)
   }
   catch (err) {
-    if (debug) log.error('Unable to remove download', { err })
+    if (opts.debug) log.error('Unable to remove download', { err })
   }
 
   console.log(`Updated Edge CLI to v${lv}`)
