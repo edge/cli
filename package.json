@@ -52,6 +52,6 @@
     "tar-stream": "^2.2.0"
   },
   "optionalDependencies": {
-    "pkg": "^5.3.3"
+    "pkg": "^5.8.0"
   }
 }
