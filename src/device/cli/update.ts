@@ -5,7 +5,7 @@
 import * as cli from '../../cli'
 import * as image from '../image'
 import { Command } from 'commander'
-import { Context } from '../..'
+import { Context } from '../../main'
 import { checkVersionHandler } from '../../update/cli'
 import { createContainerOptions } from '.'
 import { errorHandler } from '../../cli'

@@ -4,7 +4,7 @@
 
 import * as sg from '@edge/stargate-utils'
 import { Command } from 'commander'
-import { Context } from '..'
+import { Context } from '../main'
 import config from '../config'
 import { AuthConfig, DockerOptions } from 'dockerode'
 

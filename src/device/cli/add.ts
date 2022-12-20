@@ -11,7 +11,7 @@ import { checkVersionHandler } from '../../update/cli'
 import config from '../../config'
 import { errorHandler } from '../../cli'
 import { toUpperCaseFirst } from '../../helpers'
-import { Context, Network } from '../..'
+import { Context, Network } from '../../main'
 import { askToSignTx, handleCreateTxResult } from '../../transaction'
 import { canAssign, findOne, precedence as nodeTypePrecedence } from '../../stake'
 
@@ -33,6 +33,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
   const printID = (id: string) => opts.verbose ? id : id.slice(0, config.id.shortLength)
 
   const device = ctx.device(opts.prefix)
+  const xeClient = ctx.xeClient()
 
   // get device data. if none, initialize device on the fly
   const deviceWallet = await (async () => {
@@ -53,7 +54,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
   // get user stakes, check whether device already assigned
   const wallet = ctx.wallet()
   const address = await wallet.address()
-  const { results: stakes } = await ctx.indexClient().stakes(address, { limit: 999 })
+  const stakes = await xeClient.stakes(address)
   if (Object.keys(stakes).length === 0) throw new Error('no stakes')
 
   const assigned = Object.values(stakes).find(s => s.device === deviceWallet.address)
@@ -130,7 +131,6 @@ export const action = (ctx: Context) => async (): Promise<void> => {
   await askToSignTx(opts)
   const hostWallet = await wallet.read(opts.passphrase as string)
 
-  const xeClient = ctx.xeClient()
   const onChainWallet = await xeClient.walletWithNextNonce(hostWallet.address)
 
   const tx = xe.tx.sign({

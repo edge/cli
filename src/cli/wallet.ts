@@ -3,7 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import { Command } from 'commander'
-import { Network } from '..'
+import { Network } from '../main'
 
 /** Wallet options. */
 export type WalletOption = {

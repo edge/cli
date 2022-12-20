@@ -3,7 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import { Command } from 'commander'
-import { Context } from '../..'
+import { Context } from '../../main'
 import { command as balance } from './balance'
 import { command as create } from './create'
 import { command as forget } from './forget'

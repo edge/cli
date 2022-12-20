@@ -3,19 +3,20 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as xe from '@edge/xe-utils'
-import { Context } from '..'
+import { Context } from '../main'
 import { SuperAgentRequest } from 'superagent'
 import config from '../config'
 
+/**
+ * XE blockchain API client wrapper.
+ * Provides additional logging around standard library requests.
+ */
 export type XEClient = ReturnType<typeof client>
 
-/**
- * Create an XE blockchain API client.
- */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-const client = (ctx: Context, name = 'xe') => {
-  const host = ctx.network.blockchain.baseURL
-  const log = ctx.log(name)
+const client = (ctx: Context) => {
+  const { host } = ctx.network.blockchain
+  const log = ctx.log('xe')
 
   const cb = (r: SuperAgentRequest) => r.timeout(config.blockchain.defaultTimeout)
 

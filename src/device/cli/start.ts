@@ -8,7 +8,7 @@ import { Command } from 'commander'
 import { checkVersionHandler } from '../../update/cli'
 import { createContainerOptions } from '.'
 import { errorHandler } from '../../cli'
-import { Context, Network } from '../..'
+import { Context, Network } from '../../main'
 
 /**
  * Start a device.

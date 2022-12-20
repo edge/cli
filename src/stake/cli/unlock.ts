@@ -6,7 +6,7 @@ import * as cli from '../../cli'
 import * as repl from '../../repl'
 import * as xeUtils from '@edge/xe-utils'
 import { Command } from 'commander'
-import { Context } from '../..'
+import { Context } from '../../main'
 import { checkVersionHandler } from '../../update/cli'
 import { errorHandler } from '../../cli'
 import { findOne } from '..'
@@ -22,7 +22,7 @@ export const action = (ctx: Context) => async (id: string): Promise<void> => {
   }
 
   const wallet = ctx.wallet()
-  const { results: stakes } = await ctx.indexClient().stakes(await wallet.address(), { limit: 999 })
+  const stakes = await ctx.xeClient().stakes(await wallet.address())
   const stake = findOne(stakes, id)
 
   if (stake.unlockRequested !== undefined) {

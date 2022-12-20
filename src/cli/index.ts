@@ -3,7 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as _debug from './debug'
-import { Context } from '..'
+import { Context } from '../main'
 
 export * as color from './color'
 export * as debug from './debug'

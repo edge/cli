@@ -3,9 +3,8 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as cli from '../../cli'
-import * as indexUtils from '@edge/index-utils'
 import { Command } from 'commander'
-import { Context } from '../..'
+import { Context } from '../../main'
 import { byPrecedence } from '..'
 import { checkVersionHandler } from '../../update/cli'
 import config from '../../config'
@@ -20,9 +19,9 @@ export const action = (ctx: Context) => async (): Promise<void> => {
   }
 
   const address = await ctx.wallet().address()
-  const { results: stakes } = await ctx.indexClient().stakes(address, { limit: 999 })
+  const stakes = Object.values(await ctx.xeClient().stakes(address))
 
-  const table = printTable<indexUtils.stake.AddressedStake>(
+  const table = printTable<typeof stakes[0]>(
     ['Type', 'ID', 'Hash', 'Created', 'Tx', 'Amount', 'Status'],
     stake => [
       toUpperCaseFirst(stake.type),

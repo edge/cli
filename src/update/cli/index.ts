@@ -4,7 +4,7 @@
 
 import * as cli from '../../cli'
 import { Command } from 'commander'
-import { Context } from '../..'
+import { Context } from '../../main'
 import { command as check } from './check'
 import { color } from '../../repl'
 import { command as update } from './update'

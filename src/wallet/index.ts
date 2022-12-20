@@ -4,8 +4,10 @@
 
 import * as cli from '../cli'
 import * as storage from './storage'
-import { Context } from '..'
+import { Context } from '../main'
 import { Wallet } from './wallet'
+
+export type HostWallet = ReturnType<typeof wallet>
 
 /** Secure wallet data by obscuring its keypair. */
 const secure = (w: storage.FileWallet | Wallet): Wallet => ({

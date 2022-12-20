@@ -6,7 +6,7 @@ import * as cli from '../../cli'
 import { Command } from 'commander'
 import { errorHandler } from '../../cli'
 import path from 'path'
-import { Context, Network } from '../..'
+import { Context, Network } from '../../main'
 import { chmodSync, copyFileSync, renameSync, unlinkSync } from 'fs'
 import { currentVersion, download, latestVersion } from '..'
 

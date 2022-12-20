@@ -3,7 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import { Command } from 'commander'
-import { Context } from '../..'
+import { Context } from '../../main'
 import { command as list } from './list'
 import { command as listPending } from './listPending'
 import { command as send } from './send'

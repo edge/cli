@@ -3,7 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as repl from '../repl'
-import { Network } from '..'
+import { Network } from '../main'
 import { tx as xeTx } from '@edge/xe-utils'
 
 /**
@@ -37,7 +37,7 @@ export const handleCreateTxResult = (network: Network, result: xeTx.CreateRespon
   else {
     console.log('Your transaction has been submitted and will appear in the explorer shortly.')
     console.log()
-    console.log(`${network.explorer.baseURL}/transaction/${result.results[0].hash}`)
+    console.log(`${network.explorer.host}/transaction/${result.results[0].hash}`)
     return true
   }
 }

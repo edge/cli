@@ -3,7 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import { Command } from 'commander'
-import { Context } from '../..'
+import { Context } from '../../main'
 import { checkVersionHandler } from '../../update/cli'
 import { errorHandler } from '../../cli'
 import { formatXE } from '../../transaction/xe'

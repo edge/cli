@@ -3,7 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as cli from '../cli'
-import { Context } from '..'
+import { Context } from '../main'
 import { createHash } from 'crypto'
 import { createWriteStream } from 'fs'
 import fs from 'fs/promises'

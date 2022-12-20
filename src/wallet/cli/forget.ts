@@ -5,7 +5,7 @@
 import * as cli from '../../cli'
 import * as repl from '../../repl'
 import { Command } from 'commander'
-import { Context } from '../..'
+import { Context } from '../../main'
 import { checkVersionHandler } from '../../update/cli'
 import { errorHandler } from '../../cli'
 

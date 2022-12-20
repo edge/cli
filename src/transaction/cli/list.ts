@@ -5,7 +5,7 @@
 import * as cli from '../../cli'
 import * as indexUtils from '@edge/index-utils'
 import { Command } from 'commander'
-import { Context } from '../..'
+import { Context } from '../../main'
 import { checkVersionHandler } from '../../update/cli'
 import config from '../../config'
 import { errorHandler } from '../../cli'

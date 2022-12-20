@@ -4,10 +4,12 @@
 
 import * as cli from '../cli'
 import * as data from './data'
-import { Context } from '..'
+import { Context } from '../main'
 import Docker from 'dockerode'
 import { arch } from 'os'
 import { toUpperCaseFirst } from '../helpers'
+
+export type Device = ReturnType<typeof device>
 
 /** Secure device data by obscuring its keypair. */
 const secure = (device: data.Device): data.Device => ({
@@ -23,8 +25,8 @@ const secure = (device: data.Device): data.Device => ({
  * This provides simplified getters for the Docker service, device node, and data volume.
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-const device = (ctx: Context, prefix: string | undefined, name = 'device') => {
-  const log = ctx.log(name)
+const device = (ctx: Context, prefix: string | undefined) => {
+  const log = ctx.log('device')
 
   let dockerInstance: Docker | undefined
 

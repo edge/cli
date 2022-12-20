@@ -12,7 +12,7 @@ import { formatXE } from '../../transaction/xe'
 import { toUpperCaseFirst } from '../../helpers'
 import { types } from '..'
 import { xeVars } from '.'
-import { Context, Network } from '../..'
+import { Context, Network } from '../../main'
 import { askToSignTx, handleCreateTxResult } from '../../transaction'
 
 /** Create a stake. */

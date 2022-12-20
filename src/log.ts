@@ -3,7 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as cli from './cli'
-import { Context } from '.'
+import { Context } from './main'
 import { Writable } from 'stream'
 import chalk from 'chalk'
 import { color } from './repl'

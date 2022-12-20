@@ -4,7 +4,7 @@
 
 import * as xeUtils from '@edge/xe-utils'
 import { Command } from 'commander'
-import { Context } from '../..'
+import { Context } from '../../main'
 import { command as add } from './add'
 import config from '../../config'
 import { command as info } from './info'

@@ -5,7 +5,7 @@
 import * as cli from '../../cli'
 import * as xeUtils from '@edge/xe-utils'
 import { Command } from 'commander'
-import { Context } from '../..'
+import { Context } from '../../main'
 import { checkVersionHandler } from '../../update/cli'
 import config from '../../config'
 import { errorHandler } from '../../cli'
