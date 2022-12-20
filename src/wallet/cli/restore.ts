@@ -14,9 +14,9 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
     ...await cli.privateKey.read(ctx.cmd)
   }
 
-  const storage = ctx.wallet()
+  const wallet = ctx.wallet()
 
-  if (await storage.check() && !opts.overwrite) {
+  if (await wallet.check() && !opts.overwrite) {
     if (await repl.askLetter('A wallet already exists. Overwrite?', 'yn') === 'n') return
     console.log()
   }
@@ -42,7 +42,7 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
   }
 
   const hostWallet = xe.wallet.recover(opts.privateKey || '')
-  await storage.write(hostWallet, opts.passphrase)
+  await wallet.write(hostWallet, opts.passphrase)
   console.log(`Wallet ${hostWallet.address} restored.`)
 }
 

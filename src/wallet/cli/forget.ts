@@ -11,13 +11,13 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
     ...cli.yes.read(ctx.cmd)
   }
 
-  const storage = ctx.wallet()
-  if (!await storage.check()) {
+  const wallet = ctx.wallet()
+  if (!await wallet.check()) {
     console.log('No wallet found.')
     return
   }
 
-  console.log(`Address: ${await storage.address()}`)
+  console.log(`Address: ${await wallet.address()}`)
 
   if (!opts.yes) {
     console.log()
@@ -25,7 +25,7 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
     console.log()
   }
 
-  await storage.delete()
+  await wallet.delete()
   console.log('Your wallet is forgotten.')
 }
 

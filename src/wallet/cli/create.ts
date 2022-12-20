@@ -15,10 +15,10 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
     ...cli.privateKey.readFile(ctx.cmd)
   }
 
-  const log = ctx.logger()
-  const storage = ctx.wallet()
+  const log = ctx.log()
+  const wallet = ctx.wallet()
 
-  if (await storage.check() && !opts.overwrite) {
+  if (await wallet.check() && !opts.overwrite) {
     if (await repl.askLetter('A wallet already exists. Overwrite?', 'yn') === 'n') return
     console.log()
   }
@@ -35,9 +35,9 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
     console.log()
   }
 
-  const userWallet = xe.wallet.create()
-  await storage.write(userWallet, opts.passphrase)
-  console.log(`Wallet ${userWallet.address} created.`)
+  const hostWallet = xe.wallet.create()
+  await wallet.write(hostWallet, opts.passphrase)
+  console.log(`Wallet ${hostWallet.address} created.`)
   console.log()
 
   const nextStep = opts.privateKeyFile
@@ -45,7 +45,7 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
     : await repl.askLetter('Would you like to (v)iew or (e)xport your private key?', 'ven')
 
   if (nextStep === 'v') {
-    console.log(`Private key: ${userWallet.privateKey}`)
+    console.log(`Private key: ${hostWallet.privateKey}`)
     console.log()
     console.log('Keep your private key safe!')
     return
@@ -62,14 +62,14 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
   }
   try {
     log.debug('writing file', { file: pkFile })
-    await writeFile(pkFile, userWallet.privateKey)
+    await writeFile(pkFile, hostWallet.privateKey)
     log.debug('wrote file', { file: pkFile })
     console.log(`Private key saved to ${pkFile}.`)
   }
   catch (err) {
     console.log('Failed to write to private key file. Displaying it instead...')
     console.log()
-    console.log(`Private key: ${userWallet.privateKey}`)
+    console.log(`Private key: ${hostWallet.privateKey}`)
     throw err
   }
 }

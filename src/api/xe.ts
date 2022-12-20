@@ -13,9 +13,9 @@ export type XEClient = ReturnType<typeof client>
  * Create an XE blockchain API client.
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-const client = ({ logger, network }: Pick<Context, 'logger' | 'network'>, name = 'xe') => {
-  const host = network.blockchain.baseURL
-  const log = logger(name)
+const client = (ctx: Context, name = 'xe') => {
+  const host = ctx.network.blockchain.baseURL
+  const log = ctx.log(name)
 
   const cb = (r: SuperAgentRequest) => r.timeout(config.blockchain.defaultTimeout)
 

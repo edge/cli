@@ -17,8 +17,7 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
     ...cli.verbose.read(ctx.parent)
   }
 
-  const storage = ctx.wallet()
-  const address = await storage.address()
+  const address = await ctx.wallet().address()
   const { results: stakes } = await ctx.indexClient().stakes(address, { limit: 999 })
 
   const table = printTable<indexUtils.stake.AddressedStake>(

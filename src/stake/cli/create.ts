@@ -23,8 +23,8 @@ export const action = (ctx: CommandContext) => async (nodeType: string): Promise
 
   if (!types.includes(nodeType)) throw new Error(`invalid node type "${nodeType}"`)
 
-  const storage = ctx.wallet()
-  const address = await storage.address()
+  const wallet = ctx.wallet()
+  const address = await wallet.address()
 
   const xeClient = ctx.xeClient()
   let onChainWallet = await xeClient.wallet(address)
@@ -52,20 +52,20 @@ export const action = (ctx: CommandContext) => async (nodeType: string): Promise
   }
 
   await askToSignTx(opts)
-  const userWallet = await storage.read(opts.passphrase as string)
+  const hostWallet = await wallet.read(opts.passphrase as string)
   onChainWallet = await xeClient.walletWithNextNonce(address)
 
   const tx = xeUtils.tx.sign({
     timestamp: Date.now(),
-    sender: userWallet.address,
-    recipient: userWallet.address,
+    sender: hostWallet.address,
+    recipient: hostWallet.address,
     amount,
     data: {
       action: 'create_stake',
       memo: `Create ${toUpperCaseFirst(nodeType)} Stake`
     },
     nonce: onChainWallet.nonce
-  }, userWallet.privateKey)
+  }, hostWallet.privateKey)
 
   const result = await xeClient.createTransaction(tx)
   if (!handleCreateTxResult(ctx.network, result)) process.exitCode = 1

@@ -61,7 +61,7 @@ export class SimpleAdapter implements Adaptor {
   }
 }
 
-export const logger = ({ parent }: Pick<Context, 'parent'>, name?: string): Log => {
+export const createLogger = ({ parent }: Pick<Context, 'parent'>, name?: string): Log => {
   const log = new Log(name)
 
   const { debug, noColor } = {

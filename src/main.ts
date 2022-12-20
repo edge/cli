@@ -5,10 +5,10 @@
 import * as cli from './cli'
 import { Command } from 'commander'
 import { commands as aboutCmds } from './about/cli'
+import { createLogger } from './log'
 import device from './device'
 import { command as deviceCmd } from './device/cli'
 import indexClient from './api'
-import { logger } from './log'
 import pkg from '../package.json'
 import { command as stakeCmd } from './stake/cli'
 import { toUpperCaseFirst } from './helpers'
@@ -24,7 +24,7 @@ const addProviders = (inputCtx: Pick<Context, 'parent' | 'network'>): Context =>
   const ctx = inputCtx as Context
   ctx.device = (name?: string) => device(ctx, name)
   ctx.indexClient = (name?: string) => indexClient(ctx, name)
-  ctx.logger = (name?: string) => logger(ctx, name)
+  ctx.log = (name?: string) => createLogger(ctx, name)
   ctx.wallet = () => wallet(ctx)
   ctx.xeClient = (name?: string) => xeClient(ctx, name)
   return ctx

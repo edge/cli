@@ -21,15 +21,15 @@ export * as yes from './yes'
  * Catches and cleanly prints any error that may arise from sub-commands.
  */
 export const errorHandler =
-  <T>({ parent, ...ctx }: Context, f: (...args: any[]) => Promise<T>) =>
+  <T>(ctx: Context, f: (...args: any[]) => Promise<T>) =>
     async (...args: any[]): Promise<T|undefined> => {
       try {
         return await f(...args)
       }
       catch (err) {
         if (!isCancelledInput(err)) {
-          const log = ctx.logger('critical')
-          const { debug } = _debug.read(parent)
+          const log = ctx.log('critical')
+          const { debug } = _debug.read(ctx.parent)
           log.error(`${err}`, debug ? { err } : undefined)
         }
         process.exitCode = 1

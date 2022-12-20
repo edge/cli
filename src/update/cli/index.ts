@@ -25,7 +25,7 @@ export const checkVersionHandler =
         ...cli.color.read(ctx.parent)
       }
 
-      const log = ctx.logger()
+      const log = ctx.log()
       try {
         const cv = currentVersion()
         const lv = await cachedLatestVersion(ctx)

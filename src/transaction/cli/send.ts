@@ -22,8 +22,8 @@ export const action = (ctx: CommandContext) => async (amountInput: string, recip
   const amount = parseAmount(amountInput)
   if (!xeUtils.wallet.validateAddress(recipient)) throw new Error('invalid recipient')
 
-  const storage = ctx.wallet()
-  const address = await storage.address()
+  const wallet = ctx.wallet()
+  const address = await wallet.address()
 
   const xeClient = ctx.xeClient()
   let onChainWallet = await xeClient.wallet(address)
@@ -45,7 +45,7 @@ export const action = (ctx: CommandContext) => async (amountInput: string, recip
   }
 
   await askToSignTx(opts)
-  const userWallet = await storage.read(opts.passphrase as string)
+  const hostWallet = await wallet.read(opts.passphrase as string)
   onChainWallet = await xeClient.walletWithNextNonce(address)
 
   const data: xeUtils.tx.TxData = {}
@@ -57,7 +57,7 @@ export const action = (ctx: CommandContext) => async (amountInput: string, recip
     amount,
     data,
     nonce: onChainWallet.nonce
-  }, userWallet.privateKey)
+  }, hostWallet.privateKey)
 
   const result = await xeClient.createTransaction(tx)
   if (!handleCreateTxResult(ctx.network, result)) process.exitCode = 1

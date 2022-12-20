@@ -8,7 +8,7 @@ import { currentVersion, download, latestVersion } from '..'
 
 /** Update CLI. */
 export const action = (ctx: Context, argv: string[]) => async (): Promise<void> => {
-  const log = ctx.logger()
+  const log = ctx.log()
   const opts = {
     ...cli.debug.read(ctx.parent)
   }

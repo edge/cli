@@ -80,7 +80,7 @@ export type Network = {
 export type Providers = {
   device: DeviceProvider
   indexClient: IndexClientProvider
-  logger: LoggerProvider
+  log: LoggerProvider
   wallet: WalletProvider
   xeClient: XEClientProvider
 }

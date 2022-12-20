@@ -24,7 +24,7 @@ const secure = (device: data.Device): data.Device => ({
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 const device = (ctx: Context, prefix: string | undefined, name = 'device') => {
-  const log = ctx.logger(name)
+  const log = ctx.log(name)
 
   let dockerInstance: Docker | undefined
 

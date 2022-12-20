@@ -25,17 +25,16 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
     ...cli.yes.read(ctx.cmd)
   }
 
-  const log = ctx.logger()
-
   const printID = (id: string) => opts.verbose ? id : id.slice(0, config.id.shortLength)
 
-  const userDevice = ctx.device(opts.prefix)
-  const docker = userDevice.docker()
-  const volume = await userDevice.volume()
+  const log = ctx.log()
+  const device = ctx.device(opts.prefix)
+  const docker = device.docker()
+  const volume = await device.volume()
   const deviceWallet = await volume.read()
 
-  const storage = ctx.wallet()
-  const address = await storage.address()
+  const wallet = ctx.wallet()
+  const address = await wallet.address()
   const xeClient = ctx.xeClient()
   const stake = Object.values(await xeClient.stakes(address)).find(s => s.device === deviceWallet.address)
   const nodeName = stake !== undefined ? toUpperCaseFirst(stake.type) : ''
@@ -55,7 +54,7 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
     // if node is running, stop it
     const imageName = ctx.network.registry.imageName(stake.type, arch())
     log.debug('finding node', { imageName })
-    const node = await userDevice.node()
+    const node = await device.node()
     const info = await node.container()
     if (info !== undefined) {
       log.debug('found container', { name: toUpperCaseFirst(stake.type), id: info.Id })
@@ -68,13 +67,13 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
 
     // create unassignment tx
     await askToSignTx(opts)
-    const userWallet = await storage.read(opts.passphrase as string)
-    const onChainWallet = await xeClient.walletWithNextNonce(userWallet.address)
+    const hostWallet = await wallet.read(opts.passphrase as string)
+    const onChainWallet = await xeClient.walletWithNextNonce(hostWallet.address)
 
     const tx = xeUtils.tx.sign({
       timestamp: Date.now(),
-      sender: userWallet.address,
-      recipient: userWallet.address,
+      sender: hostWallet.address,
+      recipient: hostWallet.address,
       amount: 0,
       data: {
         action: 'unassign_device',
@@ -82,7 +81,7 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
         stake: stake.hash
       },
       nonce: onChainWallet.nonce
-    }, userWallet.privateKey)
+    }, hostWallet.privateKey)
 
     console.log('Unassigning stake...')
     console.log()

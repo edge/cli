@@ -17,10 +17,10 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
     ...cli.docker.readPrefix(ctx.cmd)
   }
 
-  const log = ctx.logger()
-  const userDevice = ctx.device(opts.prefix)
-  const docker = userDevice.docker()
-  const node = await userDevice.node()
+  const log = ctx.log()
+  const device = ctx.device(opts.prefix)
+  const docker = device.docker()
+  const node = await device.node()
 
   console.log(`Checking ${node.name} version...`)
   const { target } = await cli.docker.readTarget(ctx, node.stake.type)

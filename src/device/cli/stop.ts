@@ -14,10 +14,10 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
     ...cli.docker.readPrefix(ctx.cmd)
   }
 
-  const log = ctx.logger()
-  const userDevice = ctx.device(opts.prefix)
-  const docker = userDevice.docker()
-  const node = await userDevice.node()
+  const log = ctx.log()
+  const device = ctx.device(opts.prefix)
+  const docker = device.docker()
+  const node = await device.node()
 
   const info = await node.container()
   if (info === undefined) {

@@ -19,8 +19,8 @@ export const action = (ctx: CommandContext) => async (id: string): Promise<void>
     ...cli.yes.read(ctx.cmd)
   }
 
-  const storage = ctx.wallet()
-  const { results: stakes } = await ctx.indexClient().stakes(await storage.address(), { limit: 999 })
+  const wallet = ctx.wallet()
+  const { results: stakes } = await ctx.indexClient().stakes(await wallet.address(), { limit: 999 })
   const stake = findOne(stakes, id)
 
   if (stake.unlockRequested !== undefined) {
@@ -45,15 +45,15 @@ export const action = (ctx: CommandContext) => async (id: string): Promise<void>
   }
 
   await askToSignTx(opts)
-  const userWallet = await storage.read(opts.passphrase as string)
+  const hostWallet = await wallet.read(opts.passphrase as string)
 
   const xeClient = ctx.xeClient()
-  const onChainWallet = await xeClient.walletWithNextNonce(userWallet.address)
+  const onChainWallet = await xeClient.walletWithNextNonce(hostWallet.address)
 
   const tx = xeUtils.tx.sign({
     timestamp: Date.now(),
-    sender: userWallet.address,
-    recipient: userWallet.address,
+    sender: hostWallet.address,
+    recipient: hostWallet.address,
     amount: 0,
     data: {
       action: 'unlock_stake',
@@ -61,7 +61,7 @@ export const action = (ctx: CommandContext) => async (id: string): Promise<void>
       stake: stake.hash
     },
     nonce: onChainWallet.nonce
-  }, userWallet.privateKey)
+  }, hostWallet.privateKey)
 
   const result = await xeClient.createTransaction(tx)
   if (!handleCreateTxResult(ctx.network, result)) process.exitCode = 1

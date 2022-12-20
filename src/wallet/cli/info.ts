@@ -10,13 +10,13 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
     ...await cli.passphrase.read(ctx.cmd)
   }
 
-  const storage = ctx.wallet()
-  console.log(`Address: ${await storage.address()}`)
+  const wallet = ctx.wallet()
+  console.log(`Address: ${await wallet.address()}`)
 
   if (opts.passphrase) {
     try {
-      const userWallet = await storage.read(opts.passphrase)
-      console.log(`Private key: ${userWallet.privateKey}`)
+      const hostWallet = await wallet.read(opts.passphrase)
+      console.log(`Private key: ${hostWallet.privateKey}`)
     }
     catch (err) {
       console.log(`Cannot display private key: ${(err as Error).message}`)

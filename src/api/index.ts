@@ -11,9 +11,9 @@ import config from '../config'
  * Create an Index API client.
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-const client = ({ logger, network }: Pick<Context, 'logger' | 'network'>, name = 'index') => {
-  const host = network.index.baseURL
-  const log = logger(name)
+const client = (ctx: Context, name = 'index') => {
+  const host = ctx.network.index.baseURL
+  const log = ctx.log(name)
 
   const cb = (r: SuperAgentRequest) => r.timeout(config.index.defaultTimeout)
 

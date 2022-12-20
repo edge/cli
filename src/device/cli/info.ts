@@ -16,12 +16,11 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
     ...cli.verbose.read(ctx.parent)
   }
 
-  const log = ctx.logger()
-
   const printID = (id: string) => opts.verbose ? id: id.slice(0, config.id.shortLength)
 
-  const userDevice = ctx.device(opts.prefix)
-  const deviceWallet = await (await userDevice.volume()).read()
+  const log = ctx.log()
+  const device = ctx.device(opts.prefix)
+  const deviceWallet = await (await device.volume()).read()
 
   const toPrint: Record<string, string> = {
     Network: toUpperCaseFirst(deviceWallet.network),

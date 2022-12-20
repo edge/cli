@@ -28,11 +28,11 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
   const printAddr = (id: string) => opts.verbose ? id : id.slice(0, config.address.shortLength) + '...'
   const printID = (id: string) => opts.verbose ? id : id.slice(0, config.id.shortLength)
 
-  const userDevice = ctx.device(opts.prefix)
+  const device = ctx.device(opts.prefix)
 
   // get device data. if none, initialize device on the fly
   const deviceWallet = await (async () => {
-    const volume = await userDevice.volume(true)
+    const volume = await device.volume(true)
     let w: data.Device | undefined = undefined
     try {
       w = await volume.read()
@@ -47,8 +47,8 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
   })()
 
   // get user stakes, check whether device already assigned
-  const storage = ctx.wallet()
-  const address = await storage.address()
+  const wallet = ctx.wallet()
+  const address = await wallet.address()
   const { results: stakes } = await ctx.indexClient().stakes(address, { limit: 999 })
   if (Object.keys(stakes).length === 0) throw new Error('no stakes')
 
@@ -124,15 +124,15 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
 
   // create assignment tx
   await askToSignTx(opts)
-  const userWallet = await storage.read(opts.passphrase as string)
+  const hostWallet = await wallet.read(opts.passphrase as string)
 
   const xeClient = ctx.xeClient()
-  const onChainWallet = await xeClient.walletWithNextNonce(userWallet.address)
+  const onChainWallet = await xeClient.walletWithNextNonce(hostWallet.address)
 
   const tx = xe.tx.sign({
     timestamp: Date.now(),
-    sender: userWallet.address,
-    recipient: userWallet.address,
+    sender: hostWallet.address,
+    recipient: hostWallet.address,
     amount: 0,
     data: {
       action: 'assign_device',
@@ -142,7 +142,7 @@ export const action = (ctx: CommandContext) => async (): Promise<void> => {
       stake: stake.hash
     },
     nonce: onChainWallet.nonce
-  }, userWallet.privateKey)
+  }, hostWallet.privateKey)
 
   const result = await xeClient.createTransaction(tx)
   if (!handleCreateTxResult(ctx.network, result)) {
