@@ -1,0 +1,55 @@
+import * as cli from '../../cli'
+import * as indexUtils from '@edge/index-utils'
+import { Command } from 'commander'
+import { checkVersionHandler } from '../../update/cli'
+import config from '../../config'
+import { errorHandler } from '../../cli'
+import { formatXE } from '../xe'
+import { CommandContext, Context } from '../..'
+import { formatTime, printTable } from '../../helpers'
+
+/**
+ * List transactions for the host wallet (`transaction list`).
+ */
+export const action = ({ index, wallet, ...ctx }: CommandContext) => async (): Promise<void> => {
+  const { verbose } = cli.verbose.read(ctx.parent)
+
+  const address = await wallet().address()
+  const { results, metadata } = await index().transactions(address, cli.pagination.read(ctx.cmd))
+  if (results.length === 0) {
+    console.log('No transactions')
+    return
+  }
+
+  const numPages = Math.ceil(metadata.totalCount / metadata.limit)
+  console.log(`Page ${metadata.page}/${numPages}`)
+  console.log()
+
+  const table = printTable<indexUtils.tx.Tx>(
+    ['Time', 'Block', 'Tx', 'From', 'To', 'Amount', 'Memo', 'Nonce', 'Signature'],
+    tx => [
+      formatTime(tx.timestamp),
+      tx.block.height.toString(),
+      verbose ? tx.hash : tx.hash.slice(0, config.hash.shortLength),
+      verbose ? tx.sender : tx.sender.slice(0, config.address.shortLength),
+      verbose ? tx.recipient : tx.recipient.slice(0, config.address.shortLength),
+      formatXE(tx.amount),
+      tx.data.memo || '',
+      tx.nonce.toString(),
+      verbose ? tx.signature : tx.signature.slice(0, config.signature.shortLength)
+    ]
+  )
+  console.log(table(results))
+}
+
+export const command = (ctx: Context): Command => {
+  const cmd = new Command('list').alias('ls').description('list transactions').addHelpText('after', help)
+  cli.pagination.configure(cmd)
+  cmd.action(errorHandler(ctx, checkVersionHandler(ctx, action({ ...ctx, cmd }))))
+  return cmd
+}
+
+/** Help text for the `transaction list` command. */
+const help = `
+This command queries the index and displays your transactions.
+`

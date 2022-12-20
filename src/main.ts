@@ -2,17 +2,20 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-import * as aboutCLI from './about/cli'
-import * as deviceCLI from './device/cli'
-import * as stakeCLI from './stake/cli'
-import * as transactionCLI from './transaction/cli'
-import * as updateCLI from './update/cli'
-import * as walletCLI from './wallet/cli'
-import { create as createCLI } from './edge/cli'
+import * as cli from './cli'
+import { Command } from 'commander'
+import { commands as aboutCmds } from './about/cli'
 import device from './device'
+import { command as deviceCmd } from './device/cli'
 import indexClient from './api'
 import { logger } from './log'
+import pkg from '../package.json'
+import { command as stakeCmd } from './stake/cli'
+import { toUpperCaseFirst } from './helpers'
+import { command as transactionCmd } from './transaction/cli'
+import { command as updateCmd } from './update/cli'
 import { wallet } from './wallet'
+import { command as walletCmd } from './wallet/cli'
 import xeClient from './api/xe'
 import { Context, Network } from '.'
 
@@ -32,22 +35,23 @@ const addProviders = (inputCtx: Pick<Context, 'parent' | 'network'>): Context =>
  * See `main-mainnet.ts` and `main-testnet.ts` for usage.
  */
 const main = (argv: string[], network: Network): void => {
-  const parent = createCLI(network)
-  aboutCLI.commands().forEach(cmd => parent.addCommand(cmd))
+  const version = `Edge CLI v${pkg.version} (${toUpperCaseFirst(network.name)})`
+  const desc = `Edge CLI (${toUpperCaseFirst(network.name)})`
+
+  const parent = new Command(network.appName).version(version).description(desc)
+  cli.color.configure(parent)
+  cli.debug.configure(parent)
+  cli.verbose.configure(parent)
+  cli.wallet.configure(parent)
+
   const ctx = addProviders({ parent, network })
 
-  if (network.flags.onboarding) {
-    const [deviceCmd, deviceOptions] = deviceCLI.withContext(ctx)
-    parent.addCommand(deviceCmd)
-    deviceOptions.forEach(opt => parent.addOption(opt))
-  }
-
-  parent.addCommand(stakeCLI.withContext(ctx))
-  parent.addCommand(transactionCLI.withContext(ctx))
-  parent.addCommand(updateCLI.withContext(ctx, argv))
-
-  const [walletCmd, walletOption] = walletCLI.withContext(ctx)
-  parent.addCommand(walletCmd).addOption(walletOption)
+  aboutCmds().forEach(cmd => parent.addCommand(cmd))
+  parent.addCommand(deviceCmd(ctx))
+  parent.addCommand(stakeCmd(ctx))
+  parent.addCommand(transactionCmd(ctx))
+  parent.addCommand(updateCmd(ctx, argv))
+  parent.addCommand(walletCmd(ctx))
 
   parent.parse(argv)
 }

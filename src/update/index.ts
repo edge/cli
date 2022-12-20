@@ -2,11 +2,11 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+import * as cli from '../cli'
 import { Context } from '..'
 import { createHash } from 'crypto'
 import { createWriteStream } from 'fs'
 import fs from 'fs/promises'
-import { getDebugOption } from '../edge/cli'
 import { normalizedPlatform } from '../helpers'
 import path from 'path'
 import pkg from '../../package.json'
@@ -51,7 +51,7 @@ const downloadURL = async (url: string, file: string) => new Promise<void>((reso
  * The cache timeout is specified by `versionCacheTimeout`.
  */
 export const cachedLatestVersion = async ({ network, ...ctx }: Context): Promise<SemVer> => {
-  const { debug } = getDebugOption(ctx.parent)
+  const { debug } = cli.debug.read(ctx.parent)
   const log = ctx.logger('update.version.cache')
   const file = tmpdir() + path.sep + '.edge-cli-version'
   let lv: SemVer|undefined = undefined

@@ -2,10 +2,10 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+import * as cli from '../cli'
 import * as storage from './storage'
 import { Context } from '..'
 import { Wallet } from './wallet'
-import { getWalletOption } from './cli'
 
 /** Secure wallet data by obscuring its keypair. */
 const secure = (w: storage.FileWallet | Wallet): Wallet => ({
@@ -22,7 +22,7 @@ const secure = (w: storage.FileWallet | Wallet): Wallet => ({
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export const wallet = ({ logger, parent, network }: Context) => {
   const log = logger('wallet')
-  const { wallet: file } = getWalletOption(parent, network)
+  const { wallet: file } = cli.wallet.read(parent, network)
 
   // stateful encrypted wallet to avoid re-reading from disk
   let enc: storage.FileWallet

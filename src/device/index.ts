@@ -2,11 +2,11 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+import * as cli from '../cli'
 import * as data from './data'
 import { Context } from '..'
 import Docker from 'dockerode'
 import { arch } from 'os'
-import { getDockerOptions } from './cli'
 import { toUpperCaseFirst } from '../helpers'
 
 /** Secure device data by obscuring its keypair. */
@@ -31,7 +31,7 @@ const device = ({ logger, wallet, xe, network, parent }: Context, prefix: string
   // get docker instance. automatically initializes if not already connected
   const docker = () => {
     if (dockerInstance === undefined) {
-      const options = getDockerOptions(parent)
+      const options = cli.docker.readConnection(parent)
       dockerInstance = new Docker(options)
       log.debug('connected to Docker', { options })
     }
