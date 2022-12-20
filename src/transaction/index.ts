@@ -2,8 +2,8 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+import * as repl from '../repl'
 import { Network } from '..'
-import { askSecure } from '../input'
 import { tx as xeTx } from '@edge/xe-utils'
 
 /**
@@ -18,7 +18,7 @@ export const askToSignTx = async (opts: { passphrase?: string }): Promise<void> 
     )
     // console.log('For more information, see https://wiki.edge.network/TODO')
     console.log()
-    const passphrase = await askSecure('Passphrase: ')
+    const passphrase = await repl.askSecure('Passphrase: ')
     if (passphrase.length === 0) throw new Error('passphrase required')
     opts.passphrase = passphrase
     console.log()
