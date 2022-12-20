@@ -11,6 +11,7 @@ export const ambiguousIDError = namedError('AmbiguousIDError')
 
 /** Check whether a stake can be assigned to a device. */
 export const canAssign = (stake: xe.stake.Stake): boolean => {
+  if (stake.type === 'governance') return false
   if (stake.released) return false
   if (stake.unlockRequested) return false
   return true
