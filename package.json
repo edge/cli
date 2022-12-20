@@ -25,7 +25,7 @@
     "test": "echo \"Error: no test specified\""
   },
   "devDependencies": {
-    "@edge/eslint-config-typescript": "^0.1.0",
+    "@edge/eslint-config-typescript": "^0.1.4",
     "@types/dockerode": "^3.3.0",
     "@types/node": "^16.7.2",
     "@types/semver": "^7.3.9",
