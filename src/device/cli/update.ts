@@ -1,3 +1,7 @@
+// Copyright (C) 2022 Edge Network Technologies Limited
+// Use of this source code is governed by a GNU GPL-style license
+// that can be found in the LICENSE.md file. All rights reserved.
+
 import * as cli from '../../cli'
 import * as image from '../image'
 import { Command } from 'commander'
@@ -8,7 +12,7 @@ import { CommandContext, Context } from '../..'
 import { EndpointsConfig, ImageInspectInfo } from 'dockerode'
 
 /**
- * Update a device (`device update`).
+ * Update a device.
  *
  * If the device is running, it will be restarted after the update.
  */

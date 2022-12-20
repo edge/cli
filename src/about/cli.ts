@@ -1,12 +1,10 @@
-// Copyright (C) 2021 Edge Network Technologies Limited
+// Copyright (C) 2022 Edge Network Technologies Limited
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import { Command } from 'commander'
 
-/**
- * Display community/further reading links in CLI.
- */
+/** Display community & further reading links in CLI. */
 const community = async () => {
   console.log(`
 Browse public Edge code on GitHub:
@@ -27,6 +25,7 @@ Keep up with Edge on Medium or sign up to the mailing list:
 `)
 }
 
+/** Create about commands. */
 export const commands = (): Command[] => [
   new Command('community').description('show community links').action(community)
 ]

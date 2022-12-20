@@ -1,3 +1,7 @@
+// Copyright (C) 2022 Edge Network Technologies Limited
+// Use of this source code is governed by a GNU GPL-style license
+// that can be found in the LICENSE.md file. All rights reserved.
+
 import * as cli from '../../cli'
 import * as repl from '../../repl'
 import * as xeUtils from '@edge/xe-utils'
@@ -11,7 +15,7 @@ import { CommandContext, Context } from '../..'
 import { askToSignTx, handleCreateTxResult } from '../../transaction'
 
 /**
- * Remove a device from the network (`device remove`).
+ * Remove a device from the network.
  *
  * If the device is assigned to a stake, its assignment will be removed.
  * If the device is running, it will be stopped.

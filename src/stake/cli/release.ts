@@ -1,3 +1,7 @@
+// Copyright (C) 2022 Edge Network Technologies Limited
+// Use of this source code is governed by a GNU GPL-style license
+// that can be found in the LICENSE.md file. All rights reserved.
+
 import * as cli from '../../cli'
 import * as repl from '../../repl'
 import * as xeUtils from '@edge/xe-utils'
@@ -12,8 +16,9 @@ import { askToSignTx, handleCreateTxResult } from '../../transaction'
 import { formatTime, toUpperCaseFirst } from '../../helpers'
 
 /**
- * Release a stake (`stake release`).
- * The stake must first be unlocked; see `unlockAction()`.
+ * Release a stake.
+ *
+ * The stake must first be unlocked.
  */
 export const action = (ctx: CommandContext) => async (id: string): Promise<void> => {
   const opts = {

@@ -1,3 +1,7 @@
+// Copyright (C) 2022 Edge Network Technologies Limited
+// Use of this source code is governed by a GNU GPL-style license
+// that can be found in the LICENSE.md file. All rights reserved.
+
 import * as cli from '../../cli'
 import { Command } from 'commander'
 import { checkVersionHandler } from '../../update/cli'
@@ -7,7 +11,7 @@ import { CommandContext, Context } from '../..'
 import { printData, toUpperCaseFirst } from '../../helpers'
 
 /**
- * Display device information (`device info`).
+ * Display device information.
  */
 export const action = (ctx: CommandContext) => async (): Promise<void> => {
   const opts = {

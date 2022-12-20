@@ -1,3 +1,7 @@
+// Copyright (C) 2022 Edge Network Technologies Limited
+// Use of this source code is governed by a GNU GPL-style license
+// that can be found in the LICENSE.md file. All rights reserved.
+
 import * as cli from '../../cli'
 import * as repl from '../../repl'
 import * as xeUtils from '@edge/xe-utils'
@@ -8,10 +12,7 @@ import { CommandContext, Context } from '../..'
 import { askToSignTx, handleCreateTxResult } from '..'
 import { formatXE, parseAmount } from '../xe'
 
-/**
- * Send an XE transaction via the blockchain (`transaction send`).
- */
-// eslint-disable-next-line max-len
+/** Send an XE transaction via the blockchain. */
 export const action = (ctx: CommandContext) => async (amountInput: string, recipient: string): Promise<void> => {
   const opts = {
     ...await cli.passphrase.read(ctx.cmd),

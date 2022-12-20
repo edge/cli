@@ -1,20 +1,23 @@
+// Copyright (C) 2022 Edge Network Technologies Limited
+// Use of this source code is governed by a GNU GPL-style license
+// that can be found in the LICENSE.md file. All rights reserved.
+
 import { Command } from 'commander'
 import { readFile } from 'fs/promises'
 
+/** Passphrase options. */
 export type PassphraseOption = {
+  /** Passphrase to unlock the host wallet. */
   passphrase?: string
 }
 
-/** Configure `--passphrase` and `--passphrase-file` options on a command. */
+/** Configure a command with passphrase options. */
 export const configure = (cmd: Command): void => {
   cmd.option('-p, --passphrase <string>', 'wallet passphrase')
   cmd.option('-P, --passphrase-file <path>', 'file containing wallet passphrase')
 }
 
-/**
- * Get passphrase from command options.
- * Supports both `--passphrase` and `--passphrase-file` options.
- */
+/** Read passphrase options from a command. */
 export const read = async (cmd: Command): Promise<PassphraseOption> => {
   const opts = cmd.opts()
   if (opts.passphrase?.length) return { passphrase: opts.passphrase }

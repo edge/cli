@@ -1,3 +1,7 @@
+// Copyright (C) 2022 Edge Network Technologies Limited
+// Use of this source code is governed by a GNU GPL-style license
+// that can be found in the LICENSE.md file. All rights reserved.
+
 import * as cli from '../../cli'
 import * as image from '../image'
 import { Command } from 'commander'
@@ -7,7 +11,7 @@ import { errorHandler } from '../../cli'
 import { CommandContext, Context, Network } from '../..'
 
 /**
- * Start a device (`device start`).
+ * Start a device.
  *
  * If the device is already running, nothing happens.
  *

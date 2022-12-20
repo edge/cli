@@ -1,3 +1,7 @@
+// Copyright (C) 2022 Edge Network Technologies Limited
+// Use of this source code is governed by a GNU GPL-style license
+// that can be found in the LICENSE.md file. All rights reserved.
+
 import * as cli from '../../cli'
 import { Command } from 'commander'
 import { checkVersionHandler } from '../../update/cli'
@@ -5,7 +9,7 @@ import { errorHandler } from '../../cli'
 import { CommandContext, Context } from '../..'
 
 /**
- * Display the device status (`device status`).
+ * Display the device status.
  *
  * This only reports whether the device is running or not.
  * For more information about the device, use `device info` instead.

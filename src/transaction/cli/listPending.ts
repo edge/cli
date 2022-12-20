@@ -1,3 +1,7 @@
+// Copyright (C) 2022 Edge Network Technologies Limited
+// Use of this source code is governed by a GNU GPL-style license
+// that can be found in the LICENSE.md file. All rights reserved.
+
 import * as cli from '../../cli'
 import * as xeUtils from '@edge/xe-utils'
 import { Command } from 'commander'
@@ -8,7 +12,7 @@ import { formatXE } from '../xe'
 import { CommandContext, Context } from '../..'
 import { formatTime, printTable } from '../../helpers'
 
-/** List pending transactions for the host wallet (`transaction list-pending`). */
+/** List pending transactions for the host wallet. */
 export const action = (ctx: CommandContext) => async (): Promise<void> => {
   const opts = {
     ...cli.verbose.read(ctx.parent)

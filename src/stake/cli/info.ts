@@ -1,3 +1,7 @@
+// Copyright (C) 2022 Edge Network Technologies Limited
+// Use of this source code is governed by a GNU GPL-style license
+// that can be found in the LICENSE.md file. All rights reserved.
+
 import * as cli from '../../cli'
 import { Command } from 'commander'
 import { checkVersionHandler } from '../../update/cli'
@@ -6,9 +10,7 @@ import { formatXE } from '../../transaction/xe'
 import { xeVars } from '.'
 import { CommandContext, Context } from '../..'
 
-/**
- * Display on-chain staking info (`stake info`).
- */
+/** Display on-chain staking info. */
 export const action = (ctx: CommandContext) => async (): Promise<void> => {
   const opts = {
     ...cli.debug.read(ctx.parent)

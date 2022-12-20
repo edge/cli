@@ -1,3 +1,7 @@
+// Copyright (C) 2022 Edge Network Technologies Limited
+// Use of this source code is governed by a GNU GPL-style license
+// that can be found in the LICENSE.md file. All rights reserved.
+
 import * as cli from '../../cli'
 import * as data from '../data'
 import * as repl from '../../repl'
@@ -12,7 +16,7 @@ import { askToSignTx, handleCreateTxResult } from '../../transaction'
 import { canAssign, findOne, precedence as nodeTypePrecedence } from '../../stake'
 
 /**
- * Add a device to the network (`device add`).
+ * Add a device to the network.
  *
  * This initializes the device as necessary, including creating a device data volume.
  */
