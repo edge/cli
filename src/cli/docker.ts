@@ -2,7 +2,7 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-import * as stargate from '../stargate'
+import * as sg from '@edge/stargate-utils'
 import { Command } from 'commander'
 import { CommandContext } from '..'
 import config from '../config'
@@ -114,6 +114,6 @@ export const readPrefix = (cmd: Command): PrefixOption => {
 export const readTarget = async ({ cmd, network }: CommandContext, name: string): Promise<TargetOption> => {
   const opts = cmd.opts()
   return {
-    target: opts.target || await stargate.getServiceVersion(network, name)
+    target: opts.target || (await sg.service.get(network.stargate.host, name)).version
   }
 }

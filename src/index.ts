@@ -2,6 +2,7 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+import * as sg from '@edge/stargate-utils'
 import { Command } from 'commander'
 import { Log } from '@edge/log'
 import { XEClient } from './api/xe'
@@ -67,7 +68,7 @@ export type Network = {
     imageName: (app: string, arch: string) => string
   }
   stargate: {
-    serviceURL: (app: string) => string
+    host: sg.Host
   }
   wallet: {
     defaultFile: string
