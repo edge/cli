@@ -25,7 +25,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
     ...await cli.passphrase.read(ctx.cmd),
     ...cli.docker.readPrefix(ctx.cmd),
     ...cli.stake.read(ctx.cmd),
-    ...cli.stakeType.read(ctx.cmd),
+    ...cli.stake.readType(ctx.cmd),
     ...cli.verbose.read(ctx.parent),
     ...cli.yes.read(ctx.cmd)
   }
@@ -180,7 +180,7 @@ export const command = (ctx: Context): Command => {
   cli.docker.configurePrefix(cmd)
   cli.passphrase.configure(cmd)
   cli.stake.configure(cmd)
-  cli.stakeType.configure(cmd)
+  cli.stake.configureType(cmd)
   cli.yes.configure(cmd)
   cmd.action(errorHandler(ctx, checkVersionHandler(ctx, action({ ...ctx, cmd }))))
   return cmd

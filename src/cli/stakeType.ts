@@ -11,13 +11,13 @@ export type StakeTypeOption = {
   stakeType?: string
 }
 
-/** Configure a command with stake options. */
-export const configure = (cmd: Command): void => {
+/** Configure a command with stake type options. */
+export const configureType = (cmd: Command): void => {
   cmd.option('-t, --stake-type <id>', 'stake type')
 }
 
-/** Read stake options from a command. */
-export const read = (cmd: Command): StakeTypeOption => {
+/** Read stake type options from a command. */
+export const readType = (cmd: Command): StakeTypeOption => {
   const opts = cmd.opts()
   if (opts.stakeType !== undefined) {
     if (!types.includes(opts.stakeType)) throw new Error('invalid stake type')

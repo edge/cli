@@ -23,8 +23,8 @@ const statusMap: Record<StakeStatus, (stake: StakeWithStatus) => string> = {
 /** List stakes associated with the host wallet. */
 export const action = (ctx: Context) => async (): Promise<void> => {
   const opts = {
-    ...cli.stakeStatus.read(ctx.cmd),
-    ...cli.stakeType.read(ctx.cmd),
+    ...cli.stake.readStatus(ctx.cmd),
+    ...cli.stake.readType(ctx.cmd),
     ...cli.verbose.read(ctx.parent)
   }
 
@@ -53,8 +53,8 @@ export const action = (ctx: Context) => async (): Promise<void> => {
 
 export const command = (ctx: Context): Command => {
   const cmd = new Command('list').alias('ls').description('list all stakes').addHelpText('after', help)
-  cli.stakeStatus.configure(cmd)
-  cli.stakeType.configure(cmd)
+  cli.stake.configureStatus(cmd)
+  cli.stake.configureType(cmd)
   cmd.action(errorHandler(ctx, checkVersionHandler(ctx, action({ ...ctx, cmd }))))
   return cmd
 }
