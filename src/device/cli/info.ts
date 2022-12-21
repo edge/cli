@@ -3,6 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as cli from '../../cli'
+import * as repl from '../../repl'
 import { Command } from 'commander'
 import { Context } from '../../main'
 import { checkVersionHandler } from '../../update/cli'
@@ -45,7 +46,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
     toPrint.Stake = 'Unassigned (no wallet)'
   }
 
-  console.log(printData(toPrint))
+  repl.raw(printData(toPrint))
 }
 
 export const command = (ctx: Context): Command => {
@@ -55,7 +56,6 @@ export const command = (ctx: Context): Command => {
   return cmd
 }
 
-/** Help text for the `device info` command. */
-const help = `
+const help = repl.help(`
 This command displays information about your device and the stake it is assigned to.
-`
+`)

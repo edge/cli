@@ -17,20 +17,21 @@ export const action = (ctx: Context) => async (): Promise<void> => {
 
   const wallet = ctx.wallet()
   if (!await wallet.check()) {
-    console.log('No wallet found.')
+    repl.echo('No wallet found.')
     return
   }
 
-  console.log(`Address: ${await wallet.address()}`)
+  repl.echo(`
+  Address: ${await wallet.address()}
+  `)
 
   if (!opts.yes) {
-    console.log()
     if (await repl.askLetter('Are you sure you want to forget this wallet?', 'yn') === 'n') return
-    console.log()
+    repl.nl()
   }
 
   await wallet.delete()
-  console.log('Your wallet is forgotten.')
+  repl.echo('Your wallet is forgotten.')
 }
 
 export const command = (ctx: Context): Command => {
@@ -40,6 +41,6 @@ export const command = (ctx: Context): Command => {
   return cmd
 }
 
-const help = `
+const help = repl.help(`
 This command deletes your wallet from disk.
-`
+`)

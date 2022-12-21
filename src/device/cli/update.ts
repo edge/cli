@@ -4,6 +4,7 @@
 
 import * as cli from '../../cli'
 import * as image from '../image'
+import * as repl from '../../repl'
 import { Command } from 'commander'
 import { Context } from '../../main'
 import { checkVersionHandler } from '../../update/cli'
@@ -26,7 +27,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
   const docker = device.docker()
   const node = await device.node()
 
-  console.log(`Checking ${node.name} version...`)
+  repl.echo(`Checking ${node.name} version...`)
   const { target } = await cli.docker.readTarget(ctx, node.stake.type)
   log.debug('got target version', { target })
   const targetImage = `${node.image}:${target}`
@@ -51,7 +52,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
   }
   if (currentImage !== undefined) log.debug('current image', { currentImage })
 
-  console.log(`Updating ${node.name} v${target}...`)
+  repl.echo(`Updating ${node.name} v${target}...`)
   const { debug } = cli.debug.read(ctx.parent)
   const authconfig = cli.docker.readAuth(ctx.cmd)
   if (authconfig !== undefined) await image.pullVisible(docker, targetImage, authconfig, debug)
@@ -59,15 +60,15 @@ export const action = (ctx: Context) => async (): Promise<void> => {
 
   const latestImage = await docker.getImage(targetImage).inspect()
   if (latestImage.Id === currentImage?.Id) {
-    console.log(`${node.name} is up to date`)
+    repl.echo(`${node.name} is up to date`)
     return
   }
-  console.log(`${node.name} has been updated`)
+  repl.echo(`${node.name} has been updated`)
 
   if (container === undefined) return
 
   // container is already running, need to stop-start
-  console.log(`Restarting ${node.name}...`)
+  repl.echo(`Restarting ${node.name}...`)
   log.debug('stopping container', { id: containerInspect?.Id })
   await container.stop()
   log.debug('removing container', { id: containerInspect?.Id })
@@ -89,8 +90,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
 
   info = await node.container()
   if (info === undefined) throw new Error(`${node.name} failed to restart`)
-  console.log()
-  console.log(`${node.name} restarted`)
+  repl.echo(`${node.name} restarted`)
 }
 
 export const command = (ctx: Context): Command => {
@@ -102,6 +102,6 @@ export const command = (ctx: Context): Command => {
   return cmd
 }
 
-const help = `
+const help = repl.help(`
 Update the node, if an update is available.
-`
+`)

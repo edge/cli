@@ -44,10 +44,10 @@ export const action = (ctx: Context) => async (): Promise<void> => {
       w = await volume.read()
     }
     catch (err) {
-      console.log('Initializing device...')
+      repl.echo('Initializing device...')
       w = { ...xe.wallet.create(), network: ctx.network.name }
       await volume.write(w)
-      console.log()
+      repl.nl()
     }
     return w as data.Device
   })()
@@ -60,15 +60,11 @@ export const action = (ctx: Context) => async (): Promise<void> => {
 
   const assigned = Object.values(stakes).find(s => s.device === deviceWallet.address)
   if (assigned !== undefined) {
-    console.log([
-      `This device is already assigned to stake ${printID(assigned.id)} `,
-      `(${toUpperCaseFirst(assigned.type)}) on Edge ${toUpperCaseFirst(ctx.network.name)}.`
-    ].join(''))
-    console.log()
-    console.log([
-      `To reassign this device, run '${ctx.network.appName} device remove' first to remove it from the network, `,
-      `then run '${ctx.network.appName} device add' again to add it back.`
-    ].join(''))
+    repl.echo(`
+    This device is already assigned to stake ${printID(assigned.id)} (${toUpperCaseFirst(assigned.type)}) on Edge ${toUpperCaseFirst(ctx.network.name)}.
+
+    To reassign this device, run '${ctx.network.appName} device remove' first to remove it from the network, then run '${ctx.network.appName} device add' again to add it back.
+    `)
     process.exitCode = 1
     return
   }
@@ -83,31 +79,32 @@ export const action = (ctx: Context) => async (): Promise<void> => {
       // stake specified by type - use first unassigned (if any)
       const stake = Object.values(stakes).find(s => s.type === opts.stakeType && !s.unlockRequested && !s.device)
       if (stake !== undefined) return stake
-      console.log(`There is no unassigned ${toUpperCaseFirst(opts.stakeType)} stake available to auto-assign.`)
-      console.log()
+      repl.echo(`
+      There is no unassigned ${toUpperCaseFirst(opts.stakeType)} stake available to auto-assign.
+      `)
     }
 
-    console.log('Select a stake to assign this device to:')
-    console.log()
+    repl.echo(`
+    Select a stake to assign this device to:
+    `)
     const numberedStakes = Object.values(stakes)
       .filter(canAssign)
       .sort((a, b) => {
         const posDiff = nodeTypePrecedence[a.type] - nodeTypePrecedence[b.type]
         return posDiff !== 0 ? posDiff : a.created - b.created
       })
-    numberedStakes.forEach((stake, n) => console.log([
-      `${n+1}. ${printID(stake.id)} (${toUpperCaseFirst(stake.type)})`,
-      stake.device ? ` (assigned to ${printAddr(stake.device)})` : ''
-    ].join('')))
-    console.log()
+    numberedStakes.forEach((stake, n) => repl.echo(
+      `${n+1}. ${printID(stake.id)} (${toUpperCaseFirst(stake.type)}) ${stake.device ? `(assigned to ${printAddr(stake.device)})` : ''}`
+    ))
+    repl.nl()
     let sel = 0
     while (sel === 0) {
       const selstr = await repl.ask(`Enter a number: (1-${numberedStakes.length})`)
       const tmpsel = parseInt(selstr)
       if (tmpsel > 0 && tmpsel <= numberedStakes.length) sel = tmpsel
-      else console.log(`Please enter a number between 1 and ${numberedStakes.length}.`)
+      else repl.echo(`Please enter a number between 1 and ${numberedStakes.length}.`)
     }
-    console.log()
+    repl.nl()
     return numberedStakes[sel-1]
   })()
 
@@ -120,26 +117,23 @@ export const action = (ctx: Context) => async (): Promise<void> => {
   // confirm user intent
   const nodeName = toUpperCaseFirst(stake.type)
   if (!opts.yes) {
-    console.log(`You are adding this device to Edge ${toUpperCaseFirst(ctx.network.name)}.`)
-    console.log()
-    console.log([
-      `This device will be assigned to stake ${printID(stake.id)}, `,
-      `allowing this device to operate a ${nodeName} node.`
-    ].join(''))
-    console.log()
+    repl.echo(`
+    You are adding this device to Edge ${toUpperCaseFirst(ctx.network.name)}.
+
+    This device will be assigned to stake ${printID(stake.id)}, allowing this device to operate a ${nodeName} node.
+    `)
     if (stake.device) {
-      console.log([
-        `This stake is already assigned to device ${printAddr(stake.device)} which will be removed from the network `,
-        'if you assign this device in its place.'
-      ].join(''))
-      console.log()
+      repl.echo(`
+      This stake is already assigned to device ${printAddr(stake.device)} which will be removed from the network if you assign this device in its place.
+      `)
     }
     if (await repl.askLetter('Add this device?', 'yn') === 'n') return
-    console.log()
+    repl.nl()
   }
 
   // create assignment tx
   await askToSignTx(opts)
+  repl.nl()
   const hostWallet = await wallet.read(opts.passphrase as string)
 
   const onChainWallet = await xeClient.walletWithNextNonce(hostWallet.address)
@@ -164,15 +158,14 @@ export const action = (ctx: Context) => async (): Promise<void> => {
     process.exitCode = 1
     return
   }
+  repl.nl()
 
   // next steps advice
-  console.log()
-  console.log([
-    `You may run '${ctx.network.appName} tx lsp' to check progress of your pending transaction. `,
-    'When your stake transaction has been processed it will no longer be listed as pending.'
-  ].join(''))
-  console.log()
-  console.log(`You can then run '${ctx.network.appName} device start' to start a ${nodeName} node on this device.`)
+  repl.echon(`
+  You may run '${ctx.network.appName} tx lsp' to check progress of your pending transaction. When your stake transaction has been processed it will no longer be listed as pending.
+
+  You can then run '${ctx.network.appName} device start' to start a ${nodeName} node on this device.
+  `)
 }
 
 export const command = (ctx: Context): Command => {
@@ -186,8 +179,7 @@ export const command = (ctx: Context): Command => {
   return cmd
 }
 
-/* eslint-disable max-len */
-const help = (network: Network) => `
+const help = (network: Network) => repl.help(`
 This command will add this device to the network, allowing it to operate as a node.
 
 Adding a device will:
@@ -199,5 +191,4 @@ Stake assignment requires a blockchain transaction. After the transaction has be
 Before you run this command, ensure Docker is running and that you have an unassigned stake to assign this device to.
 
 If you do not already have a stake, you can run '${network.appName} stake create' to get one.
-`
-/* eslint-enable max-len */
+`)

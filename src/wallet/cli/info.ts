@@ -3,6 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as cli from '../../cli'
+import * as repl from '../../repl'
 import { Command } from 'commander'
 import { Context } from '../../main'
 import { checkVersionHandler } from '../../update/cli'
@@ -15,15 +16,15 @@ export const action = (ctx: Context) => async (): Promise<void> => {
   }
 
   const wallet = ctx.wallet()
-  console.log(`Address: ${await wallet.address()}`)
+  repl.echo(`Address: ${await wallet.address()}`)
 
   if (opts.passphrase) {
     try {
       const hostWallet = await wallet.read(opts.passphrase)
-      console.log(`Private key: ${hostWallet.privateKey}`)
+      repl.echo(`Private key: ${hostWallet.privateKey}`)
     }
     catch (err) {
-      console.log(`Cannot display private key: ${(err as Error).message}`)
+      repl.echo(`Cannot display private key: ${(err as Error).message}`)
     }
   }
 }
@@ -35,8 +36,8 @@ export const command = (ctx: Context): Command => {
   return cmd
 }
 
-const help = `
+const help = repl.help(`
 This command displays information about your wallet.
 
 If a passphrase is provided, this command will also decrypt and display your private key.
-`
+`)

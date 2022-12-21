@@ -3,6 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as cli from '../../cli'
+import * as repl from '../../repl'
 import { Command } from 'commander'
 import { Context } from '../../main'
 import { checkVersionHandler } from '../../update/cli'
@@ -26,10 +27,12 @@ export const action = (ctx: Context) => async (): Promise<void> => {
   const longest = amounts.reduce((l, s) => Math.max(l, s.length), 0)
   const [hostAmt, gatewayAmt, stargateAmt] = amounts.map(a => a.padStart(longest, ' '))
 
-  console.log('Current staking amounts:')
-  console.log(`  Stargate: ${stargateAmt}`)
-  console.log(`  Gateway:  ${gatewayAmt}`)
-  console.log(`  Host:     ${hostAmt}`)
+  repl.echo(`
+  Current staking amounts:
+    Stargate: ${stargateAmt}
+    Gateway:  ${gatewayAmt}
+    Host:     ${hostAmt}
+  `)
 }
 
 export const command = (ctx: Context): Command => {
@@ -38,6 +41,6 @@ export const command = (ctx: Context): Command => {
   return cmd
 }
 
-const help = `
+const help = repl.help(`
 Displays current staking amounts.
-`
+`)

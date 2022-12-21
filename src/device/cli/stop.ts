@@ -3,6 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as cli from '../../cli'
+import * as repl from '../../repl'
 import { Command } from 'commander'
 import { Context } from '../../main'
 import { checkVersionHandler } from '../../update/cli'
@@ -25,7 +26,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
 
   const info = await node.container()
   if (info === undefined) {
-    console.log(`${node.name} is not running`)
+    repl.echo(`${node.name} is not running`)
     return
   }
 
@@ -34,7 +35,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
   await container.stop()
   log.debug('removing container', { id: info.Id })
   await container.remove()
-  console.log(`${node.name} stopped`)
+  repl.echo(`${node.name} stopped`)
 }
 
 export const command = (ctx: Context): Command => {
@@ -44,6 +45,6 @@ export const command = (ctx: Context): Command => {
   return cmd
 }
 
-const help = `
+const help = repl.help(`
 Stop the node, if it is running.
-`
+`)

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+import * as repl from '../../repl'
 import { Command } from 'commander'
 import { Context } from '../../main'
 import { checkVersionHandler } from '../../update/cli'
@@ -13,8 +14,10 @@ export const action = (ctx: Context) => async (): Promise<void> => {
   const address = await ctx.wallet().address()
   const { balance } = await ctx.xeClient().wallet(address)
 
-  console.log(`Address: ${address}`)
-  console.log(`Balance: ${formatXE(balance)}`)
+  repl.echon(`
+  Address: ${address}
+  Balance: ${formatXE(balance)}
+  `)
 }
 
 export const command = (ctx: Context): Command => {

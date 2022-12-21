@@ -33,12 +33,12 @@ export const action = (ctx: Context) => async (id: string): Promise<void> => {
   const stake = findOne(stakes, id)
 
   if (stake.released !== undefined) {
-    console.log('This stake has already been released.')
+    repl.echo('This stake has already been released.')
     return
   }
 
   if (stake.unlockRequested === undefined) {
-    console.log('This stake must be unlocked before it can be released.')
+    repl.echo('This stake must be unlocked before it can be released.')
     return
   }
 
@@ -50,32 +50,34 @@ export const action = (ctx: Context) => async (id: string): Promise<void> => {
     const { stake_express_release_fee } = await xeVars(xeClient, opts.debug)
     const releaseFee = stake_express_release_fee * stake.amount
     const releasePc = stake_express_release_fee * 100
-    console.log(`This stake has not unlocked yet. It unlocks at ${formatTime(unlockAt)}.`)
-    console.log(`You can release it instantly for a ${releasePc}% express release fee (${formatXE(releaseFee)}).`)
-    console.log()
-    console.log('To do so, execute this command again with the --express flag.')
+    repl.echon(`
+    This stake has not unlocked yet. It unlocks at ${formatTime(unlockAt)}.
+    You can release it instantly for a ${releasePc}% express release fee (${formatXE(releaseFee)}).
+
+    To do so, execute this command again with the --express flag.
+    `)
     return
   }
 
   if (!opts.yes) {
-    // eslint-disable-next-line max-len
-    console.log(`You are releasing a ${toUpperCaseFirst(stake.type)} stake.`)
+    repl.echo(`You are releasing a ${toUpperCaseFirst(stake.type)} stake.`)
     if (needUnlock) {
       const { stake_express_release_fee } = await xeVars(xeClient, opts.debug)
       const releaseFee = stake_express_release_fee * stake.amount
       const releasePc = stake_express_release_fee * 100
-      console.log([
-        `${formatXE(stake.amount - releaseFee)} will be returned to your available balance after paying `,
-        `a ${releasePc}% express release fee (${formatXE(releaseFee)}).`
-      ].join(''))
+      repl.echo(`
+      ${formatXE(stake.amount - releaseFee)} will be returned to your available balance after paying a ${releasePc}% express release fee (${formatXE(releaseFee)}).
+      `)
     }
-    else console.log(`${formatXE(stake.amount)} will be returned to your available balance.`)
-    console.log()
+    else repl.echo(`
+    ${formatXE(stake.amount)} will be returned to your available balance.
+    `)
     if (await repl.askLetter('Proceed with release?', 'yn') === 'n') return
-    console.log()
+    repl.nl()
   }
 
   await askToSignTx(opts)
+  repl.nl()
   const hostWallet = await wallet.read(opts.passphrase as string)
 
   const onChainWallet = await xeClient.walletWithNextNonce(hostWallet.address)
@@ -111,10 +113,8 @@ export const command = (ctx: Context): Command => {
   return cmd
 }
 
-/* eslint-disable max-len */
-const help = `
+const help = repl.help(`
 Release a stake.
 
 The --express option instructs the blockchain to take a portion of your stake in return for an immediate release of funds, rather than waiting for the unlock period to conclude.
-`
-/* eslint-enable max-len */
+`)

@@ -3,10 +3,10 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as cli from '../../cli'
+import * as repl from '../../repl'
 import { Command } from 'commander'
 import { Context } from '../../main'
 import { command as check } from './check'
-import { color } from '../../repl'
 import { command as update } from './update'
 import { cachedLatestVersion, currentVersion } from '..'
 
@@ -20,7 +20,7 @@ export const checkVersionHandler =
     async (...args: any[]): Promise<T|undefined> => {
       const result = await f(...args)
 
-      const { debug, noColor } = {
+      const opts = {
         ...cli.debug.read(ctx.parent),
         ...cli.color.read(ctx.parent)
       }
@@ -31,14 +31,15 @@ export const checkVersionHandler =
         const lv = await cachedLatestVersion(ctx)
 
         if (lv.compare(cv) > 0) {
-          console.log([
-            `A new version of Edge CLI is available (v${lv}).`,
-            `Please run '${ctx.network.appName} update' to update to the latest version.`
-          ].map(l => noColor ? l : color.notice(l)).join('\n'))
+          const txt = `
+          A new version of Edge CLI is available (v${lv}).
+          Please run '${ctx.network.appName} update' to update to the latest version.
+          `
+          repl.echon(opts.noColor ? txt : repl.color.notice(txt))
         }
       }
       catch (err) {
-        if (debug) log.error('Error checking latest version', { err })
+        if (opts.debug) log.error('Error checking latest version', { err })
         else log.warn('There was a problem reaching the update server. Please check your network connectivity.')
       }
 

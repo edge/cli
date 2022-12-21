@@ -45,17 +45,16 @@ export const action = (ctx: Context) => async (nodeType: string): Promise<void> 
   if (resultBalance < 0) throw new Error(`insufficient balance to stake ${nodeType}: your wallet only contains ${formatXE(availableBalance)} (${formatXE(amount)} required)`)
 
   if (!opts.yes) {
-    console.log(`You are staking ${formatXE(amount)} to run a ${toUpperCaseFirst(nodeType)}.`)
-    console.log(
-      `${formatXE(amount)} will be deducted from your available balance.`,
-      `You will have ${formatXE(resultBalance)} remaining.`
-    )
-    console.log()
+    repl.echo(`
+    You are staking ${formatXE(amount)} to run a ${toUpperCaseFirst(nodeType)}.
+    ${formatXE(amount)} will be deducted from your available balance. You will have ${formatXE(resultBalance)} remaining.
+    `)
     if (await repl.askLetter('Proceed with staking?', 'yn') === 'n') return
-    console.log()
+    repl.nl()
   }
 
   await askToSignTx(opts)
+  repl.nl()
   const hostWallet = await wallet.read(opts.passphrase as string)
   onChainWallet = await xeClient.walletWithNextNonce(address)
 
@@ -86,10 +85,10 @@ export const command = (ctx: Context): Command => {
   return cmd
 }
 
-const help = (network: Network) => `
+const help = (network: Network) => repl.help(`
 This command will create a stake on the blockchain.
 
 A stake enables your device to participate as a node in the network, providing capacity in exchange for XE.
 
 Run '${network.appName} device add --help' for more information.
-`
+`)

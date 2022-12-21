@@ -3,6 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as cli from '../../cli'
+import * as repl from '../../repl'
 import * as xeUtils from '@edge/xe-utils'
 import { Command } from 'commander'
 import { Context } from '../../main'
@@ -22,7 +23,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
 
   const txs = await ctx.xeClient().pendingTransactions(address)
   if (txs.length === 0) {
-    console.log('No pending transactions')
+    repl.echo('No pending transactions')
     return
   }
 
@@ -39,7 +40,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
       opts.verbose ? tx.signature : tx.signature.slice(0, config.signature.shortLength)
     ]
   )
-  console.log(table(txs))
+  repl.raw(table(txs))
 }
 
 export const command = (ctx: Context): Command => {
@@ -51,6 +52,6 @@ export const command = (ctx: Context): Command => {
   return cmd
 }
 
-const help = `
+const help = repl.help(`
 This command queries the blockchain and displays all of your pending transactions.
-`
+`)

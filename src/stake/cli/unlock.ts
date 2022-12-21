@@ -27,26 +27,26 @@ export const action = (ctx: Context) => async (id: string): Promise<void> => {
 
   if (stake.unlockRequested !== undefined) {
     if (stake.unlockRequested + stake.unlockPeriod > Date.now()) {
-      console.log('Unlock has already been requested.')
-      console.log(`This stake will unlock at ${formatTime(stake.unlockRequested)}`)
+      repl.echo(`
+      Unlock has already been requested.
+      This stake will unlock at ${formatTime(stake.unlockRequested)}
+      `)
     }
-    else console.log('This stake is already unlocked.')
+    else repl.echo('This stake is already unlocked.')
     return
   }
 
   if (!opts.yes) {
-    // eslint-disable-next-line max-len
-    console.log(`You are requesting to unlock a ${toUpperCaseFirst(stake.type)} stake.`)
-    console.log([
-      `After the unlock wait period of ${toDays(stake.unlockPeriod)} days, `,
-      `you will be able to release the stake and return ${formatXE(stake.amount)} to your available balance.`
-    ].join(''))
-    console.log()
+    repl.echo(`
+    You are requesting to unlock a ${toUpperCaseFirst(stake.type)} stake.
+    After the unlock wait period of ${toDays(stake.unlockPeriod)} days, you will be able to release the stake and return ${formatXE(stake.amount)} to your available balance.
+    `)
     if (await repl.askLetter('Proceed with unlock?', 'yn') === 'n') return
-    console.log()
+    repl.nl()
   }
 
   await askToSignTx(opts)
+  repl.nl()
   const hostWallet = await wallet.read(opts.passphrase as string)
 
   const xeClient = ctx.xeClient()
@@ -80,6 +80,6 @@ export const command = (ctx: Context): Command => {
   return cmd
 }
 
-const help = `
+const help = repl.help(`
 Unlock a stake.
-`
+`)

@@ -45,13 +45,13 @@ export const action = (ctx: Context) => async (): Promise<void> => {
 
   // confirm user intent
   if (!opts.yes) {
-    console.log(`You are removing this device from Edge ${toUpperCaseFirst(ctx.network.name)}.`)
-    console.log()
-    if (stake === undefined) console.log('This device is not assigned to any stake.')
-    else console.log(`This will remove this device's assignment to stake ${printID(stake.id)} (${nodeName}).`)
-    console.log()
+    repl.echo(`
+    You are removing this device from Edge ${toUpperCaseFirst(ctx.network.name)}.
+
+    ${stake === undefined ? 'This device is not assigned to any stake.' : `This will remove this device's assignment to stake ${printID(stake.id)} (${nodeName}).`}
+    `)
     if (await repl.askLetter('Remove this device?', 'yn') === 'n') return
-    console.log()
+    repl.nl()
   }
 
   if (stake !== undefined) {
@@ -63,14 +63,15 @@ export const action = (ctx: Context) => async (): Promise<void> => {
     if (info !== undefined) {
       log.debug('found container', { name: toUpperCaseFirst(stake.type), id: info.Id })
       const container = docker.getContainer(info.Id)
-      console.log(`Stopping ${nodeName}...`)
+      repl.echo(`Stopping ${nodeName}...`)
       await container.stop()
       await container.remove()
-      console.log()
+      repl.nl()
     }
 
     // create unassignment tx
     await askToSignTx(opts)
+    repl.nl()
     const hostWallet = await wallet.read(opts.passphrase as string)
     const onChainWallet = await xeClient.walletWithNextNonce(hostWallet.address)
 
@@ -87,19 +88,19 @@ export const action = (ctx: Context) => async (): Promise<void> => {
       nonce: onChainWallet.nonce
     }, hostWallet.privateKey)
 
-    console.log('Unassigning stake...')
-    console.log()
+    repl.echo(`
+    Unassigning stake...
+    `)
     const result = await xeClient.createTransaction(tx)
     if (!handleCreateTxResult(ctx.network, result)) {
       process.exitCode = 1
       return
     }
-    console.log()
+    repl.nl()
   }
 
   await volume.remove()
-
-  console.log(`This device has been removed from Edge ${toUpperCaseFirst(ctx.network.name)}.`)
+  repl.echo(`This device has been removed from Edge ${toUpperCaseFirst(ctx.network.name)}.`)
 }
 
 export const command = (ctx: Context): Command => {
@@ -110,12 +111,11 @@ export const command = (ctx: Context): Command => {
   return cmd
 }
 
-/** Help text for the `device remove` command. */
-const help = `
+const help = repl.help(`
 This command removes this device from the network.
 
 Removing a device will:
   - Unassign it from its stake
   - Stop the node (if it is running)
   - Destroy the device's identity
-`
+`)

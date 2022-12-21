@@ -2,6 +2,7 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+import * as repl from '../repl'
 import readline from 'readline'
 import Docker, { AuthConfig } from 'dockerode'
 
@@ -89,8 +90,8 @@ export const pullVisible = async (
 
   const update = (status: PullStatus) => {
     if (keepText) {
-      if (status.progress) console.log(status.status, status.progress)
-      else console.log(status.status)
+      if (status.progress) repl.echo(`${status.status} ${status.progress}`)
+      else repl.echo(status.status)
     }
     else {
       readline.clearLine(ws, -1, () => {

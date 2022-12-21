@@ -4,6 +4,7 @@
 
 import * as cli from '../../cli'
 import * as image from '../image'
+import * as repl from '../../repl'
 import { Command } from 'commander'
 import { checkVersionHandler } from '../../update/cli'
 import { createContainerOptions } from '.'
@@ -31,16 +32,16 @@ export const action = (ctx: Context) => async (): Promise<void> => {
 
   let info = await node.container()
   if (info !== undefined) {
-    console.log(`${node.name} is already running`)
+    repl.echo(`${node.name} is already running`)
     return
   }
 
-  console.log(`Checking ${node.name} version...`)
+  repl.echo(`Checking ${node.name} version...`)
   const { target } = await cli.docker.readTarget(ctx, node.stake.type)
   log.debug('got target version', { target })
   const targetImage = `${node.image}:${target}`
 
-  console.log(`Updating ${node.name} v${target}...`)
+  repl.echo(`Updating ${node.name} v${target}...`)
   const authconfig = cli.docker.readAuth(ctx.cmd)
   const { debug } = cli.debug.read(ctx.parent)
   if (authconfig !== undefined) await image.pullVisible(docker, targetImage, authconfig, debug)
@@ -54,7 +55,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
 
   info = await node.container()
   if (info === undefined) throw new Error(`${node.name} failed to start`)
-  console.log(`${node.name} started`)
+  repl.echo(`${node.name} started`)
 }
 
 export const command = (ctx: Context): Command => {

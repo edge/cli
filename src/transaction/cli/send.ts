@@ -36,18 +36,16 @@ export const action = (ctx: Context) => async (amountInput: string, recipient: s
   if (resultBalance < 0) throw new Error(`insufficient balance: your wallet only contains ${formatXE(availableBalance)}`)
 
   if (!opts.yes) {
-    // eslint-disable-next-line max-len
-    console.log(`You are sending ${formatXE(amount)} to ${recipient}${opts.memo ? ` with the memo, "${opts.memo}"` : ''}.`)
-    console.log(
-      `${formatXE(amount)} will be deducted from your wallet.`,
-      `You will have ${formatXE(resultBalance)} remaining.`
-    )
-    console.log()
+    repl.echo(`
+    You are sending ${formatXE(amount)} to ${recipient}${opts.memo ? ` with the memo, "${opts.memo}"` : ''}.
+    ${formatXE(amount)} will be deducted from your wallet. You will have ${formatXE(resultBalance)} remaining.
+    `)
     if (await repl.askLetter('Proceed with transaction?', 'yn') === 'n') return
-    console.log()
+    repl.nl()
   }
 
   await askToSignTx(opts)
+  repl.nl()
   const hostWallet = await wallet.read(opts.passphrase as string)
   onChainWallet = await xeClient.walletWithNextNonce(address)
 
@@ -79,10 +77,8 @@ export const command = (ctx: Context): Command => {
   return cmd
 }
 
-/* eslint-disable max-len */
-const help = `
+const help = repl.help(`
 This command sends an XE transaction to any address you choose. <amount> may be specified as XE in the format "...xe" or as microXE in the format "...mxe" (both case-insensitive). If no unit is provided, XE is assumed.
 
 Your private key will be used to sign the transaction. You must provide a passphrase to decrypt your private key.
-`
-/* eslint-enable max-len */
+`)

@@ -4,6 +4,7 @@
 
 import * as cli from '../../cli'
 import * as indexUtils from '@edge/index-utils'
+import * as repl from '../../repl'
 import { Command } from 'commander'
 import { Context } from '../../main'
 import { checkVersionHandler } from '../../update/cli'
@@ -21,13 +22,14 @@ export const action = (ctx: Context) => async (): Promise<void> => {
   const address = await ctx.wallet().address()
   const { results, metadata } = await ctx.indexClient().transactions(address, cli.pagination.read(ctx.cmd))
   if (results.length === 0) {
-    console.log('No transactions')
+    repl.echo('No transactions')
     return
   }
 
   const numPages = Math.ceil(metadata.totalCount / metadata.limit)
-  console.log(`Page ${metadata.page}/${numPages}`)
-  console.log()
+  repl.echo(`
+  Page ${metadata.page}/${numPages}
+  `)
 
   const table = printTable<indexUtils.tx.Tx>(
     ['Time', 'Block', 'Tx', 'From', 'To', 'Amount', 'Memo', 'Nonce', 'Signature'],
@@ -43,7 +45,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
       opts.verbose ? tx.signature : tx.signature.slice(0, config.signature.shortLength)
     ]
   )
-  console.log(table(results))
+  repl.raw(table(results))
 }
 
 export const command = (ctx: Context): Command => {
@@ -53,7 +55,6 @@ export const command = (ctx: Context): Command => {
   return cmd
 }
 
-/** Help text for the `transaction list` command. */
-const help = `
+const help = repl.help(`
 This command queries the index and displays your transactions.
-`
+`)

@@ -24,34 +24,41 @@ export const action = (ctx: Context) => async (): Promise<void> => {
 
   if (await wallet.check() && !opts.overwrite) {
     if (await repl.askLetter('A wallet already exists. Overwrite?', 'yn') === 'n') return
-    console.log()
+    repl.nl()
   }
 
   if (!opts.passphrase) {
-    console.log('To ensure your wallet is secure it will be encrypted locally using a passphrase.')
-    // console.log('For more information, see https://wiki.edge.network/TODO')
-    console.log()
+    repl.echo(`
+    To ensure your wallet is secure it will be encrypted locally using a passphrase.
+    For more information, see https://wiki.edge.network/contributing-to-the-network/edge-cli
+    `)
     const passphrase = await repl.askSecure('Please enter a passphrase:')
     if (passphrase.length === 0) throw new Error('passphrase required')
     const confirmKey = await repl.askSecure('Please confirm passphrase:')
     if (confirmKey !== passphrase) throw new Error('passphrases do not match')
     opts.passphrase = passphrase
-    console.log()
+    repl.nl()
   }
 
   const hostWallet = xe.wallet.create()
   await wallet.write(hostWallet, opts.passphrase)
-  console.log(`Wallet ${hostWallet.address} created.`)
-  console.log()
+  repl.echo(`
+  Wallet ${hostWallet.address} created.
+  `)
 
-  const nextStep = opts.privateKeyFile
-    ? 'e'
-    : await repl.askLetter('Would you like to (v)iew or (e)xport your private key?', 'ven')
+  let nextStep = 'n'
+  if (opts.privateKeyFile) nextStep = 'e'
+  else {
+    nextStep = await repl.askLetter('Would you like to (v)iew or (e)xport your private key?', 'ven')
+    if (nextStep !== 'n') repl.nl()
+  }
 
   if (nextStep === 'v') {
-    console.log(`Private key: ${hostWallet.privateKey}`)
-    console.log()
-    console.log('Keep your private key safe!')
+    repl.echo(`
+    Private key: ${hostWallet.privateKey}
+
+    Keep your private key safe!
+    `)
     return
   }
   else if (nextStep === 'n') return
@@ -62,18 +69,20 @@ export const action = (ctx: Context) => async (): Promise<void> => {
       const input = await repl.ask('Enter filename to export private key to:')
       if (input.length) pkFile = input
     }
-    console.log()
+    repl.nl()
   }
   try {
     log.debug('writing file', { file: pkFile })
     await writeFile(pkFile, hostWallet.privateKey)
     log.debug('wrote file', { file: pkFile })
-    console.log(`Private key saved to ${pkFile}.`)
+    repl.echo(`Private key saved to ${pkFile}.`)
   }
   catch (err) {
-    console.log('Failed to write to private key file. Displaying it instead...')
-    console.log()
-    console.log(`Private key: ${hostWallet.privateKey}`)
+    repl.echon(`
+    Failed to write to private key file. Displaying it instead...
+
+    Private key: ${hostWallet.privateKey}
+    `)
     throw err
   }
 }
@@ -88,7 +97,7 @@ export const command = (ctx: Context): Command => {
 }
 
 /* eslint-disable max-len */
-const help = `
+const help = repl.help(`
 This command will create a new wallet.
 
 You will be asked to provide a passphrase to encrypt the wallet locally.
@@ -96,5 +105,5 @@ You will be asked to provide a passphrase to encrypt the wallet locally.
 The passphrase is also required later to decrypt the wallet for certain actions, such as signing transactions.
 
 You will also be given the option to view or export the private key for the new wallet. This should be copied to a secure location and kept secret.
-`
+`)
 /* eslint-enable max-len */

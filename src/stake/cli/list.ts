@@ -3,6 +3,7 @@
 // that can be found in the LICENSE.md file. All rights reserved.
 
 import * as cli from '../../cli'
+import * as repl from '../../repl'
 import { Command } from 'commander'
 import { Context } from '../../main'
 import { checkVersionHandler } from '../../update/cli'
@@ -48,7 +49,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
   if (opts.stakeType !== undefined) matchStakes = matchStakes.filter(s => s.type === opts.stakeType)
   if (opts.stakeStatus !== undefined) matchStakes = matchStakes.filter(s => s.status === opts.stakeStatus)
 
-  console.log(table(matchStakes.sort(byPrecedence)))
+  repl.raw(table(matchStakes.sort(byPrecedence)))
 }
 
 export const command = (ctx: Context): Command => {
@@ -59,6 +60,6 @@ export const command = (ctx: Context): Command => {
   return cmd
 }
 
-const help = `
+const help = repl.help(`
 Displays all stakes associated with your wallet.
-`
+`)

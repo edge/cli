@@ -2,11 +2,12 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+import * as repl from '../repl'
 import { Command } from 'commander'
 
 /** Display community & further reading links in CLI. */
 const community = async () => {
-  console.log(`
+  repl.echon(`
 Browse public Edge code on GitHub:
   https://github.com/edge
 
