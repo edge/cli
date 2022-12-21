@@ -6,6 +6,23 @@ import * as xe from '@edge/xe-utils'
 import config from '../config'
 import { namedError } from '../helpers'
 
+export type StakeStatus = 'assigned' | 'released' | 'unassigned' | 'unlocked' | 'unlocking'
+
+export type StakeWithStatus = xe.stake.Stake & { status: StakeStatus }
+
+/** Add status flag to a stake. */
+export const addStatus = (stake: xe.stake.Stake): StakeWithStatus => {
+  let status: StakeStatus = 'unassigned'
+  if (stake.released !== undefined) status = 'released'
+  else if (stake.unlockRequested !== undefined) {
+    const unlockAt = stake.unlockRequested + stake.unlockPeriod
+    if (unlockAt > Date.now()) status = 'unlocking'
+    else status = 'unlocked'
+  }
+  else if (stake.device) status = 'assigned'
+  return { ...stake, status }
+}
+
 /** Ambiguous ID error. */
 export const ambiguousIDError = namedError('AmbiguousIDError')
 
@@ -50,6 +67,9 @@ export const byPrecedence = (a: xe.stake.Stake, b: xe.stake.Stake): number => {
   const posDiff = precedence[a.type] - precedence[b.type]
   return posDiff !== 0 ? posDiff : a.created - b.created
 }
+
+/** List of stake statuses. */
+export const statuses: StakeStatus[] = ['assigned', 'released', 'unassigned', 'unlocked', 'unlocking']
 
 /** Simple list of node types. */
 export const types = ['host', 'gateway', 'stargate']

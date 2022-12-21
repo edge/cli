@@ -5,23 +5,33 @@
 import * as cli from '../../cli'
 import { Command } from 'commander'
 import { Context } from '../../main'
-import { byPrecedence } from '..'
 import { checkVersionHandler } from '../../update/cli'
 import config from '../../config'
 import { errorHandler } from '../../cli'
 import { formatXE } from '../../transaction/xe'
+import { StakeStatus, StakeWithStatus, addStatus, byPrecedence } from '..'
 import { formatTime, printTable, toUpperCaseFirst } from '../../helpers'
+
+const statusMap: Record<StakeStatus, (stake: StakeWithStatus) => string> = {
+  assigned: () => 'Assigned',
+  released: () => 'Released',
+  unassigned: () => 'Unassigned',
+  unlocked: () => 'Unlocked',
+  unlocking: stake => `Unlocking (unlocks at ${formatTime(stake.unlockRequested as number + stake.unlockPeriod)})`
+}
 
 /** List stakes associated with the host wallet. */
 export const action = (ctx: Context) => async (): Promise<void> => {
   const opts = {
+    ...cli.stakeStatus.read(ctx.cmd),
+    ...cli.stakeType.read(ctx.cmd),
     ...cli.verbose.read(ctx.parent)
   }
 
   const address = await ctx.wallet().address()
   const stakes = Object.values(await ctx.xeClient().stakes(address))
 
-  const table = printTable<typeof stakes[0]>(
+  const table = printTable<StakeWithStatus>(
     ['Type', 'ID', 'Hash', 'Created', 'Tx', 'Amount', 'Status'],
     stake => [
       toUpperCaseFirst(stake.type),
@@ -30,22 +40,21 @@ export const action = (ctx: Context) => async (): Promise<void> => {
       formatTime(stake.created),
       opts.verbose ? stake.transaction : stake.transaction.slice(0, config.hash.shortLength),
       formatXE(stake.amount),
-      (() => {
-        if (stake.released !== undefined) return 'Released'
-        if (stake.unlockRequested !== undefined) {
-          const unlockAt = stake.unlockRequested + stake.unlockPeriod
-          if (unlockAt > Date.now()) return `Unlocking (unlocks at ${formatTime(unlockAt)})`
-          return 'Unlocked'
-        }
-        return 'Active'
-      })()
+      statusMap[stake.status](stake)
     ]
   )
-  console.log(table(stakes.sort(byPrecedence)))
+
+  let matchStakes = stakes.map(addStatus)
+  if (opts.stakeType !== undefined) matchStakes = matchStakes.filter(s => s.type === opts.stakeType)
+  if (opts.stakeStatus !== undefined) matchStakes = matchStakes.filter(s => s.status === opts.stakeStatus)
+
+  console.log(table(matchStakes.sort(byPrecedence)))
 }
 
 export const command = (ctx: Context): Command => {
   const cmd = new Command('list').alias('ls').description('list all stakes').addHelpText('after', help)
+  cli.stakeStatus.configure(cmd)
+  cli.stakeType.configure(cmd)
   cmd.action(errorHandler(ctx, checkVersionHandler(ctx, action({ ...ctx, cmd }))))
   return cmd
 }
