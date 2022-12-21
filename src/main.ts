@@ -26,7 +26,7 @@ import xeClient, { XEClient } from './api/xe'
  */
 export type Context = {
   cmd: Command
-    /**
+  /**
    * Provider for a device object.
    *
    * `prefix` determines which device/node should be accessed; if undefined, it will default to an un-prefixed
