@@ -28,10 +28,12 @@ export const action = (ctx: Context) => async (amountInput: string, recipient: s
 
   const xeClient = ctx.xeClient()
   let onChainWallet = await xeClient.wallet(address)
+  const pendingTxsAmount = (await xeClient.pendingTransactions(address)).reduce((amt, tx) => amt + tx.amount, 0)
+  const availableBalance = onChainWallet.balance - pendingTxsAmount
 
-  const resultBalance = onChainWallet.balance - amount
+  const resultBalance = availableBalance - amount
   // eslint-disable-next-line max-len
-  if (resultBalance < 0) throw new Error(`insufficient balance: your wallet only contains ${formatXE(onChainWallet.balance)}`)
+  if (resultBalance < 0) throw new Error(`insufficient balance: your wallet only contains ${formatXE(availableBalance)}`)
 
   if (!opts.yes) {
     // eslint-disable-next-line max-len

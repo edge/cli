@@ -30,6 +30,8 @@ export const action = (ctx: Context) => async (nodeType: string): Promise<void> 
 
   const xeClient = ctx.xeClient()
   let onChainWallet = await xeClient.wallet(address)
+  const pendingTxsAmount = (await xeClient.pendingTransactions(address)).reduce((amt, tx) => amt + tx.amount, 0)
+  const availableBalance = onChainWallet.balance - pendingTxsAmount
 
   const vars = await xeVars(xeClient, opts.debug)
   // fallback 0 is just for typing - nodeType is checked at top of func, so it should never be used
@@ -38,9 +40,9 @@ export const action = (ctx: Context) => async (nodeType: string): Promise<void> 
       nodeType === 'gateway' ? vars.gateway_stake_amount :
         nodeType === 'stargate' ? vars.stargate_stake_amount : 0
 
-  const resultBalance = onChainWallet.balance - amount
+  const resultBalance = availableBalance - amount
   // eslint-disable-next-line max-len
-  if (resultBalance < 0) throw new Error(`insufficient balance to stake ${nodeType}: your wallet only contains ${formatXE(onChainWallet.balance)} (${formatXE(amount)} required)`)
+  if (resultBalance < 0) throw new Error(`insufficient balance to stake ${nodeType}: your wallet only contains ${formatXE(availableBalance)} (${formatXE(amount)} required)`)
 
   if (!opts.yes) {
     console.log(`You are staking ${formatXE(amount)} to run a ${toUpperCaseFirst(nodeType)}.`)
