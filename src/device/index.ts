@@ -2,12 +2,14 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+import * as cli from '../cli'
 import * as data from './data'
-import { Context } from '..'
+import { Context } from '../main'
 import Docker from 'dockerode'
 import { arch } from 'os'
-import { getDockerOptions } from './cli'
 import { toUpperCaseFirst } from '../helpers'
+
+export type Device = ReturnType<typeof device>
 
 /** Secure device data by obscuring its keypair. */
 const secure = (device: data.Device): data.Device => ({
@@ -23,15 +25,15 @@ const secure = (device: data.Device): data.Device => ({
  * This provides simplified getters for the Docker service, device node, and data volume.
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-const device = ({ logger, wallet, xe, network, parent }: Context, prefix: string | undefined, name = 'device') => {
-  const log = logger(name)
+const device = (ctx: Context, prefix: string | undefined) => {
+  const log = ctx.log('device')
 
   let dockerInstance: Docker | undefined
 
   // get docker instance. automatically initializes if not already connected
   const docker = () => {
     if (dockerInstance === undefined) {
-      const options = getDockerOptions(parent)
+      const options = cli.docker.readConnection(ctx.parent)
       dockerInstance = new Docker(options)
       log.debug('connected to Docker', { options })
     }
@@ -70,15 +72,15 @@ const device = ({ logger, wallet, xe, network, parent }: Context, prefix: string
 
   // get device node information including the assigned stake and, if running, the Docker container
   const node = async () => {
-    const address = await wallet().address()
+    const address = await ctx.wallet().address()
     const deviceWallet = await (await volume()).read()
 
     log.debug('finding node', { address, deviceAddress: deviceWallet.address, network: deviceWallet.network })
 
-    const stake = Object.values(await xe().stakes(address)).find(s => s.device === deviceWallet.address)
+    const stake = Object.values(await ctx.xeClient().stakes(address)).find(s => s.device === deviceWallet.address)
     if (stake === undefined) throw new Error('device is not assigned to a stake')
 
-    const image = network.registry.imageName(stake.type, arch())
+    const image = ctx.network.registry.imageName(stake.type, arch())
     const name = toUpperCaseFirst(stake.type)
     const containerNamePrefix = ['edge', stake.type, prefix].filter(Boolean).join('-') + '-'
 

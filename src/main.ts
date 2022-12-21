@@ -2,29 +2,77 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-import * as aboutCLI from './about/cli'
-import * as deviceCLI from './device/cli'
-import * as stakeCLI from './stake/cli'
-import * as transactionCLI from './transaction/cli'
-import * as updateCLI from './update/cli'
-import * as walletCLI from './wallet/cli'
-import { create as createCLI } from './edge/cli'
-import device from './device'
-import indexClient from './api'
-import { logger } from './log'
-import { wallet } from './wallet'
-import xeClient from './api/xe'
-import { Context, Network } from '.'
+import * as cli from './cli'
+import * as sg from '@edge/stargate-utils'
+import { Command } from 'commander'
+import { Log } from '@edge/log'
+import { commands as aboutCmds } from './about/cli'
+import { createLogger } from './log'
+import { command as deviceCmd } from './device/cli'
+import pkg from '../package.json'
+import { command as stakeCmd } from './stake/cli'
+import { toUpperCaseFirst } from './helpers'
+import { command as transactionCmd } from './transaction/cli'
+import { command as updateCmd } from './update/cli'
+import { command as walletCmd } from './wallet/cli'
+import { HostWallet, wallet } from './wallet'
+import device, { Device } from './device'
+import indexClient, { IndexClient } from './api'
+import xeClient, { XEClient } from './api/xe'
 
-/** Add providers to the global context. */
-const addProviders = (inputCtx: Pick<Context, 'parent' | 'network'>): Context => {
-  const ctx = inputCtx as Context
-  ctx.device = (name?: string) => device(ctx, name)
-  ctx.index = (name?: string) => indexClient(ctx, name)
-  ctx.logger = (name?: string) => logger(ctx, name)
-  ctx.wallet = () => wallet(ctx)
-  ctx.xe = (name?: string) => xeClient(ctx, name)
-  return ctx
+/**
+ * Global context.
+ * This is passed around code to provide access to common objects, getters (providers), CLI options, etc.
+ */
+export type Context = {
+  cmd: Command
+    /**
+   * Provider for a device object.
+   *
+   * `prefix` determines which device/node should be accessed; if undefined, it will default to an un-prefixed
+   * (single) device/node.
+   * `name` is used in logging.
+   */
+  device: (prefix: string | undefined, name?: string) => Device
+  indexClient: () => IndexClient
+  log: (name?: string) => Log
+  parent: Command
+  network: Network
+  wallet: () => HostWallet
+  xeClient: () => XEClient
+}
+
+/**
+ * Network configuration.
+ * Defines standard structure for per-network config.
+ */
+export type Network = {
+  appName: string
+  name: string
+  blockchain: {
+    host: string
+  }
+  explorer: {
+    host: string
+  }
+  files: {
+    latestBuildURL: (os: string, arch: string, ext: string) => string
+    latestChecksumURL: (os: string, arch: string) => string
+    latestVersionURL: (os: string, arch: string) => string
+  }
+  flags: Record<string, boolean>
+  index: {
+    host: string
+  }
+  registry: {
+    imageName: (app: string, arch: string) => string
+  }
+  stargate: {
+    host: sg.Host
+  }
+  wallet: {
+    defaultFile: string
+  }
 }
 
 /**
@@ -32,23 +80,33 @@ const addProviders = (inputCtx: Pick<Context, 'parent' | 'network'>): Context =>
  * See `main-mainnet.ts` and `main-testnet.ts` for usage.
  */
 const main = (argv: string[], network: Network): void => {
-  const parent = createCLI(network)
-  aboutCLI.commands().forEach(cmd => parent.addCommand(cmd))
-  const ctx = addProviders({ parent, network })
+  const version = `Edge CLI v${pkg.version} (${toUpperCaseFirst(network.name)})`
+  const desc = `Edge CLI (${toUpperCaseFirst(network.name)})`
 
-  if (network.flags.onboarding) {
-    const [deviceCmd, deviceOptions] = deviceCLI.withContext(ctx)
-    parent.addCommand(deviceCmd)
-    deviceOptions.forEach(opt => parent.addOption(opt))
-  }
+  // configure parent (root) command
+  const parent = new Command(network.appName).version(version).description(desc)
+  cli.color.configure(parent)
+  cli.debug.configure(parent)
+  cli.verbose.configure(parent)
+  cli.wallet.configure(parent)
 
-  parent.addCommand(stakeCLI.withContext(ctx))
-  parent.addCommand(transactionCLI.withContext(ctx))
-  parent.addCommand(updateCLI.withContext(ctx, argv))
+  // init context
+  const ctx = <Context>{ parent, network }
+  ctx.device = (name?: string) => device(ctx, name)
+  ctx.indexClient = () => indexClient(ctx)
+  ctx.log = (name?: string) => createLogger(ctx, name)
+  ctx.wallet = () => wallet(ctx)
+  ctx.xeClient = () => xeClient(ctx)
 
-  const [walletCmd, walletOption] = walletCLI.withContext(ctx)
-  parent.addCommand(walletCmd).addOption(walletOption)
+  // attach commands
+  aboutCmds().forEach(cmd => parent.addCommand(cmd))
+  parent.addCommand(deviceCmd(ctx))
+  parent.addCommand(stakeCmd(ctx))
+  parent.addCommand(transactionCmd(ctx))
+  parent.addCommand(updateCmd(ctx, argv))
+  parent.addCommand(walletCmd(ctx))
 
+  // run cli
   parent.parse(argv)
 }
 

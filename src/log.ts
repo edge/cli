@@ -2,12 +2,12 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-import { Context } from '.'
+import * as cli from './cli'
+import { Context } from './main'
 import { Writable } from 'stream'
 import chalk from 'chalk'
-import color from './edge/color'
+import { color } from './repl'
 import { Adaptor, Log, LogLevel } from '@edge/log'
-import { getDebugOption, getNoColorOption } from './edge/cli'
 import { stderr, stdout } from 'process'
 
 /**
@@ -61,12 +61,12 @@ export class SimpleAdapter implements Adaptor {
   }
 }
 
-export const logger = ({ parent }: Pick<Context, 'parent'>, name?: string): Log => {
+export const createLogger = ({ parent }: Pick<Context, 'parent'>, name?: string): Log => {
   const log = new Log(name)
 
   const { debug, noColor } = {
-    ...getDebugOption(parent),
-    ...getNoColorOption(parent)
+    ...cli.debug.read(parent),
+    ...cli.color.read(parent)
   }
 
   log.use(new SimpleAdapter(!noColor, true))

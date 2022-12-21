@@ -2,15 +2,33 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+import * as xe from '@edge/xe-utils'
 import config from '../config'
 import { namedError } from '../helpers'
-import { stake } from '@edge/index-utils'
+
+export type StakeStatus = 'assigned' | 'released' | 'unassigned' | 'unlocked' | 'unlocking'
+
+export type StakeWithStatus = xe.stake.Stake & { status: StakeStatus }
+
+/** Add status flag to a stake. */
+export const addStatus = (stake: xe.stake.Stake): StakeWithStatus => {
+  let status: StakeStatus = 'unassigned'
+  if (stake.released !== undefined) status = 'released'
+  else if (stake.unlockRequested !== undefined) {
+    const unlockAt = stake.unlockRequested + stake.unlockPeriod
+    if (unlockAt > Date.now()) status = 'unlocking'
+    else status = 'unlocked'
+  }
+  else if (stake.device) status = 'assigned'
+  return { ...stake, status }
+}
 
 /** Ambiguous ID error. */
 export const ambiguousIDError = namedError('AmbiguousIDError')
 
 /** Check whether a stake can be assigned to a device. */
-export const canAssign = (stake: stake.AddressedStake): boolean => {
+export const canAssign = (stake: xe.stake.Stake): boolean => {
+  if (stake.type === 'governance') return false
   if (stake.released) return false
   if (stake.unlockRequested) return false
   return true
@@ -22,7 +40,7 @@ export const canAssign = (stake: stake.AddressedStake): boolean => {
  * If a partial ID is particularly short and the host wallet has a lot of stakes, there may be multiple matches.
  * In this instance, an AmbiguousIDError is thrown and the user should be prompted to try again with a longer input.
  */
-export const findOne = (stakes: stake.AddressedStake[], id: string): stake.AddressedStake => {
+export const findOne = (stakes: xe.stake.Stakes, id: string): xe.stake.Stake => {
   if (id.length < config.id.minEntryLength) throw new Error('stake ID must be at least 3 characters')
   const ss = Object.values(stakes).filter(s => s.id.slice(0, id.length) === id)
   if (ss.length === 0) throw new Error(`stake ${id} not found`)
@@ -37,7 +55,7 @@ export const findOne = (stakes: stake.AddressedStake[], id: string): stake.Addre
  * Map of node types to precedence represented by a number.
  * This can be used to sort nodes, stakes etc. by node type.
  */
-export const precedence = ['stargate', 'gateway', 'host'].reduce((o, v, i) => {
+export const precedence = ['stargate', 'gateway', 'host', 'governance'].reduce((o, v, i) => {
   o[v] = i
   return o
 }, {} as Record<string, number>)
@@ -45,10 +63,13 @@ export const precedence = ['stargate', 'gateway', 'host'].reduce((o, v, i) => {
 /**
  * Function to `sort()` by precedence, which sub-sorts by created timestamp for the same node type.
  */
-export const byPrecedence = (a: stake.AddressedStake, b: stake.AddressedStake): number => {
+export const byPrecedence = (a: xe.stake.Stake, b: xe.stake.Stake): number => {
   const posDiff = precedence[a.type] - precedence[b.type]
   return posDiff !== 0 ? posDiff : a.created - b.created
 }
+
+/** List of stake statuses. */
+export const statuses: StakeStatus[] = ['assigned', 'released', 'unassigned', 'unlocked', 'unlocking']
 
 /** Simple list of node types. */
 export const types = ['host', 'gateway', 'stargate']

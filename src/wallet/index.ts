@@ -2,10 +2,12 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+import * as cli from '../cli'
 import * as storage from './storage'
-import { Context } from '..'
+import { Context } from '../main'
 import { Wallet } from './wallet'
-import { getWalletOption } from './cli'
+
+export type HostWallet = ReturnType<typeof wallet>
 
 /** Secure wallet data by obscuring its keypair. */
 const secure = (w: storage.FileWallet | Wallet): Wallet => ({
@@ -20,9 +22,9 @@ const secure = (w: storage.FileWallet | Wallet): Wallet => ({
  * This provides simplified read/write access to the host wallet on disk.
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export const wallet = ({ logger, parent, network }: Context) => {
-  const log = logger('wallet')
-  const { wallet: file } = getWalletOption(parent, network)
+export const wallet = (ctx: Context) => {
+  const log = ctx.log('wallet')
+  const { wallet: file } = cli.wallet.read(ctx.parent, ctx.network)
 
   // stateful encrypted wallet to avoid re-reading from disk
   let enc: storage.FileWallet

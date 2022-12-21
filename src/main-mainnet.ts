@@ -14,10 +14,10 @@ main(process.argv, {
   appName: 'edge',
   name: 'mainnet',
   blockchain: {
-    baseURL: 'https://api.xe.network'
+    host: 'https://api.xe.network'
   },
   explorer: {
-    baseURL: 'https://xe.network'
+    host: 'https://xe.network'
   },
   files: {
     latestBuildURL: (os, arch, ext) => `https://files.edge.network/cli/mainnet/${os}/${arch}/latest/edge${ext}`,
@@ -28,13 +28,13 @@ main(process.argv, {
     onboarding: true
   },
   index: {
-    baseURL: 'https://index.xe.network'
+    host: 'https://index.xe.network'
   },
   registry: {
     imageName: (app, arch) => `${config.docker.edgeRegistry.address}/${app}/mainnet-${arch}`
   },
   stargate: {
-    serviceURL: app => `https://stargate.edge.network/services/${app}`
+    host: 'https://stargate.edge.network'
   },
   wallet: {
     defaultFile: `${homedir}${sep}.edge${sep}wallet${sep}mainnet.json`

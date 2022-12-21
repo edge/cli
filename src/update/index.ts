@@ -2,11 +2,11 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-import { Context } from '..'
+import * as cli from '../cli'
+import { Context } from '../main'
 import { createHash } from 'crypto'
 import { createWriteStream } from 'fs'
 import fs from 'fs/promises'
-import { getDebugOption } from '../edge/cli'
 import { normalizedPlatform } from '../helpers'
 import path from 'path'
 import pkg from '../../package.json'
@@ -51,8 +51,8 @@ const downloadURL = async (url: string, file: string) => new Promise<void>((reso
  * The cache timeout is specified by `versionCacheTimeout`.
  */
 export const cachedLatestVersion = async ({ network, ...ctx }: Context): Promise<SemVer> => {
-  const { debug } = getDebugOption(ctx.parent)
-  const log = ctx.logger('update.version.cache')
+  const { debug } = cli.debug.read(ctx.parent)
+  const log = ctx.log('update.version.cache')
   const file = tmpdir() + path.sep + '.edge-cli-version'
   let lv: SemVer|undefined = undefined
   try {
@@ -94,7 +94,7 @@ export const currentVersion = (): SemVer => {
 
 /** Download and validate the latest version of CLI. */
 export const download = async ({ network, ...ctx }: Context): Promise<DownloadInfo> => {
-  const log = ctx.logger('update.download')
+  const log = ctx.log('update.download')
   try {
     const csURL = network.files.latestChecksumURL(normalizedPlatform(), arch())
     log.debug('getting latest checksum', { url: csURL })
@@ -121,7 +121,7 @@ export const download = async ({ network, ...ctx }: Context): Promise<DownloadIn
 const ext = (): string => normalizedPlatform() === 'windows' ? '.exe' : ''
 
 export const latestVersion = async ({ network, ...ctx }: Context): Promise<SemVer> => {
-  const log = ctx.logger('update.version.get')
+  const log = ctx.log('update.version.get')
   const url = network.files.latestVersionURL(normalizedPlatform(), arch())
   try {
     log.debug('getting latest version', { url })
