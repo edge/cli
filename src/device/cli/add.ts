@@ -25,6 +25,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
     ...await cli.passphrase.read(ctx.cmd),
     ...cli.docker.readPrefix(ctx.cmd),
     ...cli.stake.read(ctx.cmd),
+    ...cli.stakeType.read(ctx.cmd),
     ...cli.verbose.read(ctx.parent),
     ...cli.yes.read(ctx.cmd)
   }
@@ -74,7 +75,17 @@ export const action = (ctx: Context) => async (): Promise<void> => {
 
   // identify stake to assign device to
   const stake = await (async () => {
-    if (opts.stake !== undefined) return findOne(stakes, opts.stake)
+    if (opts.stake !== undefined) {
+      // stake specified by (partial?) ID
+      return findOne(stakes, opts.stake)
+    }
+    else if (opts.stakeType !== undefined) {
+      // stake specified by type - use first unassigned (if any)
+      const stake = Object.values(stakes).find(s => s.type === opts.stakeType && !s.unlockRequested && !s.device)
+      if (stake !== undefined) return stake
+      console.log(`There is no unassigned ${toUpperCaseFirst(opts.stakeType)} stake available to auto-assign.`)
+      console.log()
+    }
 
     console.log('Select a stake to assign this device to:')
     console.log()
@@ -169,6 +180,7 @@ export const command = (ctx: Context): Command => {
   cli.docker.configurePrefix(cmd)
   cli.passphrase.configure(cmd)
   cli.stake.configure(cmd)
+  cli.stakeType.configure(cmd)
   cli.yes.configure(cmd)
   cmd.action(errorHandler(ctx, checkVersionHandler(ctx, action({ ...ctx, cmd }))))
   return cmd
