@@ -167,6 +167,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
 export const command = (ctx: Context): Command => {
   const cmd = new Command('add').description('add this device to the network').addHelpText('after', help(ctx.network))
   cli.docker.configurePrefix(cmd)
+  cli.passphrase.configure(cmd)
   cli.stake.configure(cmd)
   cli.yes.configure(cmd)
   cmd.action(errorHandler(ctx, checkVersionHandler(ctx, action({ ...ctx, cmd }))))
