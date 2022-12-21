@@ -96,7 +96,6 @@ export const command = (ctx: Context): Command => {
   return cmd
 }
 
-/* eslint-disable max-len */
 const help = repl.help(`
 This command will create a new wallet.
 
@@ -106,4 +105,3 @@ The passphrase is also required later to decrypt the wallet for certain actions,
 
 You will also be given the option to view or export the private key for the new wallet. This should be copied to a secure location and kept secret.
 `)
-/* eslint-enable max-len */

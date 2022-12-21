@@ -32,7 +32,6 @@ export const action = (ctx: Context) => async (amountInput: string, recipient: s
   const availableBalance = onChainWallet.balance - pendingTxsAmount
 
   const resultBalance = availableBalance - amount
-  // eslint-disable-next-line max-len
   if (resultBalance < 0) throw new Error(`insufficient balance: your wallet only contains ${formatXE(availableBalance)}`)
 
   if (!opts.yes) {

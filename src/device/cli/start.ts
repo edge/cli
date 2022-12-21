@@ -69,8 +69,6 @@ export const command = (ctx: Context): Command => {
   return cmd
 }
 
-/* eslint-disable max-len */
 const help = (network: Network) => `
 Start the node. Your device must be added to the network first. Run '${network.appName} device add --help' for more information.
 `
-/* eslint-enable max-len */
