@@ -7,7 +7,9 @@ import { Command } from 'commander'
 import { Context } from '../../main'
 import { command as add } from './add'
 import config from '../../config'
+import dotenv from 'dotenv'
 import { command as info } from './info'
+import { readFileSync } from 'fs'
 import { command as remove } from './remove'
 import { command as restart } from './restart'
 import { command as start } from './start'
@@ -29,6 +31,7 @@ export const createContainerOptions = (
   node: NodeInfo,
   tag: string,
   env: string[] | undefined,
+  envFile?: string | undefined,
   prefix?: string | undefined,
   networks?: string[]
 ): ContainerCreateOptions => {
@@ -38,6 +41,16 @@ export const createContainerOptions = (
     prefix,
     Math.random().toString(16).substring(2, 8)
   ].filter(Boolean).join('-')
+
+  if (envFile) {
+    const oldEnv = env !== undefined ? env : []
+    env = []
+    const fileEnv = dotenv.parse(readFileSync(envFile))
+    for (const key of Object.keys(fileEnv)) {
+      env.push(`${key}=${fileEnv[key]}`)
+    }
+    for (const e of oldEnv) env.push(e)
+  }
 
   let volumeName = config.docker.dataVolume
   if (prefix) volumeName = `${volumeName}-${prefix}`
