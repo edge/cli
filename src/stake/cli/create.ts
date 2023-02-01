@@ -41,7 +41,6 @@ export const action = (ctx: Context) => async (nodeType: string): Promise<void> 
         nodeType === 'stargate' ? vars.stargate_stake_amount : 0
 
   const resultBalance = availableBalance - amount
-  // eslint-disable-next-line max-len
   if (resultBalance < 0) throw new Error(`insufficient balance to stake ${nodeType}: your wallet only contains ${formatXE(availableBalance)} (${formatXE(amount)} required)`)
 
   if (!opts.yes) {

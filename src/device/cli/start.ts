@@ -21,6 +21,7 @@ import { Context, Network } from '../../main'
 export const action = (ctx: Context) => async (): Promise<void> => {
   const opts = {
     ...cli.docker.readEnv(ctx.cmd),
+    ...cli.docker.readEnvFile(ctx.cmd),
     ...cli.docker.readNetworks(ctx.cmd),
     ...cli.docker.readPrefix(ctx.cmd)
   }
@@ -47,7 +48,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
   if (authconfig !== undefined) await image.pullVisible(docker, targetImage, authconfig, debug)
   else await image.pullVisible(docker, targetImage, authconfig, debug)
 
-  const containerOptions = createContainerOptions(node, target, opts.env, opts.prefix, opts.network)
+  const containerOptions = createContainerOptions(node, target, opts.env, opts.envFile, opts.prefix, opts.network)
   log.debug('creating container', { containerOptions })
   const container = await docker.createContainer(containerOptions)
   log.debug('starting container')
@@ -62,6 +63,7 @@ export const command = (ctx: Context): Command => {
   const cmd = new Command('start').description('start node').addHelpText('after', help(ctx.network))
   cli.docker.configureAuth(cmd)
   cli.docker.configureEnv(cmd)
+  cli.docker.configureEnvFile(cmd)
   cli.docker.configureNetworks(cmd)
   cli.docker.configurePrefix(cmd)
   cli.docker.configureTarget(cmd)
@@ -69,8 +71,6 @@ export const command = (ctx: Context): Command => {
   return cmd
 }
 
-/* eslint-disable max-len */
 const help = (network: Network) => `
 Start the node. Your device must be added to the network first. Run '${network.appName} device add --help' for more information.
 `
-/* eslint-enable max-len */

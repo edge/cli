@@ -10,7 +10,7 @@ export const formatTime = (t: number): string => {
   const [yyyy, mm, dd, h, m, s] = [
     d.getUTCFullYear(),
     (1 + d.getUTCMonth()).toString().padStart(2, '0'),
-    (1 + d.getUTCDate()).toString().padStart(2, '0'),
+    d.getUTCDate().toString().padStart(2, '0'),
     d.getUTCHours().toString().padStart(2, '0'),
     d.getUTCMinutes().toString().padStart(2, '0'),
     d.getUTCSeconds().toString().padStart(2, '0')

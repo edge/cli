@@ -14,6 +14,12 @@ export type EnvOption = {
   env: string[]
 }
 
+/** Docker environment file options. */
+export type EnvFileOption = {
+  /** Env variables file to use for a Docker container. */
+  envFile: string
+}
+
 /** Docker networking options. */
 export type NetworksOption = {
   /** Docker networks for a container to join. */
@@ -46,6 +52,11 @@ export const configureConnection = (cmd: Command): void => {
 /** Configure a command with Docker environment options. */
 export const configureEnv = (cmd: Command): void => {
   cmd.option('-e, --env <var...>', 'set environment variable(s) for node')
+}
+
+/** Configure a command with a Docker env file. */
+export const configureEnvFile = (cmd: Command): void => {
+  cmd.option('--env-file <path>', 'set environment variables file for node')
 }
 
 /** Configure a command with Docker networking options. */
@@ -92,6 +103,12 @@ export const readEnv = (cmd: Command): EnvOption => {
   return {
     env: opts.env !== undefined ? opts.env : []
   }
+}
+
+/** Read Docker environment file options from a command. */
+export const readEnvFile = (cmd: Command): EnvFileOption => {
+  const opts = cmd.opts()
+  return { envFile: opts.envFile }
 }
 
 /** Read Docker network options from a command. */

@@ -73,7 +73,6 @@ const readDirect = async (volume: VolumeInspectInfo) => new Promise<Device>((res
  */
 const readThroughContainer = async (docker: Docker, volume: VolumeInspectInfo): Promise<Device> => {
   const path = '/data'
-  // eslint-disable-next-line max-len
   if (!await image.exists(docker, TRANSFER_CONTAINER_IMAGE)) await image.pullVisible(docker, TRANSFER_CONTAINER_IMAGE, undefined)
   const container = await createTransferContainer(docker, volume, path)
   await container.start()
@@ -184,7 +183,6 @@ const writeDirect = async (volume: VolumeInspectInfo, device: Device) => new Pro
  */
 const writeThroughContainer = async (docker: Docker, volume: VolumeInspectInfo, device: Device): Promise<void> => {
   const path = '/data'
-  // eslint-disable-next-line max-len
   if (!await image.exists(docker, TRANSFER_CONTAINER_IMAGE)) await image.pullVisible(docker, TRANSFER_CONTAINER_IMAGE, undefined)
   const container = await createTransferContainer(docker, volume, path)
 
