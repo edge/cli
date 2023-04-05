@@ -26,7 +26,7 @@ const config = {
     dataVolume: process.env.DOCKER_DATA_VOLUME || 'edge-device-data',
     directReadWrite: process.env.DOCKER_DIRECT_RW === 'true',
     registry: {
-      address: 'registry.edge.network',
+      address: process.env.REGISTRY || 'registry.edge.network',
       defaultImageTag: 'latest',
       auth: {
         username: process.env.REGISTRY_USERNAME || '',
