@@ -7,6 +7,7 @@ import * as repl from '../../repl'
 import { Command } from 'commander'
 import { Context } from '../../main'
 import { checkVersionHandler } from '../../update/cli'
+import config from '../../config'
 import { errorHandler } from '../../cli'
 
 /**
@@ -21,12 +22,16 @@ export const action = (ctx: Context) => async (): Promise<void> => {
 }
 
 export const command = (ctx: Context): Command => {
-  const cmd = new Command('env').description('display environment variables').addHelpText('after', help)
+  const cmd = new Command('env').description('display environment variables').addHelpText('after', help(ctx))
   cli.docker.configurePrefix(cmd)
   cmd.action(errorHandler(ctx, checkVersionHandler(ctx, action({ ...ctx, cmd }))))
   return cmd
 }
 
-const help = repl.help(`
-This command displays environment variables passed from your host machine to the device. It may be useful for debugging.
+const help = ({ network }: Context) => repl.help(`
+This command displays environment variables passed implicitly from your host machine to the device when using '${network.appName} device start'.
+
+Environment variables are managed in ${config.envFile}. To change the location of your environment file, prefix your CLI usage with 'ENV_FILE=<path>'.
+
+You can also override the file path by using '${network.appName} device start --env-file=<path>'.
 `)
