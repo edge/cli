@@ -6,8 +6,9 @@ import * as sg from '@edge/stargate-utils'
 import { Command } from 'commander'
 import { Context } from '../main'
 import config from '../config'
-import { existsSync } from 'fs'
+import dotenv from 'dotenv'
 import { AuthConfig, DockerOptions } from 'dockerode'
+import { existsSync, readFileSync } from 'fs'
 
 /** Docker environment (env) options. */
 export type EnvOption = {
@@ -73,6 +74,29 @@ export const configurePrefix = (cmd: Command): void => {
 /** Configure a command with Docker image tag options. */
 export const configureTarget = (cmd: Command): void => {
   cmd.option('--target <version>', 'node target version')
+}
+
+/**
+ * Read **all** Docker environment (env) options from a command and an env file, if one is found.
+ *
+ * This method automatically combines passive and imperative env arguments into a single list.
+ * The env file is read first, then the env arguments given to the command.
+ * If an env variable is repeated, Docker will automatically give precedence to the latter value.
+ *
+ * See `readEnv()` and `readFileEnv()` for separate implementations.
+ */
+export const readAllEnv = (cmd: Command): EnvOption => {
+  const env: string[] = []
+  const { envFile } = readEnvFile(cmd)
+  if (envFile) {
+    const fileEnv = dotenv.parse(readFileSync(envFile))
+    for (const key of Object.keys(fileEnv)) {
+      env.push(`${key}=${fileEnv[key]}`)
+    }
+  }
+  const { env: argEnv } = readEnv(cmd)
+  for (const e of argEnv) env.push(e)
+  return { env }
 }
 
 /** Read Docker registry authentication options from a command. */
