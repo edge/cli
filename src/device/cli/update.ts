@@ -55,8 +55,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
   repl.echo(`Updating ${node.name} v${target}...`)
   const { debug } = cli.debug.read(ctx.parent)
   const authconfig = cli.docker.readAuth(ctx.cmd)
-  if (authconfig !== undefined) await image.pullVisible(docker, targetImage, authconfig, debug)
-  else await image.pullVisible(docker, targetImage, authconfig, debug)
+  await image.pullVisible(docker, targetImage, authconfig, debug)
 
   const latestImage = await docker.getImage(targetImage).inspect()
   if (latestImage.Id === currentImage?.Id) {

@@ -104,7 +104,10 @@ export const action = (ctx: Context) => async (): Promise<void> => {
 }
 
 export const command = (ctx: Context): Command => {
-  const cmd = new Command('remove').description('remove this device from the network').addHelpText('after', help)
+  const cmd = new Command('remove')
+    .alias('rm')
+    .description('remove this device from the network')
+    .addHelpText('after', help)
   cli.docker.configurePrefix(cmd)
   cli.yes.configure(cmd)
   cmd.action(errorHandler(ctx, checkVersionHandler(ctx, action({ ...ctx, cmd }))))

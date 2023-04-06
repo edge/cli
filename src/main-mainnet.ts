@@ -31,7 +31,7 @@ main(process.argv, {
     host: 'https://index.xe.network'
   },
   registry: {
-    imageName: (app, arch) => `${config.docker.edgeRegistry.address}/${app}/mainnet-${arch}`
+    imageName: (app, arch) => `${config.docker.registry.address}/${app}/mainnet-${arch}`
   },
   stargate: {
     host: 'https://stargate.edge.network'

@@ -4,32 +4,37 @@
 
 import dotenv from 'dotenv'
 
-dotenv.config()
+export type Config = typeof config
+
+let envFile = '.env'
+if (process.env.ENV_FILE) envFile = process.env.ENV_FILE
+dotenv.config({ path: envFile })
 
 /**
  * Global configuration.
  * Some properties can be specified in the shell environment.
  * However, it's normally best to leave these alone unless debugging or Edge Core Team advises changes.
  */
-export default {
+const config = {
   address: {
     shortLength: 9
   },
   blockchain: {
-    defaultTimeout: parseInt(process.env.BLOCKCHAIN_TIMEOUT || '10') * 1000
+    defaultTimeout: parseInt(process.env.CLI_BLOCKCHAIN_TIMEOUT || '10') * 1000
   },
   docker: {
     dataVolume: process.env.DOCKER_DATA_VOLUME || 'edge-device-data',
     directReadWrite: process.env.DOCKER_DIRECT_RW === 'true',
-    edgeRegistry: {
-      address: 'registry.edge.network',
+    registry: {
+      address: process.env.REGISTRY || 'registry.edge.network',
       defaultImageTag: 'latest',
       auth: {
-        username: process.env.EDGE_REGISTRY_USERNAME || '',
-        password: process.env.EDGE_REGISTRY_PASSWORD || ''
+        username: process.env.REGISTRY_USERNAME || '',
+        password: process.env.REGISTRY_PASSWORD || ''
       }
     }
   },
+  envFile,
   hash: {
     shortLength: 8
   },
@@ -38,9 +43,11 @@ export default {
     shortLength: 12
   },
   index: {
-    defaultTimeout: parseInt(process.env.INDEX_TIMEOUT || '10') * 1000
+    defaultTimeout: parseInt(process.env.CLI_INDEX_TIMEOUT || '10') * 1000
   },
   signature: {
     shortLength: 12
   }
 }
+
+export default config

@@ -6,18 +6,20 @@ import * as sg from '@edge/stargate-utils'
 import { Command } from 'commander'
 import { Context } from '../main'
 import config from '../config'
+import dotenv from 'dotenv'
 import { AuthConfig, DockerOptions } from 'dockerode'
+import { existsSync, readFileSync } from 'fs'
 
-/** Docker environment options. */
+/** Docker environment (env) options. */
 export type EnvOption = {
   /** Env variables to pass to a Docker container. */
   env: string[]
 }
 
-/** Docker environment file options. */
+/** Docker environment (env) file options. */
 export type EnvFileOption = {
   /** Env variables file to use for a Docker container. */
-  envFile: string
+  envFile?: string
 }
 
 /** Docker networking options. */
@@ -74,14 +76,37 @@ export const configureTarget = (cmd: Command): void => {
   cmd.option('--target <version>', 'node target version')
 }
 
+/**
+ * Read **all** Docker environment (env) options from a command and an env file, if one is found.
+ *
+ * This method automatically combines passive and imperative env arguments into a single list.
+ * The env file is read first, then the env arguments given to the command.
+ * If an env variable is repeated, Docker will automatically give precedence to the latter value.
+ *
+ * See `readEnv()` and `readFileEnv()` for separate implementations.
+ */
+export const readAllEnv = (cmd: Command): EnvOption => {
+  const env: string[] = []
+  const { envFile } = readEnvFile(cmd)
+  if (envFile) {
+    const fileEnv = dotenv.parse(readFileSync(envFile))
+    for (const key of Object.keys(fileEnv)) {
+      env.push(`${key}=${fileEnv[key]}`)
+    }
+  }
+  const { env: argEnv } = readEnv(cmd)
+  for (const e of argEnv) env.push(e)
+  return { env }
+}
+
 /** Read Docker registry authentication options from a command. */
 export const readAuth = (cmd: Command): AuthConfig | undefined => {
   const opts = cmd.opts()
-  if (opts.registryUsername || config.docker.edgeRegistry.auth.username) {
+  if (opts.registryUsername || config.docker.registry.auth.username) {
     return {
-      serveraddress: config.docker.edgeRegistry.address,
-      username: opts.registryUsername || config.docker.edgeRegistry.auth.username,
-      password: opts.registryPassword || config.docker.edgeRegistry.auth.password
+      serveraddress: config.docker.registry.address,
+      username: opts.registryUsername || config.docker.registry.auth.username,
+      password: opts.registryPassword || config.docker.registry.auth.password
     }
   }
   return undefined
@@ -97,7 +122,7 @@ export const readConnection = (cmd: Command): DockerOptions => {
   return {}
 }
 
-/** Read Docker environment options from a command. */
+/** Read Docker environment (env) options from a command. */
 export const readEnv = (cmd: Command): EnvOption => {
   const opts = cmd.opts()
   return {
@@ -105,10 +130,18 @@ export const readEnv = (cmd: Command): EnvOption => {
   }
 }
 
-/** Read Docker environment file options from a command. */
+/**
+ * Read Docker environment (env) file options from a command.
+ *
+ * If CLI self-configures using an env file, and no other env file is specified as an argument when using CLI, then
+ * that env file is also used as a fallback for the Docker environment.
+ * In other words, CLI and Docker by default share the same env file.
+ */
 export const readEnvFile = (cmd: Command): EnvFileOption => {
   const opts = cmd.opts()
-  return { envFile: opts.envFile }
+  if (opts.envFile) return { envFile: opts.envFile }
+  if (config.envFile && existsSync(config.envFile)) return { envFile: config.envFile }
+  return { envFile: undefined }
 }
 
 /** Read Docker network options from a command. */
