@@ -4,10 +4,10 @@
 
 import * as sg from '@edge/stargate-utils'
 import { Command } from 'commander'
-import { Context } from '../main'
 import config from '../config'
 import dotenv from 'dotenv'
 import { AuthConfig, DockerOptions } from 'dockerode'
+import { Context, Network } from '../main'
 import { existsSync, readFileSync } from 'fs'
 
 /** Docker environment (env) options. */
@@ -22,6 +22,21 @@ export type EnvFileOption = {
   envFile?: string
 }
 
+/** Docker extra hosts options. */
+export type ExtraHostsOption = {
+  /** Extra hosts configuration for a Docker container. */
+  extraHosts: string[]
+}
+
+/** Docker Gateway options. */
+export type GatewayOption = {
+  /**
+   * Gateway host - a specialised extra host configuration.
+   * See `ExtraHostsOption`
+   */
+  gateway?: string
+}
+
 /** Docker networking options. */
 export type NetworksOption = {
   /** Docker networks for a container to join. */
@@ -32,6 +47,15 @@ export type NetworksOption = {
 export type PrefixOption = {
   /** Prefix to add to a Docker container name. */
   prefix?: string
+}
+
+/** Docker Stargate options. */
+export type StargateOption = {
+  /**
+   * Stargate host - a specialised extra host configuration.
+   * See `ExtraHostsOption`
+   */
+  stargate?: string
 }
 
 /** Docker image tag options. */
@@ -56,9 +80,23 @@ export const configureEnv = (cmd: Command): void => {
   cmd.option('-e, --env <var...>', 'set environment variable(s) for node')
 }
 
+/**
+ * Configure a command with extra hosts for Docker.
+ * This option breaks the naming pattern within this file as `add-host` is more understandable and consistent with
+ * the equivalent usage in `docker run`.
+ */
+export const configureExtraHosts = (cmd: Command): void => {
+  cmd.option('--add-host <host...>', 'configure /etc/hosts within node')
+}
+
 /** Configure a command with a Docker env file. */
 export const configureEnvFile = (cmd: Command): void => {
   cmd.option('--env-file <path>', 'set environment variables file for node')
+}
+
+/** Configure a command with a Docker Gateway host. */
+export const configureGateway = (cmd: Command): void => {
+  cmd.option('--gateway <host>', 'set Gateway host for node (if applicable)')
 }
 
 /** Configure a command with Docker networking options. */
@@ -69,6 +107,11 @@ export const configureNetworks = (cmd: Command): void => {
 /** Configure a command with Docker container prefix options. */
 export const configurePrefix = (cmd: Command): void => {
   cmd.option('--prefix <prefix>', 'Docker entity prefix')
+}
+
+/** Configure a command with a Docker Stargate host. */
+export const configureStargate = (cmd: Command): void => {
+  cmd.option('--stargate <host>', 'set Stargate host for node (if applicable)')
 }
 
 /** Configure a command with Docker image tag options. */
@@ -97,6 +140,16 @@ export const readAllEnv = (cmd: Command): EnvOption => {
   const { env: argEnv } = readEnv(cmd)
   for (const e of argEnv) env.push(e)
   return { env }
+}
+
+/** Read **all** extra host options for the Docker container from a command, including Gateway and Stargate hosts. */
+export const readAllExtraHosts = (cmd: Command, network: Network): ExtraHostsOption => {
+  const { extraHosts } = readExtraHosts(cmd)
+  const { gateway } = readGateway(cmd)
+  if (gateway) extraHosts.push(`${network.gateway.host}:${gateway}`)
+  const { stargate } = readStargate(cmd)
+  if (stargate) extraHosts.push(`${network.stargate.host}:${stargate}`)
+  return { extraHosts }
 }
 
 /** Read Docker registry authentication options from a command. */
@@ -144,6 +197,20 @@ export const readEnvFile = (cmd: Command): EnvFileOption => {
   return { envFile: undefined }
 }
 
+/** Read Docker extra hosts option from a command. */
+export const readExtraHosts = (cmd: Command): ExtraHostsOption => {
+  const opts = cmd.opts()
+  return {
+    extraHosts: opts.addHost !== undefined ? opts.addHost : []
+  }
+}
+
+/** Read Docker Gateway option from a command. */
+export const readGateway = (cmd: Command): GatewayOption => {
+  const opts = cmd.opts()
+  return { gateway: opts.gateway }
+}
+
 /** Read Docker network options from a command. */
 export const readNetworks = (cmd: Command): NetworksOption => {
   const opts = cmd.opts()
@@ -160,10 +227,16 @@ export const readPrefix = (cmd: Command): PrefixOption => {
   return { prefix: opts.prefix }
 }
 
+/** Read Docker Stargate option from a command. */
+export const readStargate = (cmd: Command): StargateOption => {
+  const opts = cmd.opts()
+  return { stargate: opts.stargate }
+}
+
 /** Read Docker image tag options from a command. */
 export const readTarget = async ({ cmd, network }: Context, name: string): Promise<TargetOption> => {
   const opts = cmd.opts()
   return {
-    target: opts.target || (await sg.service.get(network.stargate.host, name)).version
+    target: opts.target || (await sg.service.get(network.stargate.url, name)).version
   }
 }

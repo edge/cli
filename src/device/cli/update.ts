@@ -73,7 +73,10 @@ export const action = (ctx: Context) => async (): Promise<void> => {
   log.debug('removing container', { id: containerInspect?.Id })
   await container.remove()
 
-  const containerOptions = createContainerOptions(node, target, containerInspect?.Config.Env)
+  const containerOptions = createContainerOptions(node, target, {
+    env: containerInspect?.Config.Env || [],
+    extraHosts: containerInspect?.HostConfig.ExtraHosts || []
+  })
   if (containerInspect && Object.keys(containerInspect.NetworkSettings.Networks).length > 0) {
     const endpoints: EndpointsConfig = {}
     Object.keys(containerInspect.NetworkSettings.Networks).forEach(n => {

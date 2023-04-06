@@ -61,6 +61,9 @@ export type Network = {
     latestVersionURL: (os: string, arch: string) => string
   }
   flags: Record<string, boolean>
+  gateway: {
+    host: string
+  }
   index: {
     host: string
   }
@@ -68,7 +71,8 @@ export type Network = {
     imageName: (app: string, arch: string) => string
   }
   stargate: {
-    host: sg.Host
+    host: string
+    url: sg.Host
   }
   wallet: {
     defaultFile: string

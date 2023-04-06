@@ -21,6 +21,7 @@ import { Context, Network } from '../../main'
 export const action = (ctx: Context) => async (): Promise<void> => {
   const opts = {
     ...cli.docker.readAllEnv(ctx.cmd),
+    ...cli.docker.readAllExtraHosts(ctx.cmd, ctx.network),
     ...cli.docker.readNetworks(ctx.cmd),
     ...cli.docker.readPrefix(ctx.cmd)
   }
@@ -46,7 +47,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
   const { debug } = cli.debug.read(ctx.parent)
   await image.pullVisible(docker, targetImage, authconfig, debug)
 
-  const containerOptions = createContainerOptions(node, target, opts.env, opts.prefix, opts.network)
+  const containerOptions = createContainerOptions(node, target, opts)
   log.debug('creating container', { containerOptions })
   const container = await docker.createContainer(containerOptions)
   log.debug('starting container')
@@ -62,8 +63,11 @@ export const command = (ctx: Context): Command => {
   cli.docker.configureAuth(cmd)
   cli.docker.configureEnv(cmd)
   cli.docker.configureEnvFile(cmd)
+  cli.docker.configureExtraHosts(cmd)
+  cli.docker.configureGateway(cmd)
   cli.docker.configureNetworks(cmd)
   cli.docker.configurePrefix(cmd)
+  cli.docker.configureStargate(cmd)
   cli.docker.configureTarget(cmd)
   cmd.action(errorHandler(ctx, checkVersionHandler(ctx, action({ ...ctx, cmd }))))
   return cmd

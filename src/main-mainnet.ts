@@ -27,6 +27,9 @@ main(process.argv, {
   flags: {
     onboarding: true
   },
+  gateway: {
+    host: 'gateway.edge.network'
+  },
   index: {
     host: 'https://index.xe.network'
   },
@@ -34,7 +37,8 @@ main(process.argv, {
     imageName: (app, arch) => `${config.docker.registry.address}/${app}/mainnet-${arch}`
   },
   stargate: {
-    host: 'https://stargate.edge.network'
+    host: 'stargate.edge.network',
+    url: 'https://stargate.edge.network'
   },
   wallet: {
     defaultFile: `${homedir}${sep}.edge${sep}wallet${sep}mainnet.json`
