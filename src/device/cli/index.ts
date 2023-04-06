@@ -2,6 +2,7 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+import * as cli from '../../cli'
 import * as xeUtils from '@edge/xe-utils'
 import { Command } from 'commander'
 import { Context } from '../../main'
@@ -23,15 +24,21 @@ type NodeInfo = {
   stake: xeUtils.stake.Stake
 }
 
+type Options =
+  cli.docker.EnvOption &
+  cli.docker.ExtraHostsOption &
+  cli.docker.GatewayOption &
+  cli.docker.NetworksOption &
+  cli.docker.PrefixOption &
+  cli.docker.StargateOption
+
 /**
  * Build a container options object for a new Docker container.
  */
 export const createContainerOptions = (
   node: NodeInfo,
   tag: string,
-  env: string[] | undefined,
-  prefix?: string | undefined,
-  networks?: string[]
+  { env, extraHosts, network, prefix }: Options
 ): ContainerCreateOptions => {
   const containerName = [
     'edge',
@@ -58,6 +65,7 @@ export const createContainerOptions = (
         '/var/run/docker.sock:/var/run/docker.sock',
         `${volumeName}:/data`
       ],
+      ExtraHosts: extraHosts.length > 0 ? extraHosts : undefined,
       RestartPolicy: { Name: 'unless-stopped' }
     }
   }
@@ -72,9 +80,9 @@ export const createContainerOptions = (
       '443/tcp': {}
     }
   }
-  if (networks?.length) {
+  if (network?.length) {
     opts.NetworkingConfig = {
-      EndpointsConfig: networks.reduce((e, n) => {
+      EndpointsConfig: network.reduce((e, n) => {
         e[n] = {}
         return e
       }, <EndpointsConfig>{})
