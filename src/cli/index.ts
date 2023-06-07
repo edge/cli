@@ -10,6 +10,7 @@ export * as debug from './debug'
 export * as docker from './docker'
 export * as express from './express'
 export * as memo from './memo'
+export * as remoteStake from './remoteStake'
 export * as overwrite from './overwrite'
 export * as pagination from './pagination'
 export * as passphrase from './passphrase'
@@ -26,7 +27,7 @@ export * as yes from './yes'
  */
 export const errorHandler =
   <T>(ctx: Context, f: (...args: any[]) => Promise<T>) =>
-    async (...args: any[]): Promise<T|undefined> => {
+    async (...args: any[]): Promise<T | undefined> => {
       try {
         return await f(...args)
       }

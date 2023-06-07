@@ -19,13 +19,14 @@ import { EndpointsConfig, ImageInspectInfo } from 'dockerode'
  */
 export const action = (ctx: Context) => async (): Promise<void> => {
   const opts = {
-    ...cli.docker.readPrefix(ctx.cmd)
+    ...cli.docker.readPrefix(ctx.cmd),
+    ...cli.remoteStake.readRemoteStake(ctx.cmd)
   }
 
   const log = ctx.log()
   const device = ctx.device(opts.prefix)
   const docker = device.docker()
-  const node = await device.node()
+  const node = await device.node(opts.remoteStake)
 
   repl.echo(`Checking ${node.name} version...`)
   const { target } = await cli.docker.readTarget(ctx, node.stake.type)
@@ -100,6 +101,7 @@ export const command = (ctx: Context): Command => {
   cli.docker.configureTarget(cmd)
   cli.docker.configurePrefix(cmd)
   cli.docker.configureAuth(cmd)
+  cli.remoteStake.configureRemoteStake(cmd)
   cmd.action(errorHandler(ctx, checkVersionHandler(ctx, action({ ...ctx, cmd }))))
   return cmd
 }
