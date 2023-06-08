@@ -86,9 +86,13 @@ const device = (ctx: Context, prefix: string | undefined) => {
       else {
         const deviceWallet = await (await volume()).read()
         log.debug('finding stake via index', { stake: remoteStake, deviceAddress: deviceWallet.address, network: deviceWallet.network })
-        const stake = await ctx.xeClient().stakeViaIndex(remoteStake)
-        if (stake === undefined) throw new Error('Stake not found on the index. It might take several minutes until your stake appears.')
-        return stake
+        try {
+          const stake = await ctx.xeClient().stakeViaIndex(remoteStake)
+          return stake
+        }
+        catch {
+          throw new Error('Stake not found on the index. It might take several minutes until your stake appears.')
+        }
       }
     })()
 
