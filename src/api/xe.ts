@@ -2,6 +2,7 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
+import * as index from '@edge/index-utils'
 import * as xe from '@edge/xe-utils'
 import { Context } from '../main'
 import { SuperAgentRequest } from 'superagent'
@@ -31,6 +32,13 @@ const client = (ctx: Context) => {
     log.debug('pendingTransactions', { host, address })
     const data = await xe.tx.pendingTransactions(host, address, cb)
     log.debug('pendingTransactions response', { data })
+    return data
+  }
+
+  const stakeViaIndex = async (stake: string) => {
+    log.debug('stake query via index', { host, address: stake })
+    const data = await index.stake.stake(ctx.network.index.host, stake, cb)
+    log.debug('stake response', { data })
     return data
   }
 
@@ -65,6 +73,7 @@ const client = (ctx: Context) => {
   return {
     createTransaction,
     pendingTransactions,
+    stakeViaIndex,
     stakes,
     wallet,
     walletWithNextNonce,
