@@ -16,13 +16,14 @@ import { errorHandler } from '../../cli'
  */
 export const action = (ctx: Context) => async (): Promise<void> => {
   const opts = {
-    ...cli.docker.readPrefix(ctx.cmd)
+    ...cli.docker.readPrefix(ctx.cmd),
+    ...cli.stake.read(ctx.cmd)
   }
 
   const log = ctx.log()
   const device = ctx.device(opts.prefix)
   const docker = device.docker()
-  const node = await device.node()
+  const node = await device.node(opts.stake)
 
   const info = await node.container()
   if (info === undefined) {
@@ -41,6 +42,7 @@ export const action = (ctx: Context) => async (): Promise<void> => {
 export const command = (ctx: Context): Command => {
   const cmd = new Command('stop').description('stop node').addHelpText('after', help)
   cli.docker.configurePrefix(cmd)
+  cli.stake.configure(cmd)
   cmd.action(errorHandler(ctx, checkVersionHandler(ctx, action({ ...ctx, cmd }))))
   return cmd
 }

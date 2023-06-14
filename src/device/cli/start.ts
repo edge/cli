@@ -23,13 +23,14 @@ export const action = (ctx: Context) => async (): Promise<void> => {
     ...cli.docker.readAllEnv(ctx.cmd),
     ...cli.docker.readAllExtraHosts(ctx.cmd, ctx.network),
     ...cli.docker.readNetworks(ctx.cmd),
-    ...cli.docker.readPrefix(ctx.cmd)
+    ...cli.docker.readPrefix(ctx.cmd),
+    ...cli.stake.read(ctx.cmd)
   }
 
   const log = ctx.log()
   const device = ctx.device(opts.prefix)
   const docker = device.docker()
-  const node = await device.node()
+  const node = await device.node(opts.stake)
 
   let info = await node.container()
   if (info !== undefined) {
@@ -69,6 +70,7 @@ export const command = (ctx: Context): Command => {
   cli.docker.configurePrefix(cmd)
   cli.docker.configureStargate(cmd)
   cli.docker.configureTarget(cmd)
+  cli.stake.configure(cmd)
   cmd.action(errorHandler(ctx, checkVersionHandler(ctx, action({ ...ctx, cmd }))))
   return cmd
 }
