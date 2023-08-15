@@ -71,14 +71,31 @@ const device = (ctx: Context, prefix: string | undefined) => {
   }
 
   // get device node information including the assigned stake and, if running, the Docker container
-  const node = async () => {
-    const address = await ctx.wallet().address()
-    const deviceWallet = await (await volume()).read()
+  const node = async (stakeId?: string) => {
+    const stake = await (async () => {
+      if (stakeId) {
+        const deviceWallet = await (await volume()).read()
+        log.debug('finding stake via index', { stake: stakeId, deviceAddress: deviceWallet.address, network: deviceWallet.network })
+        try {
+          const stake = await ctx.xeClient().stakeViaIndex(stakeId)
+          return stake
+        }
+        catch {
+          throw new Error('Stake not found on the index. It might take several minutes until your stake appears.')
+        }
+      }
+      else {
+        const address = await ctx.wallet().address()
+        const deviceWallet = await (await volume()).read()
 
-    log.debug('finding node', { address, deviceAddress: deviceWallet.address, network: deviceWallet.network })
+        log.debug('finding stake via local wallet', { address, deviceAddress: deviceWallet.address, network: deviceWallet.network })
 
-    const stake = Object.values(await ctx.xeClient().stakes(address)).find(s => s.device === deviceWallet.address)
-    if (stake === undefined) throw new Error('device is not assigned to a stake')
+        const stake = Object.values(await ctx.xeClient().stakes(address)).find(s => s.device === deviceWallet.address)
+        if (stake === undefined) throw new Error('device is not assigned to a stake')
+        return stake
+      }
+    })()
+
 
     const image = ctx.network.registry.imageName(stake.type, arch())
     const name = toUpperCaseFirst(stake.type)
