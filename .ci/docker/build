@@ -19,7 +19,8 @@ ARG NODE=node16
 ENV PKG_CACHE_PATH=/pkg-cache
 
 # Pre-fetch Node base binaries to avoid build time issues
-RUN npm install -g pkg-fetch
+# https://github.com/vercel/pkg-fetch/releases/tag/v3.4
+RUN npm install -g pkg-fetch@3.4.2
 RUN pkg-fetch -n ${NODE} -p linux -a $ARCH
 RUN pkg-fetch -n ${NODE} -p macos -a $ARCH
 RUN pkg-fetch -n ${NODE} -p win -a $ARCH
