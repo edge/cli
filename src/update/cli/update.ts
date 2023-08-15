@@ -5,11 +5,13 @@
 import * as cli from '../../cli'
 import * as repl from '../../repl'
 import { Command } from 'commander'
+import { arch } from 'os'
 import { errorHandler } from '../../cli'
+import { normalizedPlatform } from '../../helpers'
 import path from 'path'
 import { Context, Network } from '../../main'
 import { chmodSync, copyFileSync, renameSync, unlinkSync } from 'fs'
-import { currentVersion, download, latestVersion } from '..'
+import { currentVersion, download, ext, latestVersion } from '..'
 
 /** Update CLI. */
 export const action = (ctx: Context, argv: string[]) => async (): Promise<void> => {
@@ -30,21 +32,33 @@ export const action = (ctx: Context, argv: string[]) => async (): Promise<void> 
 
   if (/node$/.test(selfPath)) throw new Error('path to binary appears to be node path')
 
-  repl.echo(`Downloading v${lv}`)
-  const { file } = await download(ctx)
-  const tmpFilename = `${path.dirname(file)}/tmp-${Date.now}`
+  let tmpFilename = ''
+  try {
+    repl.echo(`Downloading v${lv}`)
+    const { file } = await download(ctx)
+    tmpFilename = `${path.dirname(file)}/tmp-${Date.now()}`
 
-  // After downloading the file, we move the current binary to a temporary
-  // location, move the new file to the current binary location, and then
-  // attempt to remove the previous binary. This may fail on Windows.
-  repl.echo(`Updating from v${cv} to v${lv}`)
-  chmodSync(file, 0o755)
-  renameSync(selfPath, tmpFilename)
-  copyFileSync(file, selfPath)
+    // After downloading the file, we move the current binary to a temporary
+    // location, move the new file to the current binary location, and then
+    // attempt to remove the previous binary. This may fail on Windows.
+    repl.echo(`Updating from v${cv} to v${lv}`)
+    chmodSync(file, 0o755)
+    renameSync(selfPath, tmpFilename)
+    copyFileSync(file, selfPath)
+  }
+  catch (err) {
+    log.error(`Failed to download Edge CLI v${cv}`, { err })
+    const buildURL = ctx.network.files.latestBuildURL(normalizedPlatform(), arch(), ext())
+    repl.nl()
+    repl.echo('If you have difficulty updating Edge CLI via this method, you can download it manually from the following URL:')
+    repl.nl()
+    repl.echo(buildURL)
+    return
+  }
 
   // Try to remove file but ignore any errors.
   try {
-    unlinkSync(tmpFilename)
+    if (tmpFilename) unlinkSync(tmpFilename)
   }
   catch (err) {
     if (opts.debug) log.error('Unable to remove download', { err })

@@ -118,7 +118,7 @@ export const download = async ({ network, ...ctx }: Context): Promise<DownloadIn
   }
 }
 
-const ext = (): string => normalizedPlatform() === 'windows' ? '.exe' : ''
+export const ext = (): string => normalizedPlatform() === 'windows' ? '.exe' : ''
 
 export const latestVersion = async ({ network, ...ctx }: Context): Promise<SemVer> => {
   const log = ctx.log('update.version.get')
