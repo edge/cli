@@ -2,13 +2,13 @@
 // Use of this source code is governed by a GNU GPL-style license
 // that can be found in the LICENSE.md file. All rights reserved.
 
-import { formatXe } from '@edge/wallet-utils'
+import * as xe from '@edge/xe-utils'
 
 /** Regular expression for validating and parsing an input XE amount. */
 const xeAmountRegexp = /^(?<amount>\d+) ?(?<unit>m?xe)?$/i
 
 /** Format XE amount for printing. */
-export const formatXE = (mxeAmount: number): string => formatXe(mxeAmount / 1e6, true) + ' XE'
+export const formatXE = (mxeAmount: number): string => xe.xe.formatMxe(mxeAmount / 1e6, true) + ' XE'
 
 /** Parse XE amount from input. */
 export const parseAmount = (input: string): number => {
