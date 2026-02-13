@@ -14,10 +14,10 @@ main(process.argv, {
   appName: 'edge',
   name: 'mainnet',
   blockchain: {
-    host: 'https://api.xe.network'
+    host: 'https://blockchain.edge.network'
   },
   explorer: {
-    host: 'https://xe.network'
+    host: 'https://explorer.edge.network'
   },
   files: {
     latestBuildURL: (os, arch, ext) => `https://files.edge.network/cli/mainnet/${os}/${arch}/latest/edge${ext}`,
@@ -31,7 +31,7 @@ main(process.argv, {
     host: 'gateway.edge.network'
   },
   index: {
-    host: 'https://index.xe.network'
+    host: 'https://index.edge.network'
   },
   registry: {
     imageName: (app, arch) => `${config.docker.registry.address}/${app}/mainnet-${arch}`
