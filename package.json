@@ -15,11 +15,11 @@
     "lint:fix": "eslint --fix --ext .ts src",
     "lint": "eslint --ext .ts src",
     "test": "echo \"Error: no test specified\"",
-    "mainnet:build:executable": "pkg out/src/main-mainnet.js -t host --output bin/edge",
+    "mainnet:build:executable": "pkg out/src/main-mainnet.js -t node18 --output bin/edge",
     "mainnet:build:in-docker": "ROOT=${PWD} BUILD_TARGET=$(.build/auto_target.sh) NETWORK=mainnet .build/build.sh",
     "mainnet:build:src": "tsc",
     "mainnet:build": "npm run mainnet:build:src && npm run mainnet:build:executable",
-    "testnet:build:executable": "pkg out/src/main-testnet.js -t host --output bin/edgetest",
+    "testnet:build:executable": "pkg out/src/main-testnet.js -t node18 --output bin/edgetest",
     "testnet:build:in-docker": "ROOT=${PWD} BUILD_TARGET=$(.build/auto_target.sh) NETWORK=testnet .build/build.sh",
     "testnet:build:src": "tsc",
     "testnet:build": "npm run testnet:build:src && npm run testnet:build:executable"
@@ -48,11 +48,9 @@
     "commander": "^8.1.0",
     "dockerode": "^3.3.1",
     "dotenv": "^10.0.0",
+    "pkg": "^5.8.0",
     "semver": "^7.3.5",
     "superagent": "^8.0.6",
     "tar-stream": "^2.2.0"
-  },
-  "optionalDependencies": {
-    "pkg": "^5.8.0"
   }
 }
