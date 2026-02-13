@@ -1,0 +1,98 @@
+name: Build Mainnet
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+    env:
+      SSH_PORT: ${{ secrets.FILESERVER_SSH_PORT != '' && secrets.FILESERVER_SSH_PORT || '22' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run mainnet:build:src
+
+      - name: Build binaries
+        run: |
+          targets="node18-linux-x64,node18-linux-arm64,node18-macos-x64,node18-macos-arm64,node18-win-x64,node18-win-arm64"
+          npx pkg out/src/main-mainnet.js -t $targets --output bin/edge
+
+      - name: Get version
+        id: version
+        run: echo "version=$(node -p 'require("./package.json").version')" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare artifacts
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          declare -A binaries=(
+            ["linux/x64"]="edge-linux-x64"
+            ["linux/arm64"]="edge-linux-arm64"
+            ["macos/x64"]="edge-macos-x64"
+            ["macos/arm64"]="edge-macos-arm64"
+            ["win/x64"]="edge-win-x64.exe"
+            ["win/arm64"]="edge-win-arm64.exe"
+          )
+
+          for combo in "${!binaries[@]}"; do
+            platform="${combo%%/*}"
+            arch="${combo##*/}"
+            binary="${binaries[$combo]}"
+            bin_name="edge"
+            if [[ "$platform" == "win" ]]; then
+              bin_name="edge.exe"
+            fi
+
+            dir="dist/${platform}/${arch}/${VERSION}"
+            mkdir -p "$dir"
+
+            cp "bin/${binary}" "${dir}/${bin_name}"
+            sha256sum "${dir}/${bin_name}" | awk '{print $1}' > "${dir}/checksum"
+            echo "$VERSION" > "${dir}/version"
+          done
+
+      - name: Deploy to fileserver
+        env:
+          SSH_KEY: ${{ secrets.FILESERVER_SSH_KEY }}
+          SSH_HOST: ${{ secrets.FILESERVER_HOST }}
+          SSH_USER: ${{ secrets.FILESERVER_SSH_USER }}
+          BASE_PATH: ${{ secrets.FILESERVER_PATH }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          for platform in linux macos win; do
+            for arch in x64 arm64; do
+              remote_dir="${BASE_PATH}/cli/mainnet/${platform}/${arch}"
+
+              ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" -o StrictHostKeyChecking=accept-new \
+                "${SSH_USER}@${SSH_HOST}" "mkdir -p ${remote_dir}/${VERSION}"
+
+              scp -i ~/.ssh/deploy_key -P "$SSH_PORT" -o StrictHostKeyChecking=accept-new \
+                dist/${platform}/${arch}/${VERSION}/* \
+                "${SSH_USER}@${SSH_HOST}:${remote_dir}/${VERSION}/"
+
+              ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" -o StrictHostKeyChecking=accept-new \
+                "${SSH_USER}@${SSH_HOST}" "cd ${remote_dir} && rm -rf latest && cp -r ${VERSION} latest"
+            done
+          done
+
+          rm -f ~/.ssh/deploy_key
