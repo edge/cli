@@ -97,11 +97,14 @@ pipeline {
           def uname = sh(script: "uname -a", returnStdout: true).trim()
           println "[Package] Running on $uname"
 
-          // Ensure required image is up to date
-          sh "docker pull registry.edge.network/internal/cli-x64:$NETWORK"
+          docker.withRegistry("https://registry.edge.network", REGISTRY_CREDENTIAL) {
+            // Ensure required image is up to date
+            sh "docker pull registry.edge.network/internal/cli-x64:$NETWORK"
 
-          def args = "--no-cache --file .ci/docker/package --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE"
-          buildAndPushImage(REGISTRY_CREDENTIAL, "internal/cli-packaged:$NETWORK", args)
+            def args = "--no-cache --file .ci/docker/package --build-arg NETWORK=$NETWORK --build-arg NODE=$NODE"
+            def image = docker.build("registry.edge.network/internal/cli-packaged:$NETWORK", "$args .")
+            image.push()
+          }
         }
       }
     }
