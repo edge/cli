@@ -93,8 +93,8 @@ jobs:
             ["linux/arm64"]="edge-linux-arm64"
             ["macos/x64"]="edge-macos-x64"
             ["macos/arm64"]="edge-macos-arm64"
-            ["win/x64"]="edge-win-x64.exe"
-            ["win/arm64"]="edge-win-arm64.exe"
+            ["windows/x64"]="edge-win-x64.exe"
+            ["windows/arm64"]="edge-win-arm64.exe"
           )
 
           for combo in "${!binaries[@]}"; do
@@ -102,7 +102,7 @@ jobs:
             arch="${combo##*/}"
             binary="${binaries[$combo]}"
             bin_name="edge"
-            if [[ "$platform" == "win" ]]; then
+            if [[ "$platform" == "windows" ]]; then
               bin_name="edge.exe"
             fi
 
@@ -127,7 +127,7 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-          for platform in linux macos win; do
+          for platform in linux macos windows; do
             for arch in x64 arm64; do
               remote_dir="${BASE_PATH}/cli/mainnet/${platform}/${arch}"
 
