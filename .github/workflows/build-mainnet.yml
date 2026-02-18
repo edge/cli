@@ -14,10 +14,10 @@ jobs:
         include:
           - arch: x64
             runner: ubuntu-latest
-            targets: node18-linux-x64,node18-macos-x64,node18-win-x64
+            targets: node16-linux-x64,node16-macos-x64,node16-win-x64
           - arch: arm64
             runner: ubuntu-24.04-arm
-            targets: node18-linux-arm64,node18-macos-arm64,node18-win-arm64
+            targets: node16-linux-arm64,node16-macos-arm64,node16-win-arm64
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
