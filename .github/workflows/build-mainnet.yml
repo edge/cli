@@ -34,8 +34,17 @@ jobs:
       - name: Build TypeScript
         run: npm run mainnet:build:src
 
+      - name: Install ldid
+        run: |
+          arch=$(uname -m)
+          curl -sL "https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_linux_${arch}" -o /usr/local/bin/ldid
+          chmod +x /usr/local/bin/ldid
+
       - name: Build binaries
         run: npx pkg out/src/main-mainnet.js -t ${{ matrix.targets }} --output bin/edge
+
+      - name: Sign macOS binary
+        run: ldid -S bin/edge-macos
 
       - name: Rename binaries
         run: |
