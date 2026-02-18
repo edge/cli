@@ -37,6 +37,18 @@ jobs:
       - name: Build binaries
         run: npx pkg out/src/main-mainnet.js -t ${{ matrix.targets }} --output bin/edge
 
+      - name: Rename binaries
+        run: |
+          cd bin
+          for f in edge-linux edge-macos edge-win.exe; do
+            [ -f "$f" ] || continue
+            case "$f" in
+              edge-win.exe) mv "$f" "edge-win-${{ matrix.arch }}.exe" ;;
+              *) mv "$f" "$f-${{ matrix.arch }}" ;;
+            esac
+          done
+          ls -la
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
