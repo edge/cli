@@ -6,11 +6,18 @@ on:
       - master
 
 jobs:
-  build-and-deploy:
-    name: Build and deploy
-    runs-on: ubuntu-latest
-    env:
-      SSH_PORT: ${{ secrets.FILESERVER_SSH_PORT != '' && secrets.FILESERVER_SSH_PORT || '22' }}
+  build:
+    name: Build ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-latest
+            targets: node18-linux-x64,node18-macos-x64,node18-win-x64
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            targets: node18-linux-arm64,node18-macos-arm64,node18-win-arm64
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,13 +35,33 @@ jobs:
         run: npm run mainnet:build:src
 
       - name: Build binaries
-        run: |
-          targets="node18-linux-x64,node18-linux-arm64,node18-macos-x64,node18-macos-arm64,node18-win-x64,node18-win-arm64"
-          npx pkg out/src/main-mainnet.js -t $targets --output bin/edge
+        run: npx pkg out/src/main-mainnet.js -t ${{ matrix.targets }} --output bin/edge
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.arch }}
+          path: bin/
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      SSH_PORT: ${{ secrets.FILESERVER_SSH_PORT != '' && secrets.FILESERVER_SSH_PORT || '22' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Get version
         id: version
         run: echo "version=$(node -p 'require("./package.json").version')" >> "$GITHUB_OUTPUT"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: bin/
+          merge-multiple: true
 
       - name: Prepare artifacts
         env:
