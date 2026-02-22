@@ -1,0 +1,63 @@
+name: Test Win ARM64 Build
+
+on:
+  push:
+    branches:
+      - fix/win-arm64-build
+
+jobs:
+  build:
+    name: Build win-arm64
+    runs-on: windows-11-arm
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run mainnet:build:src
+
+      - name: Build binary
+        run: npx pkg out/src/main-mainnet.js -t node16-win-arm64 --output bin/edge
+
+      - name: Show binary info
+        shell: pwsh
+        run: |
+          $f = Get-Item bin\edge.exe
+          Write-Host "Size: $($f.Length) bytes ($([math]::Round($f.Length/1MB, 1)) MB)"
+          $bytes = [System.IO.File]::ReadAllBytes($f.FullName)
+          $peOffset = [BitConverter]::ToInt32($bytes, 60)
+          $machine = [BitConverter]::ToUInt16($bytes, $peOffset + 4)
+          Write-Host "PE Machine: 0x$($machine.ToString('X4'))"
+          switch ($machine) {
+            0x8664 { Write-Host 'Architecture: x64 (AMD64)' }
+            0xAA64 { Write-Host 'Architecture: ARM64' }
+          }
+
+      - name: Test binary
+        shell: pwsh
+        run: |
+          Write-Host "--- Testing --version ---"
+          & bin\edge.exe --version
+          Write-Host "--- Testing --help ---"
+          & bin\edge.exe --help
+
+      - name: Rename and upload
+        shell: pwsh
+        run: |
+          Rename-Item -Path bin\edge.exe -NewName edge-win-arm64.exe
+          Get-ChildItem bin\
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: edge-win-arm64
+          path: bin/edge-win-arm64.exe
